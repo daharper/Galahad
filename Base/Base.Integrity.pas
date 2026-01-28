@@ -3,320 +3,181 @@ unit Base.Integrity;
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.TypInfo,
+  Base.Core;
+
+const
+  MON_INIT_ERROR   = 'State has already been initialized error.';
+  MON_ACCESS_ERROR = 'Cannot access value of None';
 
 type
   TMaybeState = (
-    /// <summary>State has not been initialized</summary>
+    // initial state, used to enforce immutability, evaluates to msNone
     msUnknown,
-    /// <summary>None has been set.</summary>
-    msNone,
-    /// <summary>Some has been set.</summary>
-    msSome
-  );
+    // some value has been set
+    msSome,
+    // none has been set
+    msNone);
+
+  TResultState = (
+    // initial state, used to enforce immutability, evaluates to rsErr
+    rsUnknown,
+    // ok has been set
+    rsOk,
+    // err has been set
+    rsErr);
 
   /// <summary>
-  /// Represents an optional value. Inspired by Option/Maybe monads.
+  ///  Basic implementation of an optional, adapted for Delphi record/memory constraints.
   /// </summary>
-  /// <typeparam name="T">Type of the optional value</typeparam>
   TMaybe<T> = record
-  private
+  strict private
     fState: TMaybeState;
     fValue: T;
 
     function GetValue: T;
+  public
+    property Value: T read GetValue;
+
+    function IsSome: Boolean;
+    function IsNone: Boolean;
+
+    function OrElse(const aFallback: T): T;
+    function OrElseGet(const aFunc: TFunc<T>): T;
+    function TryGet(out aValue: T): boolean;
+
+    procedure IfSome(const aProc: TProc<T>);
+    procedure IfNone(const aProc: TProc);
+    procedure Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
 
     procedure SetSome(const aValue: T);
     procedure SetNone;
-  public
-    /// <summary>
-    /// Gets the value if successful, raises an exception if no value was set.
-    /// Sets the value if no state has been set, raises if it has (avoids record duplication)
-    /// </summary>
-    property Value: T read GetValue;
 
-    /// <summary>Returns true if value is present.</summary>
-    function IsSome: Boolean;
+    class function MakeSome(const aValue: T): TMaybe<T>; static; inline;
+    class function MakeNone: TMaybe<T>; static; inline;
 
-    /// <summary>Returns true if no value is present, or not initialized.</summary>
-    function IsNone: Boolean;
-
-    /// <summary>Returns the value if present, otherwise the fallback.</summary>
-    function OrElse(const aFallback: T): T;
-
-    /// <summary>Returns the value if present, otherwise computes it from the function.</summary>
-    function OrElseGet(aFunc: TFunc<T>): T;
-
-    /// <summary>
-    /// Initializes with the specified value, this reduces duplication with a pre-allocated result.
-    /// </summary>
-    procedure InitSome(const aValue: T);
-
-    /// <summary>
-    /// Initializes with the none value, this reduces duplication with a pre-allocation result.
-    /// </summary>
-    procedure InitNone;
-
-    /// <summary>Constructs a TMaybe with a value.</summary>
-    class function Some(const aValue: T): TMaybe<T>; overload; static;
-
-    /// <summary>Constructs an empty TMaybe.</summary>
-    class function None: TMaybe<T>; static;
-
-    /// <summary>Initializes the default state.</summary>
     class operator Initialize;
   end;
 
   /// <summary>
-  /// Represents the result of an operation: either a value or an error.
+  ///  Basic implementation of a result, adapted for Delphi record/memory constraints.
   /// </summary>
-  /// <typeparam name="T">Type of the value on success</typeparam>
   TResult<T> = record
-  private
-    fValue: T;
+  strict private
+    fState: TResultState;
     fError: string;
-    fOk: Boolean;
+    fValue: T;
 
     function GetValue: T;
-    function GetError: string;
-
   public
-    /// <summary>
-    /// Gets the success value.
-    /// </summary>
-    /// <remarks>
-    /// This is only valid when <c>IsOk</c> is True.
-    /// </remarks>
     property Value: T read GetValue;
+    property Error: string read fError;
 
-    /// <summary>
-    /// Gets the error message.
-    /// </summary>
-    /// <remarks>
-    /// This is only valid when <c>IsErr</c> is True.
-    /// </remarks>
-    property Error: string read GetError;
-
-    /// <summary>
-    /// Returns True if this result represents success (contains a value).
-    /// </summary>
+    function IsErr: Boolean;
     function IsOk: Boolean;
 
-    /// <summary>
-    /// Returns True if this result represents failure (contains an error message).
-    /// </summary>
-    function IsErr: Boolean;
+    function OrElse(const aFallback: T): T;
+    function OrElseGet(const aFunc: TFunc<T>): T;
+    function TryGet(out aValue: T): boolean;
 
-    /// <summary>
-    /// Returns the contained value if this result is Ok; otherwise returns <paramref name="Default"/>.
-    /// <para>
-    /// This is similar to Optional/Maybe "unwrap-or-default".
-    /// </para>
-    /// </summary>
-    function OrElse(const aDefault: T): T;
+    procedure IfSome(const aProc: TProc<T>);
+    procedure IfNone(const aProc: TProc);
+    procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc);
 
-   /// <summary>
-    /// Returns the contained value if this result is Ok; otherwise computes a fallback value.
-    /// <para>
-    /// The fallback function receives the error message and must return a value of type <c>T</c>.
-    /// This is the lazy (deferred) form of <c>OrElse</c>.
-    /// </para>
-    /// </summary>
-    function OrElseGet(const aFallback: TFunc<string, T>): T;
+    procedure SetOk(const aValue: T);
+    procedure SetErr(const aMessage: string = ''); overload;
+    procedure SetErr(const aFormat: string; const aArgs: array of const); overload;
 
-    /// <summary>
-    /// Creates a successful result containing <paramref name="aValue"/>.
-    /// </summary>
-    class function Ok(const aValue: T): TResult<T>; static;
+    class function MakeOk(const aValue: T): TResult<T>; static; inline;
+    class function MakeErr(const aMessage: string = ''): TResult<T>; overload; static; inline;
+    class function MakeErr(const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
 
-    /// <summary>
-    /// Creates a failed result containing an error message <paramref name="aMessage"/>.
-    /// </summary>
-    class function Err(const aMessage: string = ''): TResult<T>; static;
-
-    /// <summary>
-    /// Executes <paramref name="Func"/> and returns Ok(value) if it completes.
-    /// If an exception is raised, returns Err(exception message) instead.
-    /// </summary>
-    class function TryGet(const Func: TFunc<T>): TResult<T>; static;
-
-    /// <summary>
-    /// Executes <paramref name="Proc"/> and returns Ok(True) if it completes.
-    /// If an exception is raised, returns Err(exception message) instead.
-    /// </summary>
-    class function TryDo(const Proc: TProc): TResult<Boolean>; static;
-
-    /// <summary>
-    /// If <paramref name="Res"/> is Ok and <paramref name="Predicate"/> returns False,
-    /// returns Err(<paramref name="ErrorMessage"/>). Otherwise returns <paramref name="Res"/>.
-    /// Err results are propagated unchanged.
-    /// </summary>
-    class function Ensure(const Res: TResult<T>; const Predicate: TFunc<T, Boolean>; const ErrorMessage: string): TResult<T>; overload; static;
-
-    /// <summary>
-    /// If <paramref name="Res"/> is Ok and <paramref name="Predicate"/> returns False,
-    /// returns Err(<paramref name="ErrorMessage"/>). Otherwise returns <paramref name="Res"/>.
-    /// Err results are propagated unchanged.
-    /// </summary>
-    class function Ensure(const Res: TResult<T>; const Predicate: TFunc<T, Boolean>; const ErrorFactory: TFunc<T, string>): TResult<T>; overload; static;
+    class operator Initialize;
   end;
 
   /// <summary>
-  /// Delphi generic limitations in records prohibit result chaining, so we wrap instead.
+  ///  Takes ownership of instance, cleans it up on scope exit.
   /// </summary>
-  /// <remarks>
-  /// Terminology:
-  /// <list type="bullet">
-  /// <item><description><c>Map</c> transforms the Ok value only.</description></item>
-  /// <item><description><c>Bind</c> (i.e. AndThen) chains operations that return TResult.</description></item>
-  /// <item><description><c>Match</c> handles both Ok and Err cases explicitly.</description></item>
-  /// </list>
-  /// </remarks>
-  TResultOps = record
+  TUsing<T: class> = record
+  strict private
+    fInstance: T;
   public
-    /// <summary>
-    /// Chains a computation that may fail.
-    /// <para>
-    /// If <paramref name="Res"/> is Ok, calls <paramref name="F"/> and returns its result.
-    /// If <paramref name="Res"/> is Err, the error is propagated unchanged.
-    /// </para>
-    /// <para>
-    /// This is also known as "AndThen" / "FlatMap".
-    /// </para>
-    /// </summary>
-    class function Bind<T, U>(const R: TResult<T>; const F: TFunc<T, TResult<U>>): TResult<U>; static;
+    function Instance(aObject: T): T;
 
-    /// <summary>
-    /// Transforms the success value using <paramref name="F"/> if <paramref name="Res"/> is Ok.
-    /// <para>
-    /// If <paramref name="Res"/> is Err, the error is propagated unchanged.
-    /// </para>
-    /// <para>
-    /// Equivalent to "Select" in LINQ and "map" in functional programming.
-    /// </para>
-    /// </summary>
-    class function Map<T, U>(const R: TResult<T>; const F: TFunc<T, U>): TResult<U>; static;
+    constructor Create(aObject: T);
 
-    /// <summary>
-    /// Transforms the error message using <paramref name="F"/> if <paramref name="Res"/> is Err.
-    /// <para>
-    /// If <paramref name="Res"/> is Ok, it is returned unchanged.
-    /// </para>
-    /// <para>
-    /// This is useful for adding context to errors (e.g. prefixing a message with the current operation).
-    /// </para>
-    /// </summary>
-    class function MapError<T>(const R: TResult<T>; const F: TFunc<string, string>): TResult<T>; static;
-
-    /// <summary>
-    /// Converts an Err result into an Ok result by providing a fallback value.
-    /// <para>
-    /// If <paramref name="Res"/> is Err, <paramref name="F"/> is called with the error message and must return a value of type <c>T</c>.
-    /// If <paramref name="Res"/> is Ok, it is returned unchanged.
-    /// </para>
-    /// </summary>
-    class function Recover<T>(const R: TResult<T>; const F: TFunc<string, T>): TResult<T>; static;
-
-    /// <summary>
-    /// Executes <paramref name="Action"/> for side-effects when <paramref name="Res"/> is Ok.
-    /// <para>
-    /// The original result is returned unchanged.
-    /// </para>
-    /// <para>
-    /// Useful for logging/debugging without changing the pipeline.
-    /// (Also known as "OnSuccess" in some libraries.)
-    /// </para>
-    /// </summary>
-    class function Tap<T>(const Res: TResult<T>; const Action: TProc<T>): TResult<T>; static;
-
-    /// <summary>
-    /// Executes <paramref name="Action"/> for side-effects when <paramref name="Res"/> is Err.
-    /// <para>
-    /// The original result is returned unchanged.
-    /// </para>
-    /// <para>
-    /// Useful for logging/debugging errors without changing the pipeline.
-    /// (Also known as "OnError" in some libraries.)
-    /// </para>
-    /// </summary>
-    class function TapError<T>(const Res: TResult<T>; const Action: TProc<string>): TResult<T>; static;
-
-    /// <summary>
-    /// Consumes a result by executing exactly one of two branches.
-    /// <para>
-    /// If <paramref name="Res"/> is Ok, <paramref name="OnOk"/> is called and its return value is returned.
-    /// If <paramref name="Res"/> is Err, <paramref name="OnErr"/> is called and its return value is returned.
-    /// </para>
-    /// <para>
-    /// This is commonly called "Match" or "Fold" in functional programming.
-    /// </para>
-    /// </summary>
-    class function Match<T, R>(const Res: TResult<T>; const OnOk: TFunc<T, R>; const OnErr: TFunc<string, R>): R; overload; static;
-
-    /// <summary>
-    /// Consumes a result by executing exactly one of two procedures.
-    /// <para>
-    /// If <paramref name="Res"/> is Ok, <paramref name="OnOk"/> is called.
-    /// If <paramref name="Res"/> is Err, <paramref name="OnErr"/> is called.
-    /// </para>
-    /// <para>
-    /// This is commonly called "Match" or "Fold" in functional programming.
-    /// </para>
-    /// </summary>
-    class procedure Match<T>(const Res: TResult<T>; const OnOk: TProc<T>; const OnErr: TProc<string>); overload; static;
-
-    /// <summary>
-    /// Returns the contained value if <paramref name="Res"/> is Ok; otherwise returns <paramref name="Default"/>.
-    /// <para>
-    /// This is a terminal operation that collapses a TResult&lt;T&gt; into a plain value of type <c>T</c>.
-    /// </para>
-    /// <para>
-    /// Equivalent to Optional/Maybe "unwrap-or-default" and similar to LINQ's "FirstOrDefault" semantics
-    /// (i.e. it never throws just because the result is Err).
-    /// </para>
-    /// </summary>
-    class function UnwrapOr<T>(const Res: TResult<T>; const Default: T): T; static;
-
-    /// <summary>
-    /// Returns the contained value if <paramref name="Res"/> is Ok; otherwise computes a fallback value.
-    /// <para>
-    /// The fallback function receives the error message and must return a value of type <c>T</c>.
-    /// This is the lazy (deferred) form of <c>UnwrapOr</c>.
-    /// </para>
-    /// <para>
-    /// This is a terminal operation that collapses a TResult&lt;T&gt; into a plain value of type <c>T</c>.
-    /// </para>
-    /// </summary>
-    class function UnwrapOrElse<T>(const Res: TResult<T>; const Fallback: TFunc<string, T>): T; static;
+    class operator Initialize;
+    class operator Finalize;
   end;
+
+  TExceptionClass = class of Exception;
+
+  /// <summary>
+  ///  Centralized error handling.
+  /// </summary>
+  TErrorCentral = class
+  private
+    fSubscribers: TMulticast<Exception>;
+
+    class var fInstance: TErrorCentral;
+  public
+    property Subscribers:TMulticast<Exception> read fSubscribers write fSubscribers;
+
+    procedure Throw<T: Exception>(const Msg: string); overload;
+    procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
+    procedure Throw(const [ref] aException: Exception); overload;
+
+    procedure Notify(const [ref] aException: Exception);
+
+    constructor Create;
+    destructor Destroy; override;
+
+    class constructor Create;
+    class destructor Destroy;
+  end;
+
+  TEnsure = class
+  private
+    class var fInstance: TEnsure;
+  public
+    function IsBlank(const aText: string; const aMessage: string = ''): TEnsure;
+    function IsNotBlank(const aText: string; const aMessage: string = ''): TEnsure;
+    function IsTrue(const aCondition: boolean; const aMessage: string = ''): TEnsure;
+    function IsFalse(const aCondition: boolean; const aMessage: string = ''): TEnsure;
+    function IsSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+    function IsNotSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+
+    class constructor Create;
+    class destructor Destroy;
+  end;
+
+  function TError: TErrorCentral;
+  function Ensure: TEnsure;
 
 implementation
 
-{ TMaybe<T> }
+uses
+  System.Classes,
+  System.Rtti;
+
+{$region 'Functions'}
 
 {--------------------------------------------------------------------------------------------------}
-function TMaybe<T>.IsSome: Boolean;
+function TError: TErrorCentral;
 begin
-  Result := fState = msSome;
+  Result := TErrorCentral.fInstance;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class operator TMaybe<T>.Initialize;
+function Ensure: TEnsure;
 begin
-  fState := msUnknown;
+  Result := TEnsure.fInstance;
 end;
 
-{--------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.InitNone;
-begin
+{$endregion}
 
-end;
-
-{--------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.InitSome(const aValue: T);
-begin
-
-end;
+{$region 'TMaybe<T>'}
 
 {--------------------------------------------------------------------------------------------------}
 function TMaybe<T>.IsNone: Boolean;
@@ -325,30 +186,34 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
+function TMaybe<T>.IsSome: Boolean;
+begin
+  Result := fState = msSome;
+end;
+
+{--------------------------------------------------------------------------------------------------}
 function TMaybe<T>.GetValue: T;
 begin
-  if fState <> msSome then
-    raise Exception.Create('Cannot access value of None');
+  Ensure.IsTrue(fState = msSome, MON_ACCESS_ERROR);
 
   Result := fValue;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.SetNone;
+procedure TMaybe<T>.SetSome(const aValue: T);
 begin
-  if fState <> msUnknown then
-    raise Exception.Create('State has already been assigned');
+  Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
 
-  fState := msUnknown;
+  fState := msSome;
+  fValue := aValue;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.SetSome(const aValue: T);
+procedure TMaybe<T>.SetNone;
 begin
-  if fState <> msUnknown then
-    raise Exception.Create('State has already been assigned');
+  Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
 
-  fState := msSome;
+  fState := msNone;
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -361,232 +226,405 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TMaybe<T>.OrElseGet(aFunc: TFunc<T>): T;
+function TMaybe<T>.OrElseGet(const aFunc: TFunc<T>): T;
 begin
+  Ensure.IsTrue(Assigned(aFunc), 'Expected (else) function is missing');
+
   if fState = msSome then
     Result := fValue
   else
-    Result := aFunc();
+    Result := aFunc;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.Some(const aValue: T): TMaybe<T>;
+function TMaybe<T>.TryGet(out aValue: T): boolean;
 begin
-  Result.fState := msSome;
-  Result.fValue := aValue;
+  Result := fState = msSome;
+
+  if Result then
+    aValue := fValue
+  else
+    aValue := default(T);
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.None: TMaybe<T>;
+procedure TMaybe<T>.Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
 begin
-  Result.fState := msNone;
+  Ensure.IsTrue(Assigned(aSomeProc), 'Expected (some) procedure is missing')
+        .IsTrue(Assigned(aNoneProc), 'Expected (none) procedure is missing');
+
+  if fState = msSome then
+    aSomeProc(fValue)
+  else
+    aNoneProc();
 end;
 
-{ TResult<T> }
-
 {--------------------------------------------------------------------------------------------------}
-function TResult<T>.OrElse(const aDefault: T): T;
+procedure TMaybe<T>.IfNone(const aProc: TProc);
 begin
-  Result := if IsOk then fValue else aDefault;
+  Ensure.IsTrue(Assigned(aProc), 'Expected (none) procedure is missing');
+
+  if fState <> msSome then
+    aProc();
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TResult<T>.OrElseGet(const aFallback: TFunc<string, T>): T;
+procedure TMaybe<T>.IfSome(const aProc: TProc<T>);
 begin
-  if IsOk then exit(fValue);
+  Ensure.IsTrue(Assigned(aProc), 'Expected (some) procedure is missing');
 
-  Result := aFallback(Self.FError);
+  if fState = msSome then
+    aProc(fValue);
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TResult<T>.IsOk: Boolean;
+class function TMaybe<T>.MakeSome(const aValue: T): TMaybe<T>;
 begin
-  Result := FOk;
+  Result.fState := msUnknown; // initialize not guaranteed to run
+  Result.SetSome(aValue);
 end;
 
 {--------------------------------------------------------------------------------------------------}
+class function TMaybe<T>.MakeNone: TMaybe<T>;
+begin
+  Result.fState := msUnknown; // initialize not guaranteed to run
+  Result.SetNone;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class operator TMaybe<T>.Initialize;
+begin
+  fState := msUnknown;
+end;
+
+{$endregion}
+
+{$region 'TResult<T>'}
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TResult<T>.IsErr: Boolean;
 begin
-  Result := not FOk;
+  Result := fState <> rsOk;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.IsOk: Boolean;
+begin
+  Result := fState = rsOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TResult<T>.GetValue: T;
 begin
-  if not FOk then
-    raise Exception.Create('Cannot access Value of Err result');
+  Ensure.IsTrue(fState = rsOk, MON_ACCESS_ERROR);
 
-  Result := FValue;
+  Result := fValue;
 end;
 
-{--------------------------------------------------------------------------------------------------}
-function TResult<T>.GetError: string;
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.TryGet(out aValue: T): boolean;
 begin
-  Result := FError;
-end;
+  Result := fState = rsOk;
 
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.Ok(const AValue: T): TResult<T>;
-begin
-  Result.fValue := AValue;
-  Result.fOk := True;
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.Err(const aMessage: string): TResult<T>;
-begin
-  Result.fOk := False;
-  Result.fError := aMessage;
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.TryGet(const Func: TFunc<T>): TResult<T>;
-begin
-  try
-    Result := Ok(Func());
-  except
-    on E: Exception do
-      Result := Err(E.Message);
-  end;
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.TryDo(const Proc: TProc): TResult<Boolean>;
-begin
-  try
-    Proc();
-    Result := TResult<Boolean>.Ok(True);
-  except
-    on E: Exception do
-      Result := TResult<Boolean>.Err(E.Message);
-  end;
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.Ensure(
-  const Res: TResult<T>;
-  const Predicate: TFunc<T, Boolean>;
-  const ErrorMessage: string
-): TResult<T>;
-begin
-  if Res.IsErr then
-    Exit(Res);
-
-  if Predicate(Res.Value) then
-    Exit(Res);
-
-  Result := Err(ErrorMessage);
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResult<T>.Ensure(
-  const Res: TResult<T>;
-  const Predicate: TFunc<T, Boolean>;
-  const ErrorFactory: TFunc<T, string>
-): TResult<T>;
-begin
-  if Res.IsErr then
-    Exit(Res);
-
-  if Predicate(Res.Value) then
-    Exit(Res);
-
-  Result := Err(ErrorFactory(Res.Value));
-end;
-
-{ TResultOps }
-
-{--------------------------------------------------------------------------------------------------}
-class function TResultOps.Bind<T, U>(const R: TResult<T>; const F: TFunc<T, TResult<U>>): TResult<U>;
-begin
-  // If Ok, run the next computation.
-  if R.IsOk then
-    Exit(F(R.Value));
-
-  // If Err, propagate the existing error.
-  Result := TResult<U>.Err(R.Error);
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResultOps.Map<T, U>(const R: TResult<T>; const F: TFunc<T, U>): TResult<U>;
-begin
-  // If R is Ok, transform the value.
-  if R.IsOk then
-    Exit(TResult<U>.Ok(F(R.Value)));
-
-  // If R is Err, propagate the error unchanged.
-  Result := TResult<U>.Err(R.Error);
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResultOps.MapError<T>(const R: TResult<T>; const F: TFunc<string, string>): TResult<T>;
-begin
- if R.IsOk then
-    Exit(R); // unchanged
-
-  Result := TResult<T>.Err(F(R.Error));
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class function TResultOps.Match<T, R>(const Res: TResult<T>; const OnOk: TFunc<T, R>; const OnErr: TFunc<string, R>): R;
-begin
-  if Res.IsOk then
-    Exit(OnOk(Res.Value));
-
-  Result := OnErr(Res.Error);
-end;
-
-{--------------------------------------------------------------------------------------------------}
-class procedure TResultOps.Match<T>(const Res: TResult<T>; const OnOk: TProc<T>; const OnErr: TProc<string>);
-begin
-  if Res.IsOk then
-    OnOk(Res.Value)
+  if Result then
+    aValue := fValue
   else
-    OnErr(Res.Error);
+    aValue := default(T);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.OrElse(const aFallback: T): T;
+begin
+  if fState = rsOk then
+    Result := fValue
+  else
+    Result := aFallback;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.OrElseGet(const aFunc: TFunc<T>): T;
+begin
+  Ensure.IsTrue(Assigned(aFunc), 'Expected (else) function is missing');
+
+  if fState = rsOk then
+    Result := fValue
+  else
+    Result := aFunc;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.IfNone(const aProc: TProc);
+begin
+  Ensure.IsTrue(Assigned(aProc), 'Expected (err) procedure is missing');
+
+  if fState <> rsOk then
+    aProc();
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.IfSome(const aProc: TProc<T>);
+begin
+  Ensure.IsTrue(Assigned(aProc), 'Expected (ok) procedure is missing');
+
+  if fState = rsOk then
+    aProc(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.Match(const aOkProc: TProc<T>; const aErrProc: TProc);
+begin
+  Ensure.IsTrue(Assigned(aOkProc),  'Expected (ok) procedure is missing')
+        .IsTrue(Assigned(aErrProc), 'Expected (err) procedure is missing');
+
+  if fState = rsOk then
+    aOkProc(fValue)
+  else
+    aErrProc();
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetOk(const aValue: T);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsOk;
+  fValue := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetErr(const aMessage: string);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsErr;
+  fError := aMessage;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetErr(const aFormat: string; const aArgs: array of const);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsErr;
+  fError := Format(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.MakeErr(const aMessage: string): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetErr(aMessage);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.MakeErr(const aFormat: string; const aArgs: array of const): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetErr(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.MakeOk(const aValue: T): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetOk(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TResult<T>.Initialize;
+begin
+  fState := rsUnknown;
+end;
+
+{$endregion}
+
+{$region 'TUsing<T>'}
+
+{--------------------------------------------------------------------------------------------------}
+function TUsing<T>.Instance(aObject: T): T;
+begin
+  fInstance := aObject;
+  Result := fInstance;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TResultOps.Recover<T>(const R: TResult<T>; const F: TFunc<string, T>): TResult<T>;
+constructor TUsing<T>.Create(aObject: T);
 begin
-  if R.IsOk then
-    Exit(R); // unchanged
-
-  Result := TResult<T>.Ok(F(R.Error));
+  fInstance := aObject;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TResultOps.Tap<T>(const Res: TResult<T>; const Action: TProc<T>): TResult<T>;
+class operator TUsing<T>.Initialize;
 begin
- if Res.IsOk then
-    Action(Res.Value);
-
-  Result := Res; // unchanged
+  fInstance := nil;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TResultOps.TapError<T>(const Res: TResult<T>; const Action: TProc<string>): TResult<T>;
+class operator TUsing<T>.Finalize;
 begin
-  if Res.IsErr then
-    Action(Res.Error);
+  fInstance.Free;
+end;
 
-  Result := Res; // unchanged
+{$endregion}
+
+{ TError }
+
+{--------------------------------------------------------------------------------------------------}
+procedure TErrorCentral.Notify(const [ref] aException: Exception);
+begin
+  fSubscribers.Invoke(aException);
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TResultOps.UnwrapOr<T>(const Res: TResult<T>; const Default: T): T;
+procedure TErrorCentral.Throw(const [ref] aException: Exception);
 begin
-  if Res.IsOk then
-    Exit(Res.Value);
-  Result := Default;
+  Notify(aException);
+
+  raise aException;
 end;
 
 {--------------------------------------------------------------------------------------------------}
-class function TResultOps.UnwrapOrElse<T>(const Res: TResult<T>; const Fallback: TFunc<string, T>): T;
+procedure TErrorCentral.Throw<T>(const Msg: string);
 begin
-  if Res.IsOk then
-    Exit(Res.Value);
+  var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
+  var err := cls.Create(Msg);
 
-  Result := Fallback(Res.Error);
+  Notify(err);
+
+  raise err;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TErrorCentral.Throw<T>(const Fmt: string; const Args: array of const);
+begin
+  var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
+  var err := cls.CreateFmt(Fmt, Args);
+
+  Notify(err);
+
+  raise err;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class constructor TErrorCentral.Create;
+begin
+  fInstance := TErrorCentral.Create;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+constructor TErrorCentral.Create;
+begin
+  fSubscribers := TMulticast<Exception>.Create;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+destructor TErrorCentral.Destroy;
+begin
+  fSubscribers.Free;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class destructor TErrorCentral.Destroy;
+begin
+  FreeAndNil(fInstance);
+end;
+
+{ TEnsure }
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsBlank(const aText, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected value to be blank.';
+begin
+  if not string.IsNullOrWhiteSpace(aText) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsNotBlank(const aText, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected value is missing.';
+begin
+  if string.IsNullOrWhiteSpace(aText) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsTrue(const aCondition: boolean; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected condition, or value, to be true.';
+begin
+  if not aCondition then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsFalse(const aCondition: boolean; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected condition, or value, to be false.';
+begin
+  if aCondition then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsSame(const aLhs, aRhs, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be the same.';
+begin
+  if CompareText(aLhs, aRhs) <> 0 then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.IsNotSame(const aLhs, aRhs, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be different.';
+begin
+  if CompareText(aLhs, aRhs) = 0 then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class constructor TEnsure.Create;
+begin
+  fInstance := TEnsure.Create;
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class destructor TEnsure.Destroy;
+begin
+  FreeAndNil(fInstance);
 end;
 
 end.
