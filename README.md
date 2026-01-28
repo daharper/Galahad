@@ -1,2 +1,9 @@
-# Galahad
-Integrity classes for modern Delphi
+# Project Galahad
+
+Modern engineering types for creating Delphi Application according to Clean Architecture and best practices.
+
+Pulling code from an existing project, refactoring and polishing as required, and adding to this repository.
+
+Developed for Delphi Florence.
+
+<img width="270" height="395" alt="Galahad" src="https://github.com/user-attachments/assets/73dfd30c-6dfe-422e-92cb-00cf36e9ac4b" />
