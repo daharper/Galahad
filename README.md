@@ -1,6 +1,6 @@
 # Project Galahad
 
-Modern engineering types for creating Delphi Application according to Clean Architecture and best practices.
+Modern engineering types for Delphi, allowing Clean Architecture and best practices.
 
 Pulling code from an existing project, refactoring and polishing as required, and adding to this repository.
 
