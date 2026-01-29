@@ -131,11 +131,11 @@ type
   /// </summary>
   TErrorCentral = class
   private
-    fSubscribers: TMulticast<Exception>;
+    fOnError: TMulticast<Exception>;
 
     class var fInstance: TErrorCentral;
   public
-    property Subscribers:TMulticast<Exception> read fSubscribers write fSubscribers;
+    property OnError:TMulticast<Exception> read fOnError write fOnError;
 
     procedure Throw<T: Exception>(const Msg: string); overload;
     procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
@@ -574,7 +574,7 @@ end;
 {--------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Notify(const [ref] aException: Exception);
 begin
-  fSubscribers.Publish(aException);
+  fOnError.Publish(aException);
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -616,13 +616,13 @@ end;
 {--------------------------------------------------------------------------------------------------}
 constructor TErrorCentral.Create;
 begin
-  fSubscribers := TMulticast<Exception>.Create;
+  fOnError := TMulticast<Exception>.Create;
 end;
 
 {--------------------------------------------------------------------------------------------------}
 destructor TErrorCentral.Destroy;
 begin
-  fSubscribers.Free;
+  fOnError.Free;
 end;
 
 {--------------------------------------------------------------------------------------------------}

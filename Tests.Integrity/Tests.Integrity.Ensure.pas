@@ -1,0 +1,93 @@
+unit Tests.Integrity.Ensure;
+
+interface
+
+uses
+  System.SysUtils,
+  DUnitX.TestFramework;
+
+type
+  TErrorHandler = class
+  private
+    fError: string;
+  public
+    property Error: string read fError;
+    procedure OnError(const aError: Exception);
+  end;
+
+  [TestFixture]
+  TEnsureFixture = class
+  private
+    fHandler: TErrorHandler;
+  public
+    [Setup]
+    procedure Setup;
+
+    [Teardown]
+    procedure Teardown;
+
+    [Test] procedure TestIsBlank;
+    [Test] procedure TestIsNotBlank;
+  end;
+
+implementation
+
+uses
+  Base.Integrity;
+
+{ TEnsureFixture }
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestIsBlank;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsBlank('  '); end);
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsBlank(''); end);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.IsBlank('a', 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestIsNotBlank;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsNotBlank('hello'); end);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.IsNotBlank('  ', 'err1') end, EArgumentException, 'err1');
+
+  Assert.AreEqual('err1', fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.IsNotBlank('', 'err2') end, EArgumentException, 'err2');
+
+  Assert.AreEqual('err2', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.Setup;
+begin
+  fHandler := TErrorHandler.Create;
+  TError.OnError.Subscribe(fHandler.OnError);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.Teardown;
+begin
+  TError.OnError.Unsubscribe(fHandler.OnError);
+  fHandler.Free;
+end;
+
+{ TErrorHandler }
+
+{--------------------------------------------------------------------------------------------------}
+procedure TErrorHandler.OnError(const aError: Exception);
+begin
+  fError := aError.Message;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TEnsureFixture);
+
+end.
