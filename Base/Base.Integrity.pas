@@ -45,7 +45,6 @@ type
 
     function OrElse(const aFallback: T): T;
     function OrElseGet(const aFunc: TFunc<T>): T;
-    function TryGet(out aValue: T): boolean;
 
     procedure IfSome(const aProc: TProc<T>);
     procedure IfNone(const aProc: TProc);
@@ -56,6 +55,7 @@ type
 
     class function MakeSome(const aValue: T): TMaybe<T>; static; inline;
     class function MakeNone: TMaybe<T>; static; inline;
+    class function TryGet(const Func: TFunc<T>): TMaybe<T>; static; inline;
 
     class operator Initialize;
   end;
@@ -79,15 +79,21 @@ type
 
     function OrElse(const aFallback: T): T;
     function OrElseGet(const aFunc: TFunc<T>): T;
-    function TryGet(out aValue: T): boolean;
 
     procedure IfSome(const aProc: TProc<T>);
     procedure IfNone(const aProc: TProc);
-    procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc);
+
+    procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc); overload;
+    function Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R; overload;
+
+    function Validate(const aPredicate: TFunc<T, Boolean>; const aError: string): TResult<T>; overload;
+    function Validate(const aPredicate: TFunc<T, Boolean>; const aErrorFunc: TFunc<T, string>): TResult<T>; overload;
 
     procedure SetOk(const aValue: T);
     procedure SetErr(const aMessage: string = ''); overload;
     procedure SetErr(const aFormat: string; const aArgs: array of const); overload;
+
+    class function TryGet(const Func: TFunc<T>): TResult<T>; static; inline;
 
     class function MakeOk(const aValue: T): TResult<T>; static; inline;
     class function MakeErr(const aMessage: string = ''): TResult<T>; overload; static; inline;
@@ -110,8 +116,6 @@ type
     class operator Initialize;
     class operator Finalize;
   end;
-
-  TExceptionClass = class of Exception;
 
   /// <summary>
   ///  Centralized error handling.
@@ -237,15 +241,15 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TMaybe<T>.TryGet(out aValue: T): boolean;
-begin
-  Result := fState = msSome;
-
-  if Result then
-    aValue := fValue
-  else
-    aValue := default(T);
-end;
+//function TMaybe<T>.TryGet(out aValue: T): boolean;
+//begin
+//  Result := fState = msSome;
+//
+//  if Result then
+//    aValue := fValue
+//  else
+//    aValue := default(T);
+//end;
 
 {--------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
@@ -275,6 +279,18 @@ begin
 
   if fState = msSome then
     aProc(fValue);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class function TMaybe<T>.TryGet(const Func: TFunc<T>): TMaybe<T>;
+begin
+  Result.fState := msUnknown; // initialize not guaranteed to run
+
+  try
+    Result.SetSome(Func());
+  except
+    Result.SetNone;
+  end;
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -314,22 +330,29 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.Validate(const aPredicate: TFunc<T, Boolean>; const aError: string): TResult<T>;
+begin
+  if (fState <> rsOk) or (aPredicate(Self.Value)) then
+    Exit(Self);
+
+  Result := TResult<T>.MakeErr(aError);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.Validate(const aPredicate: TFunc<T, Boolean>;const aErrorFunc: TFunc<T, string>): TResult<T>;
+begin
+  if (fState <> rsOk) or (aPredicate(Self.Value)) then
+    Exit(Self);
+
+  Result := TResult<T>.MakeErr(aErrorFunc(Self.Value));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TResult<T>.GetValue: T;
 begin
   Ensure.IsTrue(fState = rsOk, MON_ACCESS_ERROR);
 
   Result := fValue;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.TryGet(out aValue: T): boolean;
-begin
-  Result := fState = rsOk;
-
-  if Result then
-    aValue := fValue
-  else
-    aValue := default(T);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -383,6 +406,18 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R;
+begin
+  Ensure.IsTrue(Assigned(aOkFunc),  'Expected (ok) procedure is missing')
+        .IsTrue(Assigned(aErrFunc), 'Expected (err) procedure is missing');
+
+  if fState = rsOk then
+    Result := aOkFunc(fValue)
+  else
+    Result := aErrFunc(fError);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TResult<T>.SetOk(const aValue: T);
 begin
   Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
@@ -407,6 +442,17 @@ begin
 
   fState := rsErr;
   fError := Format(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.TryGet(const Func: TFunc<T>): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  try
+    Result.SetOk(Func());
+  except on E: Exception do
+    Result.SetErr(E.Message);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -467,7 +513,7 @@ end;
 
 {$endregion}
 
-{ TError }
+{ TErrorCentral }
 
 {--------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Notify(const [ref] aException: Exception);

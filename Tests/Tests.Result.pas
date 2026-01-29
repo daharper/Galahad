@@ -183,18 +183,16 @@ end;
 
 {--------------------------------------------------------------------------------------------------}
 procedure TResultFixture.TestTryGet;
-var
-  lValue: integer;
 begin
-  var r := TResult<integer>.MakeErr('error');
+  var r := TResult<integer>.TryGet(function:integer begin Result := 2; end);
 
-  Assert.IsFalse(r.TryGet(lValue));
-  Assert.AreEqual(0, lValue);
+  Assert.IsTrue(r.IsOk);
+  Assert.AreEqual(2, r.Value);
 
-  r := TResult<integer>.MakeOk(4);
+  r := TResult<integer>.TryGet(function: integer begin raise Exception.Create('x'); end);
 
-  Assert.IsTrue(r.TryGet(lValue));
-  Assert.AreEqual(4, lValue);
+  Assert.IsTrue(r.IsErr);
+  Assert.AreEqual('x', r.Error);
 end;
 
 {--------------------------------------------------------------------------------------------------}

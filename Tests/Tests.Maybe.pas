@@ -110,18 +110,15 @@ end;
 
 {--------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestTryGet;
-var
-  lValue: integer;
 begin
-  var opt := TMaybe<integer>.MakeNone;
+  var opt := TMaybe<integer>.TryGet(function:integer begin Result := 2; end);
 
-  Assert.IsFalse(opt.TryGet(lValue));
-  Assert.AreEqual(0, lValue);
+  Assert.IsTrue(opt.IsSome);
+  Assert.AreEqual(2, opt.Value);
 
-  opt := TMaybe<integer>.MakeSome(4);
+  var err := TMaybe<integer>.TryGet(function: integer begin raise Exception.Create('x'); end);
 
-  Assert.IsTrue(opt.TryGet(lValue));
-  Assert.AreEqual(4, lValue);
+  Assert.IsTrue(err.IsNone);
 end;
 
 {--------------------------------------------------------------------------------------------------}
