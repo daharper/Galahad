@@ -28,6 +28,9 @@ type
 
     [Test] procedure TestIsBlank;
     [Test] procedure TestIsNotBlank;
+    [Test] procedure TestIsTrue;
+    [Test] procedure TestIsFalse;
+
   end;
 
 implementation
@@ -43,6 +46,8 @@ begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsBlank('  '); end);
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsBlank(''); end);
 
+  Assert.IsEmpty(fHandler.Error);
+
   Assert.WillRaiseWithMessage(
     procedure begin Ensure.IsBlank('a', 'wrong') end, EArgumentException, 'wrong');
 
@@ -54,6 +59,8 @@ procedure TEnsureFixture.TestIsNotBlank;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsNotBlank('hello'); end);
 
+  Assert.IsEmpty(fHandler.Error);
+
   Assert.WillRaiseWithMessage(
     procedure begin Ensure.IsNotBlank('  ', 'err1') end, EArgumentException, 'err1');
 
@@ -63,6 +70,32 @@ begin
     procedure begin Ensure.IsNotBlank('', 'err2') end, EArgumentException, 'err2');
 
   Assert.AreEqual('err2', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestIsTrue;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsTrue(true); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.IsTrue(false, 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestIsFalse;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsFalse(false); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.IsFalse(true, 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
 end;
 
 {--------------------------------------------------------------------------------------------------}
