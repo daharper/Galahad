@@ -30,7 +30,10 @@ type
     [Test] procedure TestIsNotBlank;
     [Test] procedure TestIsTrue;
     [Test] procedure TestIsFalse;
-
+    [Test] procedure TestAreSame;
+    [Test] procedure TestAreDifferent;
+    [Test] procedure TestAreSameText;
+    [Test] procedure TestAreDifferentText;
   end;
 
 implementation
@@ -70,6 +73,58 @@ begin
     procedure begin Ensure.IsNotBlank('', 'err2') end, EArgumentException, 'err2');
 
   Assert.AreEqual('err2', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestAreSameText;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreSameText('hi', 'HI'); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreSameText('Hi', ' HI ', 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestAreDifferentText;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreDifferentText('hi', ' HI '); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreDifferentText('Hi', 'HI', 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestAreSame;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreSame('hi', 'hi'); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreSame('Hi', 'HI', 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TEnsureFixture.TestAreDifferent;
+begin
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreDifferent('hi', 'HI'); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreDifferent('Hi', 'Hi', 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
 end;
 
 {--------------------------------------------------------------------------------------------------}

@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{23BD700E-ACCC-4C2B-A00B-283497DBD945}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Galahad.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Galahad">
+        <MSBuild Projects="Galahad.dproj"/>
+    </Target>
+    <Target Name="Galahad:Clean">
+        <MSBuild Projects="Galahad.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Galahad:Make">
+        <MSBuild Projects="Galahad.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Galahad"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Galahad:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Galahad:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

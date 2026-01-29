@@ -127,20 +127,26 @@ type
   end;
 
   /// <summary>
-  ///  Centralized error handling.
+  ///  Centralized error handling, used for notifying subscribers of exceptions,
+  ///  and for raising exceptions.
   /// </summary>
+  /// <remarks>
+  ///  Access this class via the Ensure functions, or the TError function.
+  /// </remarks>
   TErrorCentral = class
   private
     fOnError: TMulticast<Exception>;
 
     class var fInstance: TErrorCentral;
   public
+    { subscribe for error notifications via OnError.Subscribe }
     property OnError:TMulticast<Exception> read fOnError write fOnError;
 
     procedure Throw<T: Exception>(const Msg: string); overload;
     procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
-    procedure Throw(const [ref] aException: Exception); overload;
 
+    { for custom behavior modify these two methods }
+    procedure Throw(const [ref] aException: Exception); overload;
     procedure Notify(const [ref] aException: Exception);
 
     constructor Create;
@@ -150,16 +156,56 @@ type
     class destructor Destroy;
   end;
 
+  /// <summary>
+  ///  A simple guard class integrated with TErrorCentral, for validating conditions.
+  ///  It allows chaining of checks, such as: Ensure.IsTrue(...).IsBlank(...).
+  /// </summary>
+  /// <remarks>
+  ///  Access this class via the Ensure function.
+  /// </remarks>
   TEnsure = class
   private
     class var fInstance: TEnsure;
   public
+    /// <summary>
+    ///  Throws if the specified text is not blank (not empty or whitespace)
+    /// </summary>
     function IsBlank(const aText: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified text is blank (empty or whitepace)
+    /// </summary>
     function IsNotBlank(const aText: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition is false.
+    /// </summary>
     function IsTrue(const aCondition: boolean; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition is true.
+    /// </summary>
     function IsFalse(const aCondition: boolean; const aMessage: string = ''): TEnsure;
-    function IsSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
-    function IsNotSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are different (case-insensitive).
+    /// </summary>
+    function AreSameText(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are the same (case-insensitive).
+    /// </summary>
+    function AreDifferentText(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are different (case-sensitive).
+    /// </summary>
+    function AreSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are the same (case-sensitive).
+    /// </summary>
+    function AreDifferent(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
 
     class constructor Create;
     class destructor Destroy;
@@ -591,9 +637,7 @@ begin
   var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
   var err := cls.Create(Msg);
 
-  Notify(err);
-
-  raise err;
+  Throw(err);
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -602,9 +646,7 @@ begin
   var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
   var err := cls.CreateFmt(Fmt, Args);
 
-  Notify(err);
-
-  raise err;
+  Throw(err);
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -690,13 +732,13 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TEnsure.IsSame(const aLhs, aRhs, aMessage: string): TEnsure;
+function TEnsure.AreSameText(const aLhs, aRhs, aMessage: string): TEnsure;
 const
-  ERROR = 'Expected the values to be the same.';
+  ERROR = 'Expected the values to be the same (case-insensitive): %s <> %s';
 begin
   if CompareText(aLhs, aRhs) <> 0 then
   begin
-    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
     TError.Throw<EArgumentException>(msg);
   end;
 
@@ -704,13 +746,41 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TEnsure.IsNotSame(const aLhs, aRhs, aMessage: string): TEnsure;
+function TEnsure.AreDifferentText(const aLhs, aRhs, aMessage: string): TEnsure;
 const
-  ERROR = 'Expected the values to be different.';
+  ERROR = 'Expected the values to be different (case-insensitive): %s = %s';
 begin
   if CompareText(aLhs, aRhs) = 0 then
   begin
-    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.AreSame(const aLhs, aRhs, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be the same (case-sensitive): %s <> %s';
+begin
+  if CompareStr(aLhs, aRhs) <> 0 then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TEnsure.AreDifferent(const aLhs, aRhs, aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be different (case-sensitive): %s = %s';
+begin
+  if CompareStr(aLhs, aRhs) = 0 then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
     TError.Throw<EArgumentException>(msg);
   end;
 
