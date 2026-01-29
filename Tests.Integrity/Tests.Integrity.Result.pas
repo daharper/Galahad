@@ -36,7 +36,7 @@ uses
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultFixture.TestMakeOk;
 begin
-  var r := TResult<integer>.MakeOk(2);
+  var r := TResult<integer>.Ok(2);
 
   Assert.IsTrue(r.IsOk);
   Assert.IsFalse(r.IsErr);
@@ -48,7 +48,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultFixture.TestMakeErr;
 begin
-  var r := TResult<integer>.MakeErr('uh oh');
+  var r := TResult<integer>.Err('uh oh');
 
   Assert.IsFalse(r.IsOk);
   Assert.IsTrue(r.IsErr);
@@ -56,7 +56,7 @@ begin
 
   Assert.WillRaiseWithMessage(procedure begin r.Value; end, EArgumentException, MON_ACCESS_ERROR);
 
-  r := TResult<integer>.MakeErr('%s', ['uh oh']);
+  r := TResult<integer>.Err('%s', ['uh oh']);
 
   Assert.IsFalse(r.IsOk);
   Assert.IsTrue(r.IsErr);
@@ -91,7 +91,7 @@ begin
 
   Assert.WillRaiseWithMessage(procedure begin r.Value; end, EArgumentException, MON_ACCESS_ERROR);
 
-  r2 := TResult<integer>.MakeErr('%s', ['uh oh']);
+  r2 := TResult<integer>.Err('%s', ['uh oh']);
 
   Assert.IsFalse(r2.IsOk);
   Assert.IsTrue(r2.IsErr);
@@ -107,12 +107,12 @@ var
 begin
   lValue := '';
 
-  var r := TResult<integer>.MakeOk(4);
+  var r := TResult<integer>.Ok(4);
   r.IfErr(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('', lValue);
 
-  var r2 := TResult<integer>.MakeErr('error');
+  var r2 := TResult<integer>.Err('error');
   r2.IfErr(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('none', lValue);
@@ -125,12 +125,12 @@ var
 begin
   lValue := '';
 
-  var r := TResult<integer>.MakeErr('error');
+  var r := TResult<integer>.Err('error');
   r.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('', lValue);
 
-  var r2 := TResult<integer>.MakeOk(4);
+  var r2 := TResult<integer>.Ok(4);
   r2.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('4', lValue);
@@ -143,19 +143,19 @@ var
 begin
   lValue := 0;
 
-  var r := TResult<integer>.MakeOk(4);
+  var r := TResult<integer>.Ok(4);
   r.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(4, lValue);
 
   lValue := 0;
 
-  r := TResult<integer>.MakeErr('error');
+  r := TResult<integer>.Err('error');
   r.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(-1, lValue);
 
-  r := TResult<integer>.MakeOk(1);
+  r := TResult<integer>.Ok(1);
 
   var text := r.Match<string>(
     function(n:integer): string begin Result := IntToStr(n); end,
@@ -163,7 +163,7 @@ begin
 
   Assert.AreEqual('1', text);
 
-  r := TResult<integer>.MakeErr('error');
+  r := TResult<integer>.Err('error');
 
   text := r.Match<string>(
     function(n:integer): string begin Result := IntToStr(n); end,
@@ -178,7 +178,7 @@ begin
   var text := '';
 
   var r := TResult<integer>
-                .MakeOk(11)
+                .Ok(11)
                 .Tap(procedure(i: integer) begin text := IntToStr(i); end)
                 .Validate(function(i: Integer):boolean begin Result := I < 10; end, 'out of range');
 
@@ -193,7 +193,7 @@ begin
   var text := '';
 
   var r := TResult<integer>
-                .MakeErr('out of range')
+                .Err('out of range')
                 .TapError(procedure(e: string) begin text := 'out of bounds'; end);
 
   Assert.IsTrue(r.IsErr);
@@ -204,12 +204,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultFixture.TestOrElse;
 begin
-  var r := TResult<integer>.MakeErr('error');
+  var r := TResult<integer>.Err('error');
   var val := r.OrElse(3);
 
   Assert.AreEqual(3, val);
 
-  r := TResult<integer>.MakeOk(4);
+  r := TResult<integer>.Ok(4);
   val := r.OrElse(3);
 
   Assert.AreEqual(4, val);
@@ -218,12 +218,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultFixture.TestOrElseGet;
 begin
-  var r := TResult<integer>.MakeErr('error');
+  var r := TResult<integer>.Err('error');
   var val := r.OrElseGet(function():integer begin Result := 3; end);
 
   Assert.AreEqual(3, val);
 
-  r := TResult<integer>.MakeOk(4);
+  r := TResult<integer>.Ok(4);
   val := r.OrElseGet(function():integer begin Result := 3; end);
 
   Assert.AreEqual(4, val);
@@ -247,21 +247,21 @@ end;
 procedure TResultFixture.TestValidate;
 begin
   var r := TResult<integer>
-              .MakeOk(4)
+              .Ok(4)
               .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
 
   Assert.IsTrue(r.IsOk);
   Assert.AreEqual(4, r.Value);
 
   r := TResult<integer>
-              .MakeOk(11)
+              .Ok(11)
               .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('out of range', r.Error);
 
   r := TResult<integer>
-              .MakeOk(7)
+              .Ok(7)
               .Validate(
                   function(n: integer):boolean begin Result := n < 10; end,
                   function(n: integer):string begin Result := 'out of bounds'; end);
@@ -271,7 +271,7 @@ begin
   Assert.AreEqual(7, r.Value);
 
   r := TResult<integer>
-              .MakeOk(11)
+              .Ok(11)
               .Validate(
                   function(n: integer):boolean begin Result := n < 10; end,
                   function(n: integer):string begin Result := 'out of bounds'; end);
@@ -287,7 +287,7 @@ var
   err: TResult<integer>;
   ok:  TResult<integer>;
 begin
-  var error := TResult<integer>.MakeErr('error');
+  var error := TResult<integer>.Err('error');
 
   Assert.WillRaiseWithMessage(
     procedure begin error.SetErr('error2'); end, EArgumentException, MON_INIT_ERROR);
@@ -295,7 +295,7 @@ begin
   Assert.WillRaiseWithMessage(
     procedure begin error.SetOk(5); end, EArgumentException, MON_INIT_ERROR);
 
-  var some := TResult<integer>.MakeOk(3);
+  var some := TResult<integer>.Ok(3);
 
   Assert.WillRaiseWithMessage(
     procedure begin some.SetErr('error2'); end, EArgumentException, MON_INIT_ERROR);

@@ -60,8 +60,8 @@ type
 
     class function TryGet(const Func: TFunc<T>): TMaybe<T>; static; inline;
 
-    class function MakeSome(const aValue: T): TMaybe<T>; static; inline;
-    class function MakeNone: TMaybe<T>; static; inline;
+    class function Some(const aValue: T): TMaybe<T>; static; inline;
+    class function None: TMaybe<T>; static; inline;
 
     class operator Initialize;
   end;
@@ -104,9 +104,9 @@ type
 
     class function TryGet(const Func: TFunc<T>): TResult<T>; static; inline;
 
-    class function MakeOk(const aValue: T): TResult<T>; static; inline;
-    class function MakeErr(const aMessage: string = ''): TResult<T>; overload; static; inline;
-    class function MakeErr(const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
+    class function Ok(const aValue: T): TResult<T>; static; inline;
+    class function Err(const aMessage: string = ''): TResult<T>; overload; static; inline;
+    class function Err(const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
 
     class operator Initialize;
   end;
@@ -336,7 +336,7 @@ begin
   if aPredicate(self.Value) then
     exit(self);
 
-  Result := TMaybe<T>.MakeNone;
+  Result := TMaybe<T>.None;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -425,14 +425,14 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.MakeSome(const aValue: T): TMaybe<T>;
+class function TMaybe<T>.Some(const aValue: T): TMaybe<T>;
 begin
   Result.fState := msUnknown; // initialize not guaranteed to run
   Result.SetSome(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.MakeNone: TMaybe<T>;
+class function TMaybe<T>.None: TMaybe<T>;
 begin
   Result.fState := msUnknown; // initialize not guaranteed to run
   Result.SetNone;
@@ -466,7 +466,7 @@ begin
   if (fState <> rsOk) or (aPredicate(Self.Value)) then
     Exit(Self);
 
-  Result := TResult<T>.MakeErr(aError);
+  Result := TResult<T>.Err(aError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -475,7 +475,7 @@ begin
   if (fState <> rsOk) or (aPredicate(Self.Value)) then
     Exit(Self);
 
-  Result := TResult<T>.MakeErr(aErrorFunc(Self.Value));
+  Result := TResult<T>.Err(aErrorFunc(Self.Value));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -609,21 +609,21 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResult<T>.MakeErr(const aMessage: string): TResult<T>;
+class function TResult<T>.Err(const aMessage: string): TResult<T>;
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   Result.SetErr(aMessage);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResult<T>.MakeErr(const aFormat: string; const aArgs: array of const): TResult<T>;
+class function TResult<T>.Err(const aFormat: string; const aArgs: array of const): TResult<T>;
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   Result.SetErr(aFormat, aArgs);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResult<T>.MakeOk(const aValue: T): TResult<T>;
+class function TResult<T>.Ok(const aValue: T): TResult<T>;
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   Result.SetOk(aValue);
@@ -886,16 +886,16 @@ begin
   if aRes.IsOk then
     Exit(aFunc(aRes.Value));
 
-  Result := TResult<U>.MakeErr(aRes.Error);
+  Result := TResult<U>.Err(aRes.Error);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TResultOp.Map<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, U>): TResult<U>;
 begin
   if aRes.IsOk then
-    Exit(TResult<U>.MakeOk(aFunc(aRes.Value)));
+    Exit(TResult<U>.Ok(aFunc(aRes.Value)));
 
-  Result := TResult<U>.MakeErr(aRes.Error);
+  Result := TResult<U>.Err(aRes.Error);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -904,7 +904,7 @@ begin
   if aRes.IsOk then
     Exit(aRes);
 
-  Result := TResult<T>.MakeErr(aFunc(aRes.Error));
+  Result := TResult<T>.Err(aFunc(aRes.Error));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -913,7 +913,7 @@ begin
   if aRes.IsOk then
     Exit(aRes);
 
-  Result := TResult<T>.MakeOk(aFunc(aRes.Error));
+  Result := TResult<T>.Ok(aFunc(aRes.Error));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

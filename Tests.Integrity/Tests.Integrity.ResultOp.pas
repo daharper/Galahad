@@ -33,13 +33,13 @@ uses
 procedure TResultOpFixture.Bind_DoesNotCallFunc_OnErr;
 begin
   var called := false;
-  var res := TResult<Integer>.MakeErr('boom');
+  var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.Bind<Integer, string>(Res,
     function (V: Integer): TResult<string>
     begin
       called := True;
-      Result := TResult<string>.MakeOk(V.ToString);
+      Result := TResult<string>.Ok(V.ToString);
     end);
 
   Assert.IsFalse(called);
@@ -50,7 +50,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultOpFixture.Map_TransformsOk;
 begin
-  var res := TResult<Integer>.MakeOk(3);
+  var res := TResult<Integer>.Ok(3);
 
   var outRes := TResultOp.Map<Integer, Integer>(res,
     function (V: Integer): Integer
@@ -65,7 +65,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultOpFixture.UnwrapOr_ReturnsValue_WhenOk;
 begin
-  var res := TResult<Integer>.MakeOk(42);
+  var res := TResult<Integer>.Ok(42);
   var val := TResultOp.UnwrapOr<Integer>(res, 999);
 
   Assert.AreEqual(42, val, 'Should return the Ok value (not the default)');
@@ -74,7 +74,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultOpFixture.UnwrapOr_ReturnsDefault_WhenErr;
 begin
-  var res := TResult<Integer>.MakeErr('bad');
+  var res := TResult<Integer>.Err('bad');
   var val := TResultOp.UnwrapOr<Integer>(res, 999);
 
   Assert.AreEqual(999, val, 'Should return the default when Err');
@@ -85,7 +85,7 @@ procedure TResultOpFixture.UnwrapOrElse_CallsFallback_WhenErr_PassesError;
 begin
   var called := False;
   var seenError := '';
-  var res := TResult<Integer>.MakeErr('boom');
+  var res := TResult<Integer>.Err('boom');
 
   var val := TResultOp.UnwrapOrElse<Integer>(res,
     function (E: string): Integer
@@ -104,7 +104,7 @@ end;
 procedure TResultOpFixture.UnwrapOrElse_ReturnsValue_WhenOk_DoesNotCallFallback;
 begin
   var called := False;
-  var res := TResult<Integer>.MakeOk(7);
+  var res := TResult<Integer>.Ok(7);
 
   var val := TResultOp.UnwrapOrElse<Integer>(Res,
     function (E: string): Integer
@@ -121,7 +121,7 @@ end;
 procedure TResultOpFixture.MapError_DoesNotCallFunc_WhenOk;
 begin
   var called := False;
-  var res := TResult<Integer>.MakeOk(123);
+  var res := TResult<Integer>.Ok(123);
 
   var outRes := TResultOp.MapError<Integer>(Res,
     function (E: string): string
@@ -138,7 +138,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TResultOpFixture.MapError_TransformsError_WhenErr;
 begin
-  var res := TResult<Integer>.MakeErr('boom');
+  var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.MapError<Integer>(Res,
     function (E: string): string
@@ -154,7 +154,7 @@ end;
 procedure TResultOpFixture.Recover_DoesNotCallFunc_WhenOk;
 begin
   var called := False;
-  var res := TResult<Integer>.MakeOk(7);
+  var res := TResult<Integer>.Ok(7);
 
   var outRes := TResultOp.Recover<Integer>(Res,
     function (E: string): Integer
@@ -174,7 +174,7 @@ begin
   var called := False;
   var seenError := '';
 
-  var res := TResult<Integer>.MakeErr('boom');
+  var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.Recover<Integer>(Res,
     function (E: string): Integer
