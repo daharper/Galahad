@@ -48,7 +48,9 @@ type
 
     procedure IfSome(const aProc: TProc<T>);
     procedure IfNone(const aProc: TProc);
-    procedure Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
+
+    procedure Match(const aSomeProc: TProc<T>; const aNoneProc: TProc); overload;
+    function Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R; overload;
 
     procedure SetSome(const aValue: T);
     procedure SetNone;
@@ -241,17 +243,6 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-//function TMaybe<T>.TryGet(out aValue: T): boolean;
-//begin
-//  Result := fState = msSome;
-//
-//  if Result then
-//    aValue := fValue
-//  else
-//    aValue := default(T);
-//end;
-
-{--------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aSomeProc), 'Expected (some) procedure is missing')
@@ -261,6 +252,18 @@ begin
     aSomeProc(fValue)
   else
     aNoneProc();
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TMaybe<T>.Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R;
+begin
+  Ensure.IsTrue(Assigned(aSomeFunc), 'Expected (some) procedure is missing')
+        .IsTrue(Assigned(aNoneFunc), 'Expected (none) procedure is missing');
+
+ if fState = msSome then
+    Result := aSomeFunc(fValue)
+  else
+    Result := aNoneFunc();
 end;
 
 {--------------------------------------------------------------------------------------------------}
