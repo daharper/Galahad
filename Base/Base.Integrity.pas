@@ -86,8 +86,8 @@ type
     function OrElse(const aFallback: T): T;
     function OrElseGet(const aFunc: TFunc<T>): T;
 
-    procedure IfSome(const aProc: TProc<T>);
-    procedure IfNone(const aProc: TProc);
+    procedure IfOk(const aProc: TProc<T>);
+    procedure IfErr(const aProc: TProc);
 
     procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc); overload;
     function Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R; overload;
@@ -410,7 +410,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TResult<T>.IfNone(const aProc: TProc);
+procedure TResult<T>.IfErr(const aProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (err) procedure is missing');
 
@@ -419,7 +419,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TResult<T>.IfSome(const aProc: TProc<T>);
+procedure TResult<T>.IfOk(const aProc: TProc<T>);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (ok) procedure is missing');
 

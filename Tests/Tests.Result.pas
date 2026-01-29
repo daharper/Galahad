@@ -105,12 +105,12 @@ begin
   lValue := '';
 
   var r := TResult<integer>.MakeOk(4);
-  r.IfNone(procedure begin lValue := 'none'; end);
+  r.IfErr(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('', lValue);
 
   var r2 := TResult<integer>.MakeErr('error');
-  r2.IfNone(procedure begin lValue := 'none'; end);
+  r2.IfErr(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('none', lValue);
 end;
@@ -123,12 +123,12 @@ begin
   lValue := '';
 
   var r := TResult<integer>.MakeErr('error');
-  r.IfSome(procedure(n: integer) begin lValue := IntToStr(n); end);
+  r.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('', lValue);
 
   var r2 := TResult<integer>.MakeOk(4);
-  r2.IfSome(procedure(n: integer) begin lValue := IntToStr(n); end);
+  r2.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('4', lValue);
 end;
