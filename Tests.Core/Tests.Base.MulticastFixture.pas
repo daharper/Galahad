@@ -12,7 +12,6 @@ type
     fValue: integer;
   public
     property Value: integer read fValue;
-
     procedure OnValue(const aValue: integer);
   end;
 
@@ -21,10 +20,8 @@ type
     fValue: integer;
   public
     property Value: integer read fValue;
-
     procedure OnValue(const aValue: integer);
   end;
-
 
   [TestFixture]
   TMulticastFixture = class
@@ -97,12 +94,14 @@ begin
   end;
 end;
 
+{--------------------------------------------------------------------------------------------------}
 procedure TMulticastFixture.Setup;
 begin
   fSubA := TSubscriberAMock.Create;
   fSubB := TSubscriberBMock.Create;
 end;
 
+{--------------------------------------------------------------------------------------------------}
 procedure TMulticastFixture.Teardown;
 begin
   fSubA.Free;
@@ -111,14 +110,19 @@ end;
 
 { TSubscriberMock }
 
+{--------------------------------------------------------------------------------------------------}
 procedure TSubscriberAMock.OnValue(const aValue: integer);
 begin
   fValue := Abs(aValue);
 end;
 
+{--------------------------------------------------------------------------------------------------}
 procedure TSubscriberBMock.OnValue(const aValue: integer);
 begin
   fValue := Abs(aValue) * -1;
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TMulticastFixture);
 
 end.
