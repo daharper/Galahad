@@ -20,6 +20,7 @@ type
     [Test] procedure TestIfSome;
     [Test] procedure TestIfNone;
     [Test] procedure TestMatch;
+    [Test] procedure TestFilter;
     [Test] procedure TestImmutability;
   end;
 
@@ -137,6 +138,23 @@ begin
   opt.IfSome(procedure(n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('1', lValue);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TMaybeFixture.TestFilter;
+begin
+  var opt := TMaybe<integer>
+                .MakeSome(11)
+                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+
+  Assert.IsTrue(opt.IsNone);
+
+  opt := TMaybe<integer>
+                .MakeSome(7)
+                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+
+  Assert.IsTrue(opt.IsSome);
+  Assert.AreEqual(7, opt.Value);
 end;
 
 {--------------------------------------------------------------------------------------------------}

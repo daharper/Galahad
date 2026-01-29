@@ -52,12 +52,16 @@ type
     procedure Match(const aSomeProc: TProc<T>; const aNoneProc: TProc); overload;
     function Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R; overload;
 
+    function Filter(const aPredicate: TFunc<T, Boolean>): TMaybe<T>;
+    function Tap(const aProc: TProc<T>): TMaybe<T>;
+
     procedure SetSome(const aValue: T);
     procedure SetNone;
 
+    class function TryGet(const Func: TFunc<T>): TMaybe<T>; static; inline;
+
     class function MakeSome(const aValue: T): TMaybe<T>; static; inline;
     class function MakeNone: TMaybe<T>; static; inline;
-    class function TryGet(const Func: TFunc<T>): TMaybe<T>; static; inline;
 
     class operator Initialize;
   end;
@@ -87,6 +91,9 @@ type
 
     procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc); overload;
     function Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R; overload;
+
+    function Tap(const aProc: TProc<T>): TResult<T>;
+    function TapError(const aProc: TProc<string>): TResult<T>;
 
     function Validate(const aPredicate: TFunc<T, Boolean>; const aError: string): TResult<T>; overload;
     function Validate(const aPredicate: TFunc<T, Boolean>; const aErrorFunc: TFunc<T, string>): TResult<T>; overload;
@@ -223,6 +230,19 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
+function TMaybe<T>.Filter(const aPredicate: TFunc<T, Boolean>): TMaybe<T>;
+begin
+  Ensure.IsTrue(Assigned(aPredicate), 'Expected (filter) function is missing');
+
+  if fState <> msSome then exit(self);
+
+  if aPredicate(self.Value) then
+    exit(self);
+
+  Result := TMaybe<T>.MakeNone;
+end;
+
+{--------------------------------------------------------------------------------------------------}
 function TMaybe<T>.OrElse(const aFallback: T): T;
 begin
   if fState = msSome then
@@ -282,6 +302,17 @@ begin
 
   if fState = msSome then
     aProc(fValue);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+function TMaybe<T>.Tap(const aProc: TProc<T>): TMaybe<T>;
+begin
+  Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
+
+  if self.IsSome then
+    aProc(Self.Value);
+
+  Result := self;
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -445,6 +476,28 @@ begin
 
   fState := rsErr;
   fError := Format(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.Tap(const aProc: TProc<T>): TResult<T>;
+begin
+  Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
+
+  if fState = rsOk then
+    aProc(fValue);
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.TapError(const aProc: TProc<string>): TResult<T>;
+begin
+  Ensure.IsTrue(Assigned(aProc), 'Expected (tap error) procedure is missing');
+
+  if fState <> rsOk then
+    aProc(fError);
+
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
