@@ -21,6 +21,7 @@ type
     [Test] procedure TestIfNone;
     [Test] procedure TestMatch;
     [Test] procedure TestFilter;
+    [Test] procedure TestTap;
     [Test] procedure TestImmutability;
   end;
 
@@ -158,6 +159,20 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
+procedure TMaybeFixture.TestTap;
+begin
+  var text := '';
+
+  var opt := TMaybe<integer>
+                .MakeSome(11)
+                .Tap(procedure(i: integer) begin text := IntToStr(i); end)
+                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+
+  Assert.IsTrue(opt.IsNone);
+  Assert.AreEqual('11', text);
+end;
+
+{--------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestIfNone;
 var
   lValue: string;
@@ -193,6 +208,22 @@ begin
   opt.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(-1, lValue);
+
+  opt := TMaybe<integer>.MakeSome(1);
+
+  var text := opt.Match<string>(
+    function(n:integer): string begin Result := IntToStr(n); end,
+    function: string begin Result := '404'; end);
+
+  Assert.AreEqual('1', text);
+
+  opt := TMaybe<integer>.MakeNone;
+
+  text := opt.Match<string>(
+    function(n:integer): string begin Result := IntToStr(n); end,
+    function: string begin Result := '404'; end);
+
+  Assert.AreEqual('404', text);
 end;
 
 {--------------------------------------------------------------------------------------------------}

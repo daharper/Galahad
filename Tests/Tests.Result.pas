@@ -20,6 +20,9 @@ type
     [Test] procedure TestIfOk;
     [Test] procedure TestIfErr;
     [Test] procedure TestMatch;
+    [Test] procedure TestValidate;
+    [Test] procedure TestTap;
+    [Test] procedure TestTapError;
     [Test] procedure TestImmutability;
   end;
 
@@ -151,6 +154,51 @@ begin
   r.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(-1, lValue);
+
+  r := TResult<integer>.MakeOk(1);
+
+  var text := r.Match<string>(
+    function(n:integer): string begin Result := IntToStr(n); end,
+    function(err: string): string begin Result := '404'; end);
+
+  Assert.AreEqual('1', text);
+
+  r := TResult<integer>.MakeErr('error');
+
+  text := r.Match<string>(
+    function(n:integer): string begin Result := IntToStr(n); end,
+    function(err: string): string begin Result := '404'; end);
+
+  Assert.AreEqual('404', text);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TResultFixture.TestTap;
+begin
+  var text := '';
+
+  var r := TResult<integer>
+                .MakeOk(11)
+                .Tap(procedure(i: integer) begin text := IntToStr(i); end)
+                .Validate(function(i: Integer):boolean begin Result := I < 10; end, 'out of range');
+
+  Assert.IsTrue(r.IsErr);
+  Assert.AreEqual('out of range', r.Error);
+  Assert.AreEqual('11', text);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TResultFixture.TestTapError;
+begin
+  var text := '';
+
+  var r := TResult<integer>
+                .MakeErr('out of range')
+                .TapError(procedure(e: string) begin text := 'out of bounds'; end);
+
+  Assert.IsTrue(r.IsErr);
+  Assert.AreEqual('out of range', r.Error);
+  Assert.AreEqual('out of bounds', text);
 end;
 
 {--------------------------------------------------------------------------------------------------}
@@ -193,6 +241,44 @@ begin
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('x', r.Error);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+procedure TResultFixture.TestValidate;
+begin
+  var r := TResult<integer>
+              .MakeOk(4)
+              .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
+
+  Assert.IsTrue(r.IsOk);
+  Assert.AreEqual(4, r.Value);
+
+  r := TResult<integer>
+              .MakeOk(11)
+              .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
+
+  Assert.IsTrue(r.IsErr);
+  Assert.AreEqual('out of range', r.Error);
+
+  r := TResult<integer>
+              .MakeOk(7)
+              .Validate(
+                  function(n: integer):boolean begin Result := n < 10; end,
+                  function(n: integer):string begin Result := 'out of bounds'; end);
+
+
+  Assert.IsTrue(r.IsOk);
+  Assert.AreEqual(7, r.Value);
+
+  r := TResult<integer>
+              .MakeOk(11)
+              .Validate(
+                  function(n: integer):boolean begin Result := n < 10; end,
+                  function(n: integer):string begin Result := 'out of bounds'; end);
+
+  Assert.IsTrue(r.IsErr);
+  Assert.AreEqual('out of bounds', r.Error);
+
 end;
 
 {--------------------------------------------------------------------------------------------------}
