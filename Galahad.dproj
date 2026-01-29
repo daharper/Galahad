@@ -139,10 +139,11 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Tests\Tests.Maybe.pas"/>
+        <DCCReference Include="Tests.Base\Tests.Maybe.pas"/>
         <DCCReference Include="Base\Base.Integrity.pas"/>
         <DCCReference Include="Base\Base.Core.pas"/>
-        <DCCReference Include="Tests\Tests.Result.pas"/>
+        <DCCReference Include="Tests.Base\Tests.Result.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Base.MulticastFixture.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

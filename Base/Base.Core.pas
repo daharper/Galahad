@@ -41,9 +41,9 @@ type
     procedure Subscribe(const aSubscriber: TSubscriber<T>);
     procedure Unsubscribe(const aSubscriber: TSubscriber<T>);
 
-    function Invoke(const aValue: T; aErrors: TList<TSubscriberError> = nil): boolean;
+    function Publish(const aValue: T; aErrors: TList<TSubscriberError> = nil): boolean;
 
-    procedure InvokeRaising(const aValue: T);
+    procedure PublishRaising(const aValue: T);
 
     constructor Create;
     destructor Destroy; override;
@@ -163,7 +163,7 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-function TMulticast<T>.Invoke(const aValue: T; aErrors: TList<TSubscriberError>): Boolean;
+function TMulticast<T>.Publish(const aValue: T; aErrors: TList<TSubscriberError>): Boolean;
 begin
   var subscribers := Snapshot;
   var errors := false;
@@ -189,12 +189,12 @@ begin
 end;
 
 {--------------------------------------------------------------------------------------------------}
-procedure TMulticast<T>.InvokeRaising(const AValue: T);
+procedure TMulticast<T>.PublishRaising(const AValue: T);
 begin
   var errors := TList<TSubscriberError>.Create;
 
   try
-    if not Invoke(aValue, errors) then
+    if not Publish(aValue, errors) then
       raise EMulticastInvokeException.Create(errors.Count, errors[0]);
   finally
     errors.Free;

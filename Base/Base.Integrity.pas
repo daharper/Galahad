@@ -574,7 +574,7 @@ end;
 {--------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Notify(const [ref] aException: Exception);
 begin
-  fSubscribers.Invoke(aException);
+  fSubscribers.Publish(aException);
 end;
 
 {--------------------------------------------------------------------------------------------------}

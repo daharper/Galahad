@@ -12,10 +12,11 @@ uses
   DUnitX.Loggers.Console,
   {$ENDIF }
   DUnitX.TestFramework,
-  Tests.Maybe in 'Tests\Tests.Maybe.pas',
+  Tests.Maybe in 'Tests.Base\Tests.Maybe.pas',
   Base.Integrity in 'Base\Base.Integrity.pas',
   Base.Core in 'Base\Base.Core.pas',
-  Tests.Result in 'Tests\Tests.Result.pas';
+  Tests.Result in 'Tests.Base\Tests.Result.pas',
+  Tests.Base.MulticastFixture in 'Tests.Core\Tests.Base.MulticastFixture.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
