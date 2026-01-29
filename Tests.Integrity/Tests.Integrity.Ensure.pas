@@ -13,6 +13,7 @@ type
   public
     property Error: string read fError;
     procedure OnError(const aError: Exception);
+    procedure Clear;
   end;
 
   [TestFixture]
@@ -43,7 +44,7 @@ uses
 
 { TEnsureFixture }
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestIsBlank;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsBlank('  '); end);
@@ -57,7 +58,7 @@ begin
   Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestIsNotBlank;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsNotBlank('hello'); end);
@@ -75,7 +76,7 @@ begin
   Assert.AreEqual('err2', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestAreSameText;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreSameText('hi', 'HI'); end);
@@ -88,7 +89,7 @@ begin
   Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestAreDifferentText;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreDifferentText('hi', ' HI '); end);
@@ -101,7 +102,7 @@ begin
   Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestAreSame;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreSame('hi', 'hi'); end);
@@ -112,9 +113,20 @@ begin
     procedure begin Ensure.AreSame('Hi', 'HI', 'wrong') end, EArgumentException, 'wrong');
 
   Assert.AreEqual('wrong', fHandler.Error);
+
+  fHandler.Clear;
+
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreSame(75, 75); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreSame(75, 53, 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestAreDifferent;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreDifferent('hi', 'HI'); end);
@@ -125,9 +137,20 @@ begin
     procedure begin Ensure.AreDifferent('Hi', 'Hi', 'wrong') end, EArgumentException, 'wrong');
 
   Assert.AreEqual('wrong', fHandler.Error);
+
+  fHandler.Clear;
+
+  Assert.WillNotRaiseWithMessage(procedure begin Ensure.AreDifferent(75, 53); end);
+
+  Assert.IsEmpty(fHandler.Error);
+
+  Assert.WillRaiseWithMessage(
+    procedure begin Ensure.AreDifferent(75, 75, 'wrong') end, EArgumentException, 'wrong');
+
+  Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestIsTrue;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsTrue(true); end);
@@ -140,7 +163,7 @@ begin
   Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.TestIsFalse;
 begin
   Assert.WillNotRaiseWithMessage(procedure begin Ensure.IsFalse(false); end);
@@ -153,23 +176,29 @@ begin
   Assert.AreEqual('wrong', fHandler.Error);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.Setup;
 begin
   fHandler := TErrorHandler.Create;
   TError.OnError.Subscribe(fHandler.OnError);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TEnsureFixture.Teardown;
 begin
   TError.OnError.Unsubscribe(fHandler.OnError);
   fHandler.Free;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TErrorHandler.Clear;
+begin
+  fError := '';
+end;
+
 { TErrorHandler }
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TErrorHandler.OnError(const aError: Exception);
 begin
   fError := aError.Message;

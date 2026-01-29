@@ -112,6 +112,47 @@ type
   end;
 
   /// <summary>
+  ///  Minimal Result Operations to support TResult - wrapping rather than chaining for Delphi ergonomics.
+  /// </summary>
+  TResultOp = record
+  public
+    /// <summary>
+    ///  Transforms the success value using <paramref name="aFunc"/> if <paramref name="aRes"/> is Ok.
+    ///  Err results are propagated unchanged.
+    /// </summary>
+    class function Map<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, U>): TResult<U>; static;
+
+    /// <summary>
+    ///  Chains a computation that may fail.
+    ///  If aRes is Ok, calls aFunc and returns its result.
+    ///  If aRes is Err, propagates the error unchanged.
+    /// </summary>
+    class function Bind<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, TResult<U>>): TResult<U>; static;
+
+    /// <summary>
+    ///  Returns the contained value if aRes is Ok; otherwise returns aDefault.
+    ///  Terminal: collapses TResult&lt;T&gt; to T.
+    /// </summary>
+    class function UnwrapOr<T>(const aRes: TResult<T>; const aDefault: T): T; static;
+
+    /// <summary>
+    ///  Returns the contained value if aRes is Ok; otherwise computes a fallback from the error.
+    ///  Terminal: collapses TResult&lt;T&gt; to T.
+    /// </summary>
+    class function UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): T; static;
+
+    /// <summary>
+    ///  Transforms the error message using aFunc if aRes is Err. Ok is unchanged.
+    /// </summary>
+    class function MapError<T>(const aRes: TResult<T>; const aFunc: TFunc<string, string>): TResult<T>; static;
+
+    /// <summary>
+    ///  Converts Err into Ok by producing a fallback value from the error. Ok is unchanged.
+    /// </summary>
+    class function Recover<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): TResult<T>; static;
+  end;
+
+  /// <summary>
   ///  Takes ownership of instance, cleans it up on scope exit.
   /// </summary>
   TUsing<T: class> = record
@@ -200,12 +241,22 @@ type
     /// <summary>
     ///  Throws if the specified condition strings are different (case-sensitive).
     /// </summary>
-    function AreSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+    function AreSame(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are different (case-sensitive).
+    /// </summary>
+    function AreSame(const aLhs: integer; const aRhs: integer; const aMessage: string = ''): TEnsure; overload;
 
     /// <summary>
     ///  Throws if the specified condition strings are the same (case-sensitive).
     /// </summary>
-    function AreDifferent(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure;
+    function AreDifferent(const aLhs: string; const aRhs: string; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Throws if the specified condition strings are the same (case-sensitive).
+    /// </summary>
+    function AreDifferent(const aLhs: integer; const aRhs: integer; const aMessage: string = ''): TEnsure; overload;
 
     class constructor Create;
     class destructor Destroy;
@@ -222,13 +273,13 @@ uses
 
 {$region 'Functions'}
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TError: TErrorCentral;
 begin
   Result := TErrorCentral.fInstance;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function Ensure: TEnsure;
 begin
   Result := TEnsure.fInstance;
@@ -238,19 +289,19 @@ end;
 
 {$region 'TMaybe<T>'}
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.IsNone: Boolean;
 begin
   Result := fState <> msSome;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.IsSome: Boolean;
 begin
   Result := fState = msSome;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.GetValue: T;
 begin
   Ensure.IsTrue(fState = msSome, MON_ACCESS_ERROR);
@@ -258,7 +309,7 @@ begin
   Result := fValue;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.SetSome(const aValue: T);
 begin
   Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
@@ -267,7 +318,7 @@ begin
   fValue := aValue;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.SetNone;
 begin
   Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
@@ -275,7 +326,7 @@ begin
   fState := msNone;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.Filter(const aPredicate: TFunc<T, Boolean>): TMaybe<T>;
 begin
   Ensure.IsTrue(Assigned(aPredicate), 'Expected (filter) function is missing');
@@ -288,7 +339,7 @@ begin
   Result := TMaybe<T>.MakeNone;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.OrElse(const aFallback: T): T;
 begin
   if fState = msSome then
@@ -297,7 +348,7 @@ begin
     Result := aFallback;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.OrElseGet(const aFunc: TFunc<T>): T;
 begin
   Ensure.IsTrue(Assigned(aFunc), 'Expected (else) function is missing');
@@ -308,7 +359,7 @@ begin
     Result := aFunc;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aSomeProc), 'Expected (some) procedure is missing')
@@ -320,7 +371,7 @@ begin
     aNoneProc();
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R;
 begin
   Ensure.IsTrue(Assigned(aSomeFunc), 'Expected (some) procedure is missing')
@@ -332,7 +383,7 @@ begin
     Result := aNoneFunc();
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.IfNone(const aProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (none) procedure is missing');
@@ -341,7 +392,7 @@ begin
     aProc();
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybe<T>.IfSome(const aProc: TProc<T>);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (some) procedure is missing');
@@ -350,7 +401,7 @@ begin
     aProc(fValue);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TMaybe<T>.Tap(const aProc: TProc<T>): TMaybe<T>;
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
@@ -361,7 +412,7 @@ begin
   Result := self;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class function TMaybe<T>.TryGet(const Func: TFunc<T>): TMaybe<T>;
 begin
   Result.fState := msUnknown; // initialize not guaranteed to run
@@ -373,21 +424,21 @@ begin
   end;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class function TMaybe<T>.MakeSome(const aValue: T): TMaybe<T>;
 begin
   Result.fState := msUnknown; // initialize not guaranteed to run
   Result.SetSome(aValue);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class function TMaybe<T>.MakeNone: TMaybe<T>;
 begin
   Result.fState := msUnknown; // initialize not guaranteed to run
   Result.SetNone;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class operator TMaybe<T>.Initialize;
 begin
   fState := msUnknown;
@@ -588,26 +639,26 @@ end;
 
 {$region 'TUsing<T>'}
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TUsing<T>.Instance(aObject: T): T;
 begin
   fInstance := aObject;
   Result := fInstance;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 constructor TUsing<T>.Create(aObject: T);
 begin
   fInstance := aObject;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class operator TUsing<T>.Initialize;
 begin
   fInstance := nil;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class operator TUsing<T>.Finalize;
 begin
   fInstance.Free;
@@ -617,13 +668,13 @@ end;
 
 { TErrorCentral }
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Notify(const [ref] aException: Exception);
 begin
   fOnError.Publish(aException);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Throw(const [ref] aException: Exception);
 begin
   Notify(aException);
@@ -631,7 +682,7 @@ begin
   raise aException;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Throw<T>(const Msg: string);
 begin
   var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
@@ -640,7 +691,7 @@ begin
   Throw(err);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TErrorCentral.Throw<T>(const Fmt: string; const Args: array of const);
 begin
   var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
@@ -649,25 +700,25 @@ begin
   Throw(err);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class constructor TErrorCentral.Create;
 begin
   fInstance := TErrorCentral.Create;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 constructor TErrorCentral.Create;
 begin
   fOnError := TMulticast<Exception>.Create;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 destructor TErrorCentral.Destroy;
 begin
   fOnError.Free;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class destructor TErrorCentral.Destroy;
 begin
   FreeAndNil(fInstance);
@@ -675,7 +726,7 @@ end;
 
 { TEnsure }
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsBlank(const aText, aMessage: string): TEnsure;
 const
   ERROR = 'Expected value to be blank.';
@@ -689,7 +740,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsNotBlank(const aText, aMessage: string): TEnsure;
 const
   ERROR = 'Expected value is missing.';
@@ -703,7 +754,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsTrue(const aCondition: boolean; const aMessage: string): TEnsure;
 const
   ERROR = 'Expected condition, or value, to be true.';
@@ -717,7 +768,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsFalse(const aCondition: boolean; const aMessage: string): TEnsure;
 const
   ERROR = 'Expected condition, or value, to be false.';
@@ -731,7 +782,35 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.AreSame(const aLhs, aRhs: integer; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be the same: %d <> %d';
+begin
+  if aLhs <> aRhs then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.AreDifferent(const aLhs, aRhs: integer; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the values to be different: %d = %d';
+begin
+  if aLhs = aRhs then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  exit(self);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.AreSameText(const aLhs, aRhs, aMessage: string): TEnsure;
 const
   ERROR = 'Expected the values to be the same (case-insensitive): %s <> %s';
@@ -745,7 +824,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.AreDifferentText(const aLhs, aRhs, aMessage: string): TEnsure;
 const
   ERROR = 'Expected the values to be different (case-insensitive): %s = %s';
@@ -759,7 +838,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.AreSame(const aLhs, aRhs, aMessage: string): TEnsure;
 const
   ERROR = 'Expected the values to be the same (case-sensitive): %s <> %s';
@@ -773,7 +852,7 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.AreDifferent(const aLhs, aRhs, aMessage: string): TEnsure;
 const
   ERROR = 'Expected the values to be different (case-sensitive): %s = %s';
@@ -787,16 +866,72 @@ begin
   exit(self);
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class constructor TEnsure.Create;
 begin
   fInstance := TEnsure.Create;
 end;
 
-{--------------------------------------------------------------------------------------------------}
+{----------------------------------------------------------------------------------------------------------------------}
 class destructor TEnsure.Destroy;
 begin
   FreeAndNil(fInstance);
+end;
+
+{ TResultOps }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.Bind<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, TResult<U>>): TResult<U>;
+begin
+  if aRes.IsOk then
+    Exit(aFunc(aRes.Value));
+
+  Result := TResult<U>.MakeErr(aRes.Error);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.Map<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, U>): TResult<U>;
+begin
+  if aRes.IsOk then
+    Exit(TResult<U>.MakeOk(aFunc(aRes.Value)));
+
+  Result := TResult<U>.MakeErr(aRes.Error);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.MapError<T>(const aRes: TResult<T>; const aFunc: TFunc<string, string>): TResult<T>;
+begin
+  if aRes.IsOk then
+    Exit(aRes);
+
+  Result := TResult<T>.MakeErr(aFunc(aRes.Error));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.Recover<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): TResult<T>;
+begin
+  if aRes.IsOk then
+    Exit(aRes);
+
+  Result := TResult<T>.MakeOk(aFunc(aRes.Error));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.UnwrapOr<T>(const aRes: TResult<T>; const aDefault: T): T;
+begin
+  if aRes.IsOk then
+    Exit(aRes.Value);
+
+  Result := aDefault;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResultOp.UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): T;
+begin
+  if aRes.IsOk then
+    Exit(aRes.Value);
+
+  Result := aFunc(aRes.Error);
 end;
 
 end.

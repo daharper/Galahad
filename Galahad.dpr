@@ -17,7 +17,8 @@ uses
   Base.Core in 'Base\Base.Core.pas',
   Tests.Integrity.Result in 'Tests.Integrity\Tests.Integrity.Result.pas',
   Tests.Core.MulticastFixture in 'Tests.Core\Tests.Core.MulticastFixture.pas',
-  Tests.Integrity.Ensure in 'Tests.Integrity\Tests.Integrity.Ensure.pas';
+  Tests.Integrity.Ensure in 'Tests.Integrity\Tests.Integrity.Ensure.pas',
+  Tests.Integrity.ResultOp in 'Tests.Integrity\Tests.Integrity.ResultOp.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
