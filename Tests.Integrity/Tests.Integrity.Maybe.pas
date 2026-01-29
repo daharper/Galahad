@@ -1,4 +1,4 @@
-unit Tests.Maybe;
+unit Tests.Integrity.Maybe;
 
 interface
 

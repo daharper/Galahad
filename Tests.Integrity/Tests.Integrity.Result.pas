@@ -1,4 +1,4 @@
-unit Tests.Result;
+unit Tests.Integrity.Result;
 
 interface
 
