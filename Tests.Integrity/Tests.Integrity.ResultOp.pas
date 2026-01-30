@@ -36,10 +36,10 @@ begin
   var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.Bind<Integer, string>(Res,
-    function (V: Integer): TResult<string>
+    function (v: Integer): TResult<string>
     begin
       called := True;
-      Result := TResult<string>.Ok(V.ToString);
+      Result := TResult<string>.Ok(v.ToString);
     end);
 
   Assert.IsFalse(called);
@@ -53,9 +53,9 @@ begin
   var res := TResult<Integer>.Ok(3);
 
   var outRes := TResultOp.Map<Integer, Integer>(res,
-    function (V: Integer): Integer
+    function (v: Integer): Integer
     begin
-      Result := V * V;
+      Result := v * v;
     end);
 
   Assert.IsTrue(outRes.IsOk);

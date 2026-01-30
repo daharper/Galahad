@@ -146,6 +146,7 @@
         <DCCReference Include="Tests.Core\Tests.Core.MulticastFixture.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Ensure.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.ResultOp.pas"/>
+        <DCCReference Include="Tests.Integrity\Tests.Integrity.Using.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

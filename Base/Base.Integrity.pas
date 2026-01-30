@@ -153,15 +153,28 @@ type
   end;
 
   /// <summary>
-  ///  Takes ownership of instance, cleans it up on scope exit.
+  ///  Provides scope management, conceptually similar to using/dispose in .NET
   /// </summary>
-  TUsing<T: class> = record
+  TUsing = record
   strict private
-    fInstance: T;
-  public
-    function Instance(aObject: T): T;
+    fItems: TArray<TObject>;
+    fCount: Integer;
 
-    constructor Create(aObject: T);
+{$IFDEF DEBUG}
+    fInitialized: Boolean;
+{$ENDIF}
+
+    procedure Add(aObj: TObject);
+    function Remove(aObj: TObject): Boolean;
+  public
+    function Release<T: class>(aObj: T): T;
+
+    function Instance<T: class>(aObj: T): T; overload;
+    function Instance<T: class>(const Factory: TFunc<T>): T; overload;
+
+    procedure Clear;
+
+    class operator Assign(var  Dest: TUsing; const [ref] Src: TUsing);
 
     class operator Initialize;
     class operator Finalize;
@@ -637,35 +650,6 @@ end;
 
 {$endregion}
 
-{$region 'TUsing<T>'}
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TUsing<T>.Instance(aObject: T): T;
-begin
-  fInstance := aObject;
-  Result := fInstance;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TUsing<T>.Create(aObject: T);
-begin
-  fInstance := aObject;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-class operator TUsing<T>.Initialize;
-begin
-  fInstance := nil;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-class operator TUsing<T>.Finalize;
-begin
-  fInstance.Free;
-end;
-
-{$endregion}
-
 { TErrorCentral }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -932,6 +916,112 @@ begin
     Exit(aRes.Value);
 
   Result := aFunc(aRes.Error);
+end;
+
+{ TUsing }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TUsing.Instance<T>(aObj: T): T;
+begin
+  for var i := 0 to Pred(fCount) do
+    if fItems[i] = TObject(aObj) then exit(aObj);
+
+  Add(aObj);
+
+  Result := AObj;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TUsing.Instance<T>(const Factory: TFunc<T>): T;
+begin
+  Result := Instance(factory());
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TUsing.Release<T>(aObj: T): T;
+begin
+  if Remove(aObj) then exit(aObj);
+
+  Result := nil;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TUsing.Add(aObj: TObject);
+begin
+  if aObj = nil then exit;
+
+  if Length(fItems) = fCount then
+  begin
+    var NewCap := Length(fItems);
+    if NewCap = 0 then NewCap := 4 else NewCap := NewCap * 2;
+    SetLength(fItems, NewCap);
+  end;
+
+  fItems[fCount] := aObj;
+  Inc(fCount);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TUsing.Remove(aObj: TObject): Boolean;
+begin
+  if fCount = 0 then exit(false);
+
+  for var i := 0 to Pred(fCount) do
+  begin
+    if fItems[i] = TObject(AObj) then
+    begin
+      Dec(fCount);
+      fItems[i] := fItems[fCount];
+      fItems[fCount] := nil;
+      Exit(True);
+    end;
+  end;
+
+  Result := false;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TUsing.Clear;
+begin
+  for var i := Pred(fCount) downto 0 do
+  begin
+    fItems[i].Free;
+    fItems[i] := nil;
+  end;
+
+  fCount := 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TUsing.Assign(var Dest: TUsing; const [ref] Src: TUsing);
+begin
+  if (Dest.fCount <> 0) or (Src.fCount <> 0) then
+    raise Exception.Create('TUsing is scope-only; do not copy/assign it while owning instances.');
+
+  Dest.fItems := nil;
+  Dest.fCount := 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TUsing.Initialize;
+begin
+{$IFDEF DEBUG}
+  fInitialized := True;
+{$ENDIF}
+
+  SetLength(fItems, 4);
+  fCount := 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TUsing.Finalize;
+begin
+{$IFDEF DEBUG}
+  Assert(fInitialized, 'TUsing was not initialized');
+{$ENDIF}
+
+  Clear;
+  fItems := nil;
 end;
 
 end.
