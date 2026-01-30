@@ -12,7 +12,7 @@ type
   TSingleton = class(TNoRefCountObject);
   TTransient = class(TInterfacedObject);
 
-  { mutitcast classes }
+  {------------------------ multicast classes----------------------- }
 
   TExceptionClass = class of Exception;
 
@@ -55,6 +55,8 @@ type
     destructor Destroy; override;
   end;
 
+  {------------------------ language extentsion functions ----------------------- }
+
   ELetException = class(Exception);
 
   /// <summary>
@@ -64,36 +66,33 @@ type
   strict private
     class procedure RaiseNotEnoughValues(const Need, Got: Integer); static;
   public
-    { Same-type positional }
     class procedure Let<T>(out A, B: T; const V1, V2: T); overload; static;
     class procedure Let<T>(out A, B, C: T; const V1, V2, V3: T); overload; static;
     class procedure Let<T>(out A, B, C, D: T; const V1, V2, V3, V4: T); overload; static;
     class procedure Let<T>(out A, B, C, D, E: T; const V1, V2, V3, V4, V5: T); overload; static;
 
-    { Mixed-type positional }
     class procedure Let<T1, T2>(out A: T1; out B: T2; const V1: T1; const V2: T2); overload; static;
     class procedure Let<T1, T2, T3>(out A: T1; out B: T2; out C: T3; const V1: T1; const V2: T2; const V3: T3); overload; static;
     class procedure Let<T1, T2, T3, T4>(out A: T1; out B: T2; out C: T3; out D: T4; const V1: T1; const V2: T2; const V3: T3; const V4: T4); overload; static;
     class procedure Let<T1, T2, T3, T4, T5>(out A: T1; out B: T2; out C: T3; out D: T4; out E: T5; const V1: T1; const V2: T2; const V3: T3; const V4: T4; const V5: T5); overload; static;
 
-    { Same-type open array }
     class procedure Let<T>(out A, B: T; const Values: array of T); overload; static;
     class procedure Let<T>(out A, B, C: T; const Values: array of T); overload; static;
     class procedure Let<T>(out A, B, C, D: T; const Values: array of T); overload; static;
     class procedure Let<T>(out A, B, C, D, E: T; const Values: array of T); overload; static;
 
-    { Same-type open array, non-throwing }
     class procedure LetOrDefault<T>(out A, B: T; const Values: array of T); overload; static;
     class procedure LetOrDefault<T>(out A, B, C: T; const Values: array of T); overload; static;
     class procedure LetOrDefault<T>(out A, B, C, D: T; const Values: array of T); overload; static;
     class procedure LetOrDefault<T>(out A, B, C, D, E: T; const Values: array of T); overload; static;
 
-    {Same-type open array with explicit fallback }
     class procedure LetOr<T>(out A, B: T; const Fallback: T; const Values: array of T); overload; static;
     class procedure LetOr<T>(out A, B, C: T; const Fallback: T; const Values: array of T); overload; static;
     class procedure LetOr<T>(out A, B, C, D: T; const Fallback: T; const Values: array of T); overload; static;
     class procedure LetOr<T>(out A, B, C, D, E: T; const Fallback: T; const Values: array of T); overload; static;
   end;
+
+  {------------------------ general functions ----------------------- }
 
   { converting a VarRec value to a strong }
   function VarRecToString(const aValue: TVarRec): string;
@@ -108,7 +107,7 @@ begin
     vtUnicodeString: Result := string(aValue.VUnicodeString);
     vtWideString: Result := WideString(aValue.VWideString);
     vtPChar: Result := string(aValue.VPChar);
-    vtChar: Result := aValue.VChar;
+    vtChar: Result := string(aValue.VChar);
     vtWideChar: Result := aValue.VWideChar;
     vtInteger: Result := aValue.VInteger.ToString;
     vtInt64: Result := aValue.VInt64^ .ToString;
@@ -247,21 +246,20 @@ end;
 
 { TLx }
 
-
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.RaiseNotEnoughValues(const Need, Got: Integer);
 begin
   raise ELetException.CreateFmt('Let: expected at least %d value(s) but got %d.', [Need, Got]);
 end;
 
-
-{ Same-type positional }
-
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B: T; const V1, V2: T);
 begin
   A := V1;
   B := V2;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C: T; const V1, V2, V3: T);
 begin
   A := V1;
@@ -269,6 +267,7 @@ begin
   C := V3;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C, D: T; const V1, V2, V3, V4: T);
 begin
   A := V1;
@@ -277,6 +276,7 @@ begin
   D := V4;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C, D, E: T; const V1, V2, V3, V4, V5: T);
 begin
   A := V1;
@@ -286,12 +286,14 @@ begin
   E := V5;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T1, T2>(out A: T1; out B: T2; const V1: T1; const V2: T2);
 begin
   A := V1;
   B := V2;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T1, T2, T3>(out A: T1; out B: T2; out C: T3; const V1: T1; const V2: T2; const V3: T3);
 begin
   A := V1;
@@ -299,6 +301,7 @@ begin
   C := V3;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T1, T2, T3, T4>(out A: T1; out B: T2; out C: T3; out D: T4; const V1: T1; const V2: T2; const V3: T3; const V4: T4);
 begin
   A := V1;
@@ -307,6 +310,7 @@ begin
   D := V4;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T1, T2, T3, T4, T5>(out A: T1; out B: T2; out C: T3; out D: T4; out E: T5; const V1: T1; const V2: T2; const V3: T3; const V4: T4; const V5: T5);
 begin
   A := V1;
@@ -316,6 +320,7 @@ begin
   E := V5;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B: T; const Values: array of T);
 begin
   if Length(Values) < 2 then
@@ -325,7 +330,7 @@ begin
   B := Values[1];
 end;
 
-
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C: T; const Values: array of T);
 begin
   if Length(Values) < 3 then
@@ -336,7 +341,7 @@ begin
   C := Values[2];
 end;
 
-
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C, D: T; const Values: array of T);
 begin
   if Length(Values) < 4 then
@@ -348,6 +353,7 @@ begin
   D := Values[3];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.Let<T>(out A, B, C, D, E: T; const Values: array of T);
 begin
   if Length(Values) < 5 then
@@ -360,6 +366,7 @@ begin
   E := Values[4];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOrDefault<T>(out A, B: T; const Values: array of T);
 begin
   A := Default(T);
@@ -369,6 +376,7 @@ begin
   if Length(Values) > 1 then B := Values[1];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOrDefault<T>(out A, B, C: T; const Values: array of T);
 begin
   A := Default(T);
@@ -380,6 +388,7 @@ begin
   if Length(Values) > 2 then C := Values[2];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOrDefault<T>(out A, B, C, D: T; const Values: array of T);
 begin
   A := Default(T);
@@ -393,6 +402,7 @@ begin
   if Length(Values) > 3 then D := Values[3];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOrDefault<T>(out A, B, C, D, E: T; const Values: array of T);
 begin
   A := Default(T);
@@ -408,6 +418,7 @@ begin
   if Length(Values) > 4 then E := Values[4];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOr<T>(out A, B: T; const Fallback: T; const Values: array of T);
 begin
   A := Fallback;
@@ -417,6 +428,7 @@ begin
   if Length(Values) > 1 then B := Values[1];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOr<T>(out A, B, C: T; const Fallback: T; const Values: array of T);
 begin
   A := Fallback;
@@ -428,6 +440,7 @@ begin
   if Length(Values) > 2 then C := Values[2];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOr<T>(out A, B, C, D: T; const Fallback: T; const Values: array of T);
 begin
   A := Fallback;
@@ -441,6 +454,7 @@ begin
   if Length(Values) > 3 then D := Values[3];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
 class procedure TLx.LetOr<T>(out A, B, C, D, E: T; const Fallback: T; const Values: array of T);
 begin
   A := Fallback;
