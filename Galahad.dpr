@@ -19,7 +19,8 @@ uses
   Tests.Core.MulticastFixture in 'Tests.Core\Tests.Core.MulticastFixture.pas',
   Tests.Integrity.Ensure in 'Tests.Integrity\Tests.Integrity.Ensure.pas',
   Tests.Integrity.ResultOp in 'Tests.Integrity\Tests.Integrity.ResultOp.pas',
-  Tests.Integrity.Using in 'Tests.Integrity\Tests.Integrity.Using.pas';
+  Tests.Integrity.Using in 'Tests.Integrity\Tests.Integrity.Using.pas',
+  Tests.Core.Let in 'Tests.Core\Tests.Core.Let.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

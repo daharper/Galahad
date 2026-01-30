@@ -8,6 +8,12 @@ uses
   System.SyncObjs;
 
 type
+  { semantic abstractions for interface management }
+  TSingleton = class(TNoRefCountObject);
+  TTransient = class(TInterfacedObject);
+
+  { mutitcast classes }
+
   TExceptionClass = class of Exception;
 
   TSubscriberError = record
@@ -49,32 +55,70 @@ type
     destructor Destroy; override;
   end;
 
-  function VarRecToString(const V: TVarRec): string;
+  ELetException = class(Exception);
+
+  /// <summary>
+  /// Language extensions: small, opt-in helpers (generic-friendly) grouped under one short name.
+  /// </summary>
+  TLx = record
+  strict private
+    class procedure RaiseNotEnoughValues(const Need, Got: Integer); static;
+  public
+    { Same-type positional }
+    class procedure Let<T>(out A, B: T; const V1, V2: T); overload; static;
+    class procedure Let<T>(out A, B, C: T; const V1, V2, V3: T); overload; static;
+    class procedure Let<T>(out A, B, C, D: T; const V1, V2, V3, V4: T); overload; static;
+    class procedure Let<T>(out A, B, C, D, E: T; const V1, V2, V3, V4, V5: T); overload; static;
+
+    { Mixed-type positional }
+    class procedure Let<T1, T2>(out A: T1; out B: T2; const V1: T1; const V2: T2); overload; static;
+    class procedure Let<T1, T2, T3>(out A: T1; out B: T2; out C: T3; const V1: T1; const V2: T2; const V3: T3); overload; static;
+    class procedure Let<T1, T2, T3, T4>(out A: T1; out B: T2; out C: T3; out D: T4; const V1: T1; const V2: T2; const V3: T3; const V4: T4); overload; static;
+    class procedure Let<T1, T2, T3, T4, T5>(out A: T1; out B: T2; out C: T3; out D: T4; out E: T5; const V1: T1; const V2: T2; const V3: T3; const V4: T4; const V5: T5); overload; static;
+
+    { Same-type open array }
+    class procedure Let<T>(out A, B: T; const Values: array of T); overload; static;
+    class procedure Let<T>(out A, B, C: T; const Values: array of T); overload; static;
+    class procedure Let<T>(out A, B, C, D: T; const Values: array of T); overload; static;
+    class procedure Let<T>(out A, B, C, D, E: T; const Values: array of T); overload; static;
+
+    { Same-type open array, non-throwing }
+    class procedure LetOrDefault<T>(out A, B: T; const Values: array of T); overload; static;
+    class procedure LetOrDefault<T>(out A, B, C: T; const Values: array of T); overload; static;
+    class procedure LetOrDefault<T>(out A, B, C, D: T; const Values: array of T); overload; static;
+    class procedure LetOrDefault<T>(out A, B, C, D, E: T; const Values: array of T); overload; static;
+
+    {Same-type open array with explicit fallback }
+    class procedure LetOr<T>(out A, B: T; const Fallback: T; const Values: array of T); overload; static;
+    class procedure LetOr<T>(out A, B, C: T; const Fallback: T; const Values: array of T); overload; static;
+    class procedure LetOr<T>(out A, B, C, D: T; const Fallback: T; const Values: array of T); overload; static;
+    class procedure LetOr<T>(out A, B, C, D, E: T; const Fallback: T; const Values: array of T); overload; static;
+  end;
+
+  { converting a VarRec value to a strong }
+  function VarRecToString(const aValue: TVarRec): string;
 
 implementation
 
-{$region 'functions'}
-
 {----------------------------------------------------------------------------------------------------------------------}
-function VarRecToString(const V: TVarRec): string;
+function VarRecToString(const aValue: TVarRec): string;
 begin
-  case V.VType of
-    vtAnsiString: Result := string(AnsiString(V.VAnsiString));
-    vtUnicodeString: Result := string(V.VUnicodeString);
-    vtWideString: Result := WideString(V.VWideString);
-    vtPChar: Result := string(V.VPChar);
-    vtChar: Result := V.VChar;
-    vtWideChar: Result := V.VWideChar;
-    vtInteger: Result := V.VInteger.ToString;
-    vtInt64: Result := V.VInt64^ .ToString;
-    vtBoolean: Result := BoolToStr(V.VBoolean, True);
-    vtExtended: Result := FloatToStr(V.VExtended^);
+  case aValue.VType of
+    vtAnsiString: Result := string(AnsiString(aValue.VAnsiString));
+    vtUnicodeString: Result := string(aValue.VUnicodeString);
+    vtWideString: Result := WideString(aValue.VWideString);
+    vtPChar: Result := string(aValue.VPChar);
+    vtChar: Result := aValue.VChar;
+    vtWideChar: Result := aValue.VWideChar;
+    vtInteger: Result := aValue.VInteger.ToString;
+    vtInt64: Result := aValue.VInt64^ .ToString;
+    vtBoolean: Result := BoolToStr(aValue.VBoolean, True);
+    vtExtended: Result := FloatToStr(aValue.VExtended^);
   else
     Result := '<unsupported>';
   end;
 end;
 
-{$endregion}
 
 { TSubscriberError }
 
@@ -201,4 +245,216 @@ begin
   end;
 end;
 
+{ TLx }
+
+
+class procedure TLx.RaiseNotEnoughValues(const Need, Got: Integer);
+begin
+  raise ELetException.CreateFmt('Let: expected at least %d value(s) but got %d.', [Need, Got]);
+end;
+
+
+{ Same-type positional }
+
+class procedure TLx.Let<T>(out A, B: T; const V1, V2: T);
+begin
+  A := V1;
+  B := V2;
+end;
+
+class procedure TLx.Let<T>(out A, B, C: T; const V1, V2, V3: T);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+end;
+
+class procedure TLx.Let<T>(out A, B, C, D: T; const V1, V2, V3, V4: T);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+  D := V4;
+end;
+
+class procedure TLx.Let<T>(out A, B, C, D, E: T; const V1, V2, V3, V4, V5: T);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+  D := V4;
+  E := V5;
+end;
+
+class procedure TLx.Let<T1, T2>(out A: T1; out B: T2; const V1: T1; const V2: T2);
+begin
+  A := V1;
+  B := V2;
+end;
+
+class procedure TLx.Let<T1, T2, T3>(out A: T1; out B: T2; out C: T3; const V1: T1; const V2: T2; const V3: T3);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+end;
+
+class procedure TLx.Let<T1, T2, T3, T4>(out A: T1; out B: T2; out C: T3; out D: T4; const V1: T1; const V2: T2; const V3: T3; const V4: T4);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+  D := V4;
+end;
+
+class procedure TLx.Let<T1, T2, T3, T4, T5>(out A: T1; out B: T2; out C: T3; out D: T4; out E: T5; const V1: T1; const V2: T2; const V3: T3; const V4: T4; const V5: T5);
+begin
+  A := V1;
+  B := V2;
+  C := V3;
+  D := V4;
+  E := V5;
+end;
+
+class procedure TLx.Let<T>(out A, B: T; const Values: array of T);
+begin
+  if Length(Values) < 2 then
+    RaiseNotEnoughValues(2, Length(Values));
+
+  A := Values[0];
+  B := Values[1];
+end;
+
+
+class procedure TLx.Let<T>(out A, B, C: T; const Values: array of T);
+begin
+  if Length(Values) < 3 then
+    RaiseNotEnoughValues(3, Length(Values));
+
+  A := Values[0];
+  B := Values[1];
+  C := Values[2];
+end;
+
+
+class procedure TLx.Let<T>(out A, B, C, D: T; const Values: array of T);
+begin
+  if Length(Values) < 4 then
+    RaiseNotEnoughValues(4, Length(Values));
+
+  A := Values[0];
+  B := Values[1];
+  C := Values[2];
+  D := Values[3];
+end;
+
+class procedure TLx.Let<T>(out A, B, C, D, E: T; const Values: array of T);
+begin
+  if Length(Values) < 5 then
+    RaiseNotEnoughValues(5, Length(Values));
+
+  A := Values[0];
+  B := Values[1];
+  C := Values[2];
+  D := Values[3];
+  E := Values[4];
+end;
+
+class procedure TLx.LetOrDefault<T>(out A, B: T; const Values: array of T);
+begin
+  A := Default(T);
+  B := Default(T);
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+end;
+
+class procedure TLx.LetOrDefault<T>(out A, B, C: T; const Values: array of T);
+begin
+  A := Default(T);
+  B := Default(T);
+  C := Default(T);
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+end;
+
+class procedure TLx.LetOrDefault<T>(out A, B, C, D: T; const Values: array of T);
+begin
+  A := Default(T);
+  B := Default(T);
+  C := Default(T);
+  D := Default(T);
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+  if Length(Values) > 3 then D := Values[3];
+end;
+
+class procedure TLx.LetOrDefault<T>(out A, B, C, D, E: T; const Values: array of T);
+begin
+  A := Default(T);
+  B := Default(T);
+  C := Default(T);
+  D := Default(T);
+  E := Default(T);
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+  if Length(Values) > 3 then D := Values[3];
+  if Length(Values) > 4 then E := Values[4];
+end;
+
+class procedure TLx.LetOr<T>(out A, B: T; const Fallback: T; const Values: array of T);
+begin
+  A := Fallback;
+  B := Fallback;
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+end;
+
+class procedure TLx.LetOr<T>(out A, B, C: T; const Fallback: T; const Values: array of T);
+begin
+  A := Fallback;
+  B := Fallback;
+  C := Fallback;
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+end;
+
+class procedure TLx.LetOr<T>(out A, B, C, D: T; const Fallback: T; const Values: array of T);
+begin
+  A := Fallback;
+  B := Fallback;
+  C := Fallback;
+  D := Fallback;
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+  if Length(Values) > 3 then D := Values[3];
+end;
+
+class procedure TLx.LetOr<T>(out A, B, C, D, E: T; const Fallback: T; const Values: array of T);
+begin
+  A := Fallback;
+  B := Fallback;
+  C := Fallback;
+  D := Fallback;
+  E := Fallback;
+
+  if Length(Values) > 0 then A := Values[0];
+  if Length(Values) > 1 then B := Values[1];
+  if Length(Values) > 2 then C := Values[2];
+  if Length(Values) > 3 then D := Values[3];
+  if Length(Values) > 3 then D := Values[4];
+end;
+
 end.
+
