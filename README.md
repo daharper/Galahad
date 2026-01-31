@@ -14,7 +14,7 @@ The name **Galahad** was chosen after King Arthur's knight, pure and of great in
 
 The Holy Grail in this sense, is clean and maintainable code. 
 
-It aims to be a minimal and opinionated framework.
+It aims to be a minimal and opinionated set of types.
 
 For a more complete and powerful framework, see the battle-hardened *Spring4D*.
 
