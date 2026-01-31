@@ -5,6 +5,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.Generics.Defaults,
   System.SyncObjs;
 
 type
@@ -12,56 +13,40 @@ type
   TSingleton = class(TNoRefCountObject);
   TTransient = class(TInterfacedObject);
 
-  {------------------------ multicast classes----------------------- }
+  { predicates }
+  TRefPredicate<T> = reference to function(const [ref] aItem: T): Boolean;
+  TConstPredicate<T> = reference to function(const aItem: T): Boolean;
+  TVarPredicate<T> = reference to function(var aItem: T): Boolean;
 
-  TExceptionClass = class of Exception;
+  { predicate with a var argument }
+  TProcvar<T> = reference to procedure (var Arg1: T);
 
-  TSubscriberError = record
-    ExceptionClass: string;
-    MessageText: string;
-    StackTrace: string;
+  { for working with most types }
+  TConstProc<T> = reference to procedure (const Arg1: T);
+  TConstProc<T1,T2> = reference to procedure (const Arg1: T1; const Arg2: T2);
+  TConstProc<T1,T2,T3> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3);
+  TConstProc<T1,T2,T3,T4> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4);
 
-    class function Create(const [ref] E: Exception): TSubscriberError; static;
-  end;
+  TConstFunc<T,R> = reference to function (const Arg1: T): R;
+  TConstFunc<T1,T2,R> = reference to function (const Arg1: T1; const Arg2: T2): R;
+  TConstFunc<T1,T2,T3,R> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3): R;
+  TConstFunc<T1,T2,T3,T4,R> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4): R;
 
-  TSubscriber<T> = procedure(const Value: T) of object;
+  { for efficiently working with records }
+  TConstRefProc<T: record> = reference to procedure (const [ref] Arg1: T);
+  TConstRefProc<T1,T2: record> = reference to procedure (const [ref] Arg1: T1; const [ref] Arg2: T2);
+  TConstRefProc<T1,T2,T3: record> = reference to procedure (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3);
+  TConstRefProc<T1,T2,T3,T4: record> = reference to procedure (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3; const [ref] Arg4: T4);
 
-  EMulticastInvokeException = class(Exception)
-  private
-    fCount: Integer;
-    fError: TSubscriberError;
-  public
-    property Count: Integer read fCount;
-    property Error: TSubscriberError read fError;
+  TConstRefFunc<T:record; R> = reference to function (const [ref] Arg1: T): R;
+  TConstRefFunc<T1,T2: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2): R;
+  TConstRefFunc<T1,T2,T3: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3): R;
+  TConstRefFunc<T1,T2,T3,T4: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3; const [ref] Arg4: T4): R;
 
-    constructor Create(const aCount: Integer; const aError: TSubscriberError);
-  end;
-
-  TMulticast<T> = class
-  private
-    fLock: TLightweightMREW;
-    fSubscribers: TList<TSubscriber<T>>;
-
-    function Snapshot: TArray<TSubscriber<T>>;
-  public
-    procedure Subscribe(const aSubscriber: TSubscriber<T>);
-    procedure Unsubscribe(const aSubscriber: TSubscriber<T>);
-
-    function Publish(const aValue: T; aErrors: TList<TSubscriberError> = nil): boolean;
-
-    procedure PublishRaising(const aValue: T);
-
-    constructor Create;
-    destructor Destroy; override;
-  end;
-
-  {------------------------ language extentsion functions ----------------------- }
+  {------------------ language extension functions ------------------ }
 
   ELetException = class(Exception);
 
-  /// <summary>
-  /// Language extensions: small, opt-in helpers (generic-friendly) grouped under one short name.
-  /// </summary>
   TLx = record
   strict private
     class procedure RaiseNotEnoughValues(const Need, Got: Integer); static;
@@ -94,7 +79,6 @@ type
 
   {------------------------ general functions ----------------------- }
 
-  { converting a VarRec value to a strong }
   function VarRecToString(const aValue: TVarRec): string;
 
 implementation
@@ -119,130 +103,7 @@ begin
 end;
 
 
-{ TSubscriberError }
 
-{----------------------------------------------------------------------------------------------------------------------}
-class function TSubscriberError.Create(const [ref] E: Exception): TSubscriberError;
-begin
-  Result.ExceptionClass := E.ClassName;
-  Result.MessageText := E.Message;
-  Result.StackTrace := E.StackTrace;
-end;
-
-{ EMulticastInvokeException }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor EMulticastInvokeException.Create(const aCount: Integer; const AError: TSubscriberError);
-const
-  ERR_MESSAGE = '%d multicast subscriber(s) raised an exception. First: %s: %s';
-begin
-  fCount := aCount;
-  fError := aError;
-
-  inherited CreateFmt(ERR_MESSAGE, [aCount, aError.ExceptionClass, aError.MessageText]);
-end;
-
-{ TMulticast<T> }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TMulticast<T>.Create;
-begin
-  inherited Create;
-  fSubscribers := TList<TSubscriber<T>>.Create;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-destructor TMulticast<T>.Destroy;
-begin
-  fLock.BeginWrite;
-  try
-    FreeAndNil(fSubscribers);
-  finally
-    fLock.EndWrite;
-  end;
-
-  inherited Destroy;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMulticast<T>.Subscribe(const aSubscriber: TSubscriber<T>);
-begin
-  if not Assigned(aSubscriber) then exit;
-
-  fLock.BeginWrite;
-  try
-    fSubscribers.Add(aSubscriber);
-  finally
-    fLock.EndWrite;
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMulticast<T>.Unsubscribe(const aSubscriber: TSubscriber<T>);
-begin
-  if not Assigned(aSubscriber) then exit;
-
-  var target := TMethod(aSubscriber);
-
-  fLock.BeginWrite;
-  try
-    for var i := Pred(fSubscribers.Count) downto 0 do
-      if TMethod(fSubscribers[i]) = target then
-        fSubscribers.Delete(i);
-  finally
-    fLock.EndWrite;
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TMulticast<T>.Snapshot: TArray<TSubscriber<T>>;
-begin
-  fLock.BeginRead;
-  try
-    Result := fSubscribers.ToArray;
-  finally
-    fLock.EndRead;
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TMulticast<T>.Publish(const aValue: T; aErrors: TList<TSubscriberError>): Boolean;
-begin
-  var subscribers := Snapshot;
-  var errors := false;
-
-  for var subscriber in subscribers do
-  begin
-    if not Assigned(subscriber) then continue;
-
-    try
-      subscriber(AValue);
-    except
-      on E: Exception do
-      begin
-        errors := true;
-
-        if aErrors <> nil then
-          aErrors.Add(TSubscriberError.Create(E));
-      end;
-    end;
-  end;
-
-  Result := not errors;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMulticast<T>.PublishRaising(const AValue: T);
-begin
-  var errors := TList<TSubscriberError>.Create;
-
-  try
-    if not Publish(aValue, errors) then
-      raise EMulticastInvokeException.Create(errors.Count, errors[0]);
-  finally
-    errors.Free;
-  end;
-end;
 
 { TLx }
 

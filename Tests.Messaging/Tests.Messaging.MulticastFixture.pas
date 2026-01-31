@@ -1,4 +1,4 @@
-unit Tests.Core.MulticastFixture;
+unit Tests.Messaging.MulticastFixture;
 
 interface
 
@@ -42,7 +42,8 @@ type
 implementation
 
 uses
-  Base.Core;
+  Base.Core,
+  Base.Messaging;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMulticastFixture.Publish_CallsAllSubscribers;

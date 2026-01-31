@@ -143,11 +143,14 @@
         <DCCReference Include="Base\Base.Integrity.pas"/>
         <DCCReference Include="Base\Base.Core.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Result.pas"/>
-        <DCCReference Include="Tests.Core\Tests.Core.MulticastFixture.pas"/>
+        <DCCReference Include="Tests.Messaging\Tests.Messaging.MulticastFixture.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Ensure.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.ResultOp.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Using.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Let.pas"/>
+        <DCCReference Include="Base\Base.Collections.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Collect.pas"/>
+        <DCCReference Include="Base\Base.Messaging.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

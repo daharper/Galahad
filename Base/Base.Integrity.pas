@@ -5,13 +5,17 @@ interface
 uses
   System.SysUtils,
   System.TypInfo,
-  Base.Core;
+  System.Generics.Collections,
+  Base.Core,
+  Base.Messaging;
 
 const
   MON_INIT_ERROR   = 'State has already been initialized error.';
   MON_ACCESS_ERROR = 'Cannot access value of None';
 
 type
+  PTMethod = ^TMethod;
+
   TMaybeState = (
     // initial state, used to enforce immutability, evaluates to msNone
     msUnknown,
@@ -221,6 +225,22 @@ type
   private
     class var fInstance: TEnsure;
   public
+    /// <summary>
+    /// Throws if the instance is nil.
+    /// </summary>
+    function IsAssigned(const p: Pointer; const aMessage: string = ''): TEnsure; overload;
+    function IsAssigned<T>(const [ref] aValue: T; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Throws if the list is not empty (must be assigned, and empty).
+    /// </summary>
+    function IsEmpty<T>(const aList: TList<T>; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the list is empty (must be assigned, and have values).
+    /// </summary>
+    function IsNotEmpty<T>(const aList: TList<T>; const aMessage: string = ''): TEnsure;
+
     /// <summary>
     ///  Throws if the specified text is not blank (not empty or whitespace)
     /// </summary>
@@ -711,6 +731,83 @@ end;
 { TEnsure }
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsAssigned<T>(const [ref] aValue: T; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Expected argument is nil.';
+var
+  ok: boolean;
+begin
+  // GetTypeKind is a compiler intrinsic; it costs nothing at runtime.
+  case GetTypeKind(T) of
+    // Handles Classes, Interfaces, and Anonymous Methods
+    tkClass, tkInterface, tkDynArray, tkUString, tkLString, tkWString:
+      ok := PPointer(@aValue)^ <> nil;
+
+    // Handles 'procedure/function of object' (TMethod)
+    tkMethod:
+      ok := PTMethod(@aValue)^.Code <> nil;
+
+    // Handles standard Procedural Pointers
+    tkPointer, tkProcedure:
+      ok := PPointer(@aValue)^ <> nil;
+
+    else
+      // For types that cannot be nil (Integers, Records, etc.)
+      ok := True;
+  end;
+
+  if not ok then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsAssigned(const p: Pointer; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Expected pointer is nil.';
+begin
+  if (p = nil) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsEmpty<T>(const aList: TList<T>; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected an empty list.';
+begin
+  if (not Assigned(aList)) or (not (aList.IsEmpty)) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsNotEmpty<T>(const aList: TList<T>; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Expected a list with values.';
+begin
+  if (not Assigned(aList)) or (aList.IsEmpty) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsBlank(const aText, aMessage: string): TEnsure;
 const
   ERROR = 'Expected value to be blank.';
@@ -721,7 +818,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -735,7 +832,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -749,7 +846,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -763,7 +860,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -777,7 +874,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -791,7 +888,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -805,7 +902,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -819,7 +916,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -833,7 +930,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -847,7 +944,7 @@ begin
     TError.Throw<EArgumentException>(msg);
   end;
 
-  exit(self);
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
