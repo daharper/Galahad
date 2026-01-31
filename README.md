@@ -6,9 +6,7 @@ Pulling code from an existing project, refactoring and polishing as required, an
 
 Developed for Delphi Florence.
 
-The name Galahad was chosen after King Arthur's knight, who was pure and of great integrity. 
-
-He alone succeeded in finding the Holy Grail. 
+The name Galahad was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
 The Holy Grail in this sense, is clean and maintainable code. 
 
