@@ -4,7 +4,7 @@
 
 Modern engineering types for Delphi, allowing Clean Architecture and best practices.
 
-The repository should take shape over the next few weeks.
+The repository should take shape over the next few weeks, in the meantime there will be lots of churn.
 
 I'm currently:
 
