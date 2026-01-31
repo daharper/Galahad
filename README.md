@@ -2,7 +2,9 @@
 
 Modern engineering types for Delphi, allowing Clean Architecture and best practices.
 
-Pulling code from an existing project, refactoring and polishing as required, and adding to this repository.
+I'm currently pulling code from an existing project, refactoring and polishing as required, and adding to this repository.
+
+It should take shape over the next few weeks.
 
 Developed for Delphi Florence.
 
