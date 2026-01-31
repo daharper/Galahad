@@ -1,0 +1,260 @@
+unit Base.Stream;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Generics.Collections,
+  Base.Core;
+
+type
+  Stream = record
+  public type
+    TPipe<T> = record
+    private type
+      IState = interface
+        ['{7D0D82C9-9B6B-4E6A-8EAA-0C3A2E0D1E3E}']
+        function GetList: TList<T>;
+        procedure SetList(const Value: TList<T>);
+        function GetOwnsList: Boolean;
+        procedure SetOwnsList(Value: Boolean);
+        function GetConsumed: Boolean;
+        procedure SetConsumed(Value: Boolean);
+        procedure CheckNotConsumed;
+      end;
+
+      TState = class(TInterfacedObject, IState)
+      private
+        fList: TList<T>;
+        fOwnsList: Boolean;
+        fConsumed: Boolean;
+      public
+        constructor Create(AList: TList<T>; AOwnsList: Boolean);
+
+        function GetList: TList<T>;
+        procedure SetList(const aValue: TList<T>);
+        function GetOwnsList: Boolean;
+        procedure SetOwnsList(aValue: Boolean);
+        function GetConsumed: Boolean;
+        procedure SetConsumed(aValue: Boolean);
+        procedure CheckNotConsumed;
+      end;
+
+    private
+      fState: IState;
+
+      class function CreatePipe(aList: TList<T>; aOwnsList: Boolean): TPipe<T>; static;
+    public
+      /// <summary>
+      /// Eager filter: always creates a new list buffer.
+      /// OnDiscard is called for each rejected item, if provided.
+      /// </summary>
+      function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      /// Terminator: returns a caller-owned list.
+      /// - If buffer is owned by the stream, it is detached and returned.
+      /// - If buffer is borrowed, it is cloned and the clone is returned.
+      /// Stream is consumed after calling AsList.
+      /// </summary>
+      function AsList: TList<T>;
+    end;
+
+  public
+    /// <summary>
+    /// Takes ownership of the list container. Stream may free it when replaced/consumed.
+    /// Items are never freed by Stream.
+    /// </summary>
+    class function From<T>(const aList: TList<T>): TPipe<T>; overload; static;
+
+    /// <summary>
+    /// Borrows the list container. Stream never frees it.
+    /// Items are never freed by Stream.
+    /// </summary>
+    class function Borrow<T>(const aList: TList<T>): TPipe<T>; overload; static;
+
+    /// <summary>
+    /// Materializes an internal list buffer from the array (owned by Stream until detached).
+    /// </summary>
+    class function From<T>(const aValues: array of T): TPipe<T>; overload; static;
+
+    /// <summary>
+    /// Materializes an internal list buffer from an enumerator (owned by Stream until detached).
+    /// OwnsEnum controls whether the enumerator is freed.
+    /// </summary>
+    class function From<T>(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload; static;
+  end;
+
+implementation
+
+uses
+  Base.Integrity;
+
+{ Stream.TPipe<T>.TState }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor Stream.TPipe<T>.TState.Create(aList: TList<T>; aOwnsList: Boolean);
+begin
+  inherited Create;
+
+  fList := aList;
+  fOwnsList := aOwnsList;
+  fConsumed := false;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.TState.GetConsumed: Boolean;
+begin
+  Result := fConsumed;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.TState.GetList: TList<T>;
+begin
+  Result := fList;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.TState.GetOwnsList: Boolean;
+begin
+  Result := fOwnsList;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.SetConsumed(aValue: Boolean);
+begin
+  fConsumed := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.SetList(const aValue: TList<T>);
+begin
+  fList := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.SetOwnsList(aValue: Boolean);
+begin
+  fOwnsList := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.CheckNotConsumed;
+begin
+  Ensure.IsFalse(fConsumed, 'Stream has been consumed');
+end;
+
+{ Stream.TPipe<T> }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Stream.TPipe<T>.CreatePipe(aList: TList<T>; aOwnsList: Boolean): TPipe<T>;
+begin
+  Result.fState := TState.Create(aList, aOwnsList);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
+var
+  lOldList: TList<T>;
+  lNewList: TList<T>;
+  i: Integer;
+  lItem: T;
+begin
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+
+  fState.CheckNotConsumed;
+
+  lOldList := fState.GetList;
+
+  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+
+  lNewList := TList<T>.Create;
+  lNewList.Capacity := lOldList.Count;
+
+  for i := 0 to Pred(lOldList.Count) do
+  begin
+    lItem := lOldList[i];
+
+    if aPredicate(lItem) then
+      lNewList.Add(lItem)
+    else if Assigned(aOnDiscard) then
+      aOnDiscard(lItem);
+  end;
+
+  if fState.GetOwnsList then
+    lOldList.Free;
+
+  fState.SetList(lNewList);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.AsList: TList<T>;
+var
+  lList: TList<T>;
+  i: Integer;
+begin
+  fState.CheckNotConsumed;
+
+  lList := fState.GetList;
+
+  Ensure.IsAssigned(lList, 'Stream has no buffer');
+
+  Result := if fState.GetOwnsList then lList else TList<T>.Create(lList);
+
+  FState.SetList(nil);
+  FState.SetOwnsList(false);
+  FState.SetConsumed(true);
+end;
+
+{ Stream factories }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Stream.From<T>(const aList: TList<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(aList, 'List is nil');
+
+  Result := TPipe<T>.CreatePipe(aList, True);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Stream.Borrow<T>(const aList: TList<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(aList, 'List is nil');
+
+  Result := TPipe<T>.CreatePipe(aList, False);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Stream.From<T>(const aValues: array of T): TPipe<T>;
+var
+  lList: TList<T>;
+begin
+  lList := TList<T>.Create(aValues);
+
+  Result := TPipe<T>.CreatePipe(lList, True);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Stream.From<T>(aEnum: TEnumerator<T>; aOwnsEnum: Boolean): TPipe<T>;
+var
+  lList: TList<T>;
+begin
+  Ensure.IsAssigned(aEnum, 'Enum is nil');
+
+  lList := TList<T>.Create;
+
+  try
+    while aEnum.MoveNext do
+      lList.Add(aEnum.Current);
+
+    Result := TPipe<T>.CreatePipe(lList, True);
+  finally
+    if aOwnsEnum then
+      aEnum.Free;
+  end;
+end;
+
+end.

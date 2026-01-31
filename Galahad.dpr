@@ -23,7 +23,9 @@ uses
   Tests.Core.Let in 'Tests.Core\Tests.Core.Let.pas',
   Base.Collections in 'Base\Base.Collections.pas',
   Tests.Core.Collect in 'Tests.Core\Tests.Core.Collect.pas',
-  Base.Messaging in 'Base\Base.Messaging.pas';
+  Base.Messaging in 'Base\Base.Messaging.pas',
+  Base.Stream in 'Base\Base.Stream.pas',
+  Tests.Core.Stream in 'Tests.Core\Tests.Core.Stream.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

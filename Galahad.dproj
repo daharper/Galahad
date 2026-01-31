@@ -151,6 +151,8 @@
         <DCCReference Include="Base\Base.Collections.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Collect.pas"/>
         <DCCReference Include="Base\Base.Messaging.pas"/>
+        <DCCReference Include="Base\Base.Stream.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Stream.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
