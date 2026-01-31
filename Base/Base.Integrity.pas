@@ -173,8 +173,8 @@ type
   public
     function Release<T: class>(aObj: T): T;
 
-    function Instance<T: class>(aObj: T): T; overload;
-    function Instance<T: class>(const Factory: TFunc<T>): T; overload;
+    function Take<T: class>(aObj: T): T; overload;
+    function Take<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
 
@@ -1018,7 +1018,7 @@ end;
 { TUsing }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Instance<T>(aObj: T): T;
+function TUsing.Take<T>(aObj: T): T;
 begin
   for var i := 0 to Pred(fCount) do
     if fItems[i] = TObject(aObj) then exit(aObj);
@@ -1029,9 +1029,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Instance<T>(const Factory: TFunc<T>): T;
+function TUsing.Take<T>(const Factory: TFunc<T>): T;
 begin
-  Result := Instance(factory());
+  Result := Take(factory());
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

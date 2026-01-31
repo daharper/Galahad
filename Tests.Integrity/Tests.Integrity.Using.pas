@@ -57,9 +57,9 @@ begin
   begin
     var using: TUsing;
 
-    using.Instance(TFreeProbe.Create('A'));
-    using.Instance(TFreeProbe.Create('B'));
-    using.Instance(TFreeProbe.Create('C'));
+    using.Take(TFreeProbe.Create('A'));
+    using.Take(TFreeProbe.Create('B'));
+    using.Take(TFreeProbe.Create('C'));
   end;
 
   Assert.AreEqual(3, TFreeProbe.FreedCount, 'All registered objects should be freed at scope end');
@@ -75,8 +75,8 @@ begin
   begin
     var using: TUsing;
 
-    var A := using.Instance(TFreeProbe.Create('A'));
-    var B := using.Instance(TFreeProbe.Create('B'));
+    var A := using.Take(TFreeProbe.Create('A'));
+    var B := using.Take(TFreeProbe.Create('B'));
 
     Kept := using.Release(A);
 
@@ -101,8 +101,8 @@ begin
 
   begin
     var using: TUsing;
-    using.Instance(P);
-    using.Instance(P);
+    using.Take(P);
+    using.Take(P);
   end;
 
   Assert.AreEqual(1, TFreeProbe.FreedCount, 'Same instance must not be freed twice');
@@ -117,7 +117,7 @@ begin
     begin
       var U1: TUsing;
       var U2: TUsing;
-      U1.Instance(TFreeProbe.Create('A'));
+      U1.Take(TFreeProbe.Create('A'));
       U2 := U1;
     end,
     Exception,

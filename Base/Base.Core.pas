@@ -9,6 +9,11 @@ uses
   System.SyncObjs;
 
 type
+  { aliases for anonymous functions - reduces verbosity slightly }
+  TInt = Integer;
+  TStr = string;
+  TBool = Boolean;
+
   { semantic abstractions for interface management }
   TSingleton = class(TNoRefCountObject);
   TTransient = class(TInterfacedObject);
