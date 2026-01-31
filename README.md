@@ -4,11 +4,14 @@
 
 Modern engineering types for Delphi, allowing Clean Architecture and best practices.
 
-Should take shape over the next few weeks, I'm currently:
+The repository should take shape over the next few weeks.
+
+I'm currently:
 
 - Pulling code from a personal project
-- Refactoring and polishing as required
-- Adding to this repository.
+- Clarifying policies
+- Refactoring as required
+- Incrementally updating this repository
 
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
