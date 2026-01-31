@@ -12,9 +12,9 @@ Should take shape over the next few weeks, I'm currently:
 
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
-The Holy Grail in this sense, is clean and maintainable code. 
+The Holy Grail in this sense, is maintainable code. 
 
-It aims to be a minimal and opinionated set of types.
+It aims to be a minimal and opinionated set of types ordered to clean code.
 
 For a more complete and powerful framework, see the battle-hardened *Spring4D*.
 
