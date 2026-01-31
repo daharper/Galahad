@@ -1,5 +1,7 @@
 # Project Galahad
 
+*Developed for Delphi Florence.*
+
 Modern engineering types for Delphi, allowing Clean Architecture and best practices.
 
 Should take shape over the next few weeks, I'm currently:
@@ -8,13 +10,13 @@ Should take shape over the next few weeks, I'm currently:
 - Refactoring and polishing as required
 - Adding to this repository.
 
-*Developed for Delphi Florence.*
-
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
-The Holy Grail in this sense, is maintainable code. 
+The Holy Grail, in this sense, is maintainable code. 
 
 It aims to be a minimal and opinionated set of types ordered to clean code.
+
+The goal is to augment, not compete with, existing frameworks.
 
 For a more complete and powerful framework, see the battle-hardened *Spring4D*.
 
