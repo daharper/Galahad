@@ -35,6 +35,9 @@ type
   private
     fLock: TLightweightMREW;
     fSubscribers: TList<TSubscriber<T>>;
+    fSnapshot: TArray<TSubscriber<T>>;
+    fVersion: Integer;
+    fSnapshotVersion: Integer;
 
     function Snapshot: TArray<TSubscriber<T>>;
   public
@@ -80,6 +83,10 @@ end;
 constructor TMulticast<T>.Create;
 begin
   inherited Create;
+
+  fVersion := 0;
+  fSnapshotVersion := -1;
+  fSnapshot := nil;
   fSubscribers := TList<TSubscriber<T>>.Create;
 end;
 
@@ -88,6 +95,7 @@ destructor TMulticast<T>.Destroy;
 begin
   fLock.BeginWrite;
   try
+    fSnapshot := nil;
     FreeAndNil(fSubscribers);
   finally
     fLock.EndWrite;
@@ -103,7 +111,12 @@ begin
 
   fLock.BeginWrite;
   try
+    var target := TMethod(aSubscriber);
+      for var s in fSubscribers do
+        if TMethod(s) = target then exit;
+
     fSubscribers.Add(aSubscriber);
+    Inc(fVersion);
   finally
     fLock.EndWrite;
   end;
@@ -115,12 +128,20 @@ begin
   if not Assigned(aSubscriber) then exit;
 
   var target := TMethod(aSubscriber);
+  var removed := False;
 
   fLock.BeginWrite;
   try
     for var i := Pred(fSubscribers.Count) downto 0 do
+    begin
       if TMethod(fSubscribers[i]) = target then
+      begin
         fSubscribers.Delete(i);
+        removed := True;
+      end;
+    end;
+
+    if removed then Inc(fVersion);
   finally
     fLock.EndWrite;
   end;
@@ -131,9 +152,26 @@ function TMulticast<T>.Snapshot: TArray<TSubscriber<T>>;
 begin
   fLock.BeginRead;
   try
-    Result := fSubscribers.ToArray;
+    if fSnapshotVersion = fVersion then
+    begin
+      Result := fSnapshot;
+      exit;
+    end;
   finally
     fLock.EndRead;
+  end;
+
+  fLock.BeginWrite;
+  try
+    if fSnapshotVersion <> fVersion then
+    begin
+      fSnapshot := fSubscribers.ToArray;
+      fSnapshotVersion := fVersion;
+    end;
+
+    Result := fSnapshot;
+  finally
+    fLock.EndWrite;
   end;
 end;
 
