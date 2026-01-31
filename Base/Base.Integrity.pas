@@ -159,7 +159,7 @@ type
   /// <summary>
   ///  Provides scope management, conceptually similar to using/dispose in .NET
   /// </summary>
-  TUsing = record
+  TScope = record
   strict private
     fItems: TArray<TObject>;
     fCount: Integer;
@@ -173,12 +173,12 @@ type
   public
     function Release<T: class>(aObj: T): T;
 
-    function Take<T: class>(aObj: T): T; overload;
-    function Take<T: class>(const Factory: TFunc<T>): T; overload;
+    function Owns<T: class>(aObj: T): T; overload;
+    function Owns<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
 
-    class operator Assign(var  Dest: TUsing; const [ref] Src: TUsing);
+    class operator Assign(var  Dest: TScope; const [ref] Src: TScope);
 
     class operator Initialize;
     class operator Finalize;
@@ -1018,7 +1018,7 @@ end;
 { TUsing }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Take<T>(aObj: T): T;
+function TScope.Owns<T>(aObj: T): T;
 begin
   for var i := 0 to Pred(fCount) do
     if fItems[i] = TObject(aObj) then exit(aObj);
@@ -1029,13 +1029,13 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Take<T>(const Factory: TFunc<T>): T;
+function TScope.Owns<T>(const Factory: TFunc<T>): T;
 begin
-  Result := Take(factory());
+  Result := Owns(factory());
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Release<T>(aObj: T): T;
+function TScope.Release<T>(aObj: T): T;
 begin
   if Remove(aObj) then exit(aObj);
 
@@ -1043,7 +1043,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TUsing.Add(aObj: TObject);
+procedure TScope.Add(aObj: TObject);
 begin
   if aObj = nil then exit;
 
@@ -1059,7 +1059,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TUsing.Remove(aObj: TObject): Boolean;
+function TScope.Remove(aObj: TObject): Boolean;
 begin
   if fCount = 0 then exit(false);
 
@@ -1078,7 +1078,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TUsing.Clear;
+procedure TScope.Clear;
 begin
   for var i := Pred(fCount) downto 0 do
   begin
@@ -1090,7 +1090,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator TUsing.Assign(var Dest: TUsing; const [ref] Src: TUsing);
+class operator TScope.Assign(var Dest: TScope; const [ref] Src: TScope);
 begin
   if (Dest.fCount <> 0) or (Src.fCount <> 0) then
     raise Exception.Create('TUsing is scope-only; do not copy/assign it while owning instances.');
@@ -1100,7 +1100,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator TUsing.Initialize;
+class operator TScope.Initialize;
 begin
 {$IFDEF DEBUG}
   fInitialized := True;
@@ -1111,7 +1111,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator TUsing.Finalize;
+class operator TScope.Finalize;
 begin
 {$IFDEF DEBUG}
   Assert(fInitialized, 'TUsing was not initialized');

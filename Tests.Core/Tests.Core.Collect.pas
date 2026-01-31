@@ -32,13 +32,13 @@ uses
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Filter_PreservesOrder_AndDoesNotMutateSource;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([5, 2, 9, 2, 7, 4]);
 
-  var r := using.Take(TCollect.Filter<TInt>(s, function(const x: TInt): Boolean begin Result := (x mod 2) = 0; end));
+  var r := scope.Owns(TCollect.Filter<TInt>(s, function(const x: TInt): Boolean begin Result := (x mod 2) = 0; end));
 
   // Result preserves original relative order: [2, 2, 4]
   Assert.AreEqual(3, r.Count);
@@ -59,13 +59,13 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Map_PreservesOrder_AndDoesNotMutateSource;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([3, 1, 4]);
 
-  var r := using.Take(TCollect.Map<TInt, string>(s, function(const x: TInt): string begin Result := 'v' + x.ToString;end));
+  var r := scope.Owns(TCollect.Map<TInt, string>(s, function(const x: TInt): string begin Result := 'v' + x.ToString;end));
 
   Assert.AreEqual(3,    r.Count);
   Assert.AreEqual('v3', r[0]);
@@ -82,13 +82,13 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Sort_ReturnsSortedCopy_AndDoesNotMutateSource;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([3, 1, 2, 1]);
 
-  var r := using.Take(TCollect.Sort<TInt>(s));
+  var r := scope.Owns(TCollect.Sort<TInt>(s));
 
   // Sorted copy: [1, 1, 2, 3]
   Assert.AreEqual(4, r.Count);
@@ -108,9 +108,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Reduce_FoldsLeft_FromSeed;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([1, 2, 3]);
 
@@ -122,9 +122,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Reduce_EmptyList_ReturnsSeed;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   var r := TCollect.Reduce<TInt, TInt>(s, 42, function(const acc, n: TInt): TInt begin Result := acc + n; end);
 
@@ -134,9 +134,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Any_ShortCircuitsAndReturnsTrueWhenMatch;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([1, 2, 3, 4, 5]);
 
@@ -156,9 +156,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.All_ShortCircuitsAndReturnsFalseWhenAnyFails;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([2, 4, 6, 7, 8]);
   var calls := 0;
@@ -177,9 +177,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Count_CountsPredicateMatches;
 var
-  using: TUsing;
+  scope: TScope;
 begin
-  var s := using.Take(TList<TInt>.Create);
+  var s := scope.Owns(TList<TInt>.Create);
 
   s.AddRange([1, 2, 3, 4, 5, 6]);
 
