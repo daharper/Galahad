@@ -320,16 +320,12 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.AsList: TList<T>;
-var
-  lList: TList<T>;
 begin
   fState.CheckNotConsumed;
 
-  lList := fState.GetList;
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
-  Ensure.IsAssigned(lList, 'Stream has no buffer');
-
-  Result := if fState.GetOwnsList then lList else TList<T>.Create(lList);
+  Result := if fState.GetOwnsList then fState.List else TList<T>.Create(fState.List);
 
   FState.SetOwnsList(false);
   FState.SetList(nil);
@@ -338,97 +334,73 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Count: Integer;
-var
-  lList: TList<T>;
 begin
   fState.CheckNotConsumed;
 
-  lList := FState.GetList;
+  Ensure.IsAssigned(FState.List, 'Stream has no buffer');
 
-  Ensure.IsAssigned(lList, 'Stream has no buffer');
-
-  Result := lList.Count;
+  Result := FState.List.Count;
 
   fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Any(const aPredicate: TConstPredicate<T>): Boolean;
-var
-  lList: TList<T>;
-  i: Integer;
 begin
   Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
 
   FState.CheckNotConsumed;
 
-  lList := FState.GetList;
-
-  Ensure.IsAssigned(lList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   Result := False;
 
-  for i := 0 to Pred(lList.Count) do
-  begin
-    if aPredicate(lList[i]) then
+  for var i := 0 to Pred(fState.List.Count) do
+    if aPredicate(fState.List[i]) then
     begin
       Result := True;
       Break;
     end;
-  end;
 
   fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.All(const aPredicate: TConstPredicate<T>): Boolean;
-var
-  lList: TList<T>;
-  i: Integer;
 begin
   Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
 
   FState.CheckNotConsumed;
 
-  lList := FState.GetList;
-
-  Ensure.IsAssigned(lList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   Result := True;
 
-  for I := 0 to Pred(lList.Count) do
-  begin
-    if not aPredicate(lList[i]) then
+  for var i := 0 to Pred(fState.List.Count) do
+    if not aPredicate(fState.List[i]) then
     begin
       Result := False;
       Break;
     end;
-  end;
 
   fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
-var
-  lList: TList<T>;
-  lAcc: TAcc;
-  i: Integer;
 begin
   Ensure.IsAssigned(@aReducer, 'Reducer is nil');
 
   FState.CheckNotConsumed;
 
-  lList := FState.GetList;
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
-  Ensure.IsAssigned(lList, 'Stream has no buffer');
+  var acc := aSeed;
 
-  lAcc := aSeed;
+  for var i := 0 to Pred(fState.List.Count) do
+    acc := aReducer(acc, fState.List[i]);
 
-  for i := 0 to Pred(lList.Count) do
-    lAcc := aReducer(lAcc, lList[i]);
-
-  Result := lAcc;
+  Result := acc;
 
   fState.Terminate;
 end;
@@ -453,32 +425,26 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.From<T>(const aValues: array of T): TPipe<T>;
-var
-  lList: TList<T>;
 begin
-  lList := TList<T>.Create(aValues);
+  var list := TList<T>.Create(aValues);
 
-  Result := TPipe<T>.CreatePipe(lList, True);
+  Result := TPipe<T>.CreatePipe(list, True);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.From<T>(aEnum: TEnumerator<T>; aOwnsEnum: Boolean): TPipe<T>;
-var
-  lList: TList<T>;
 begin
   Ensure.IsAssigned(aEnum, 'Enum is nil');
 
-  lList := TList<T>.Create;
+  var list := TList<T>.Create;
 
-  try
-    while aEnum.MoveNext do
-      lList.Add(aEnum.Current);
+  while aEnum.MoveNext do
+    list.Add(aEnum.Current);
 
-    Result := TPipe<T>.CreatePipe(lList, True);
-  finally
-    if aOwnsEnum then
-      aEnum.Free;
-  end;
+  Result := TPipe<T>.CreatePipe(list, true);
+
+  if aOwnsEnum then
+    aEnum.Free;
 end;
 
 end.
