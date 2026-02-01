@@ -35,6 +35,7 @@ type
     [Test] procedure Release_PreventsObjectFromBeingFreed;
     [Test] procedure Instance_Dedupes_SameObjectNotFreedTwice;
     [Test] procedure Assign_Raises_WhenCopyingNonEmpty;
+    [Test] procedure Deferred_Action_Should_Execute;
   end;
 
 implementation
@@ -49,6 +50,20 @@ end;
 procedure TUsingFixture.TearDown;
 begin
   FreeAndNil(TFreeProbe.FreedLog);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TUsingFixture.Deferred_Action_Should_Execute;
+begin
+  var text := '';
+
+  begin
+      var scope: TScope;
+
+      scope.OnExit(procedure begin text := 'see you soon'; end);
+  end;
+
+  Assert.AreEqual(text, 'see you soon');
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

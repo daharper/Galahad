@@ -161,6 +161,7 @@ type
   /// </summary>
   TScope = record
   strict private
+    fAction: TProc;
     fItems: TArray<TObject>;
     fCount: Integer;
 
@@ -177,6 +178,7 @@ type
     function Owns<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
+    procedure OnExit(const aAction: TProc);
 
     class operator Assign(var  Dest: TScope; const [ref] Src: TScope);
 
@@ -1029,6 +1031,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TScope.OnExit(const aAction: TProc);
+begin
+  fAction := aAction;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TScope.Owns<T>(const Factory: TFunc<T>): T;
 begin
   Result := Owns(factory());
@@ -1095,6 +1103,7 @@ begin
   if (Dest.fCount <> 0) or (Src.fCount <> 0) then
     raise Exception.Create('TUsing is scope-only; do not copy/assign it while owning instances.');
 
+  Dest.fAction := nil;
   Dest.fItems := nil;
   Dest.fCount := 0;
 end;
@@ -1106,6 +1115,7 @@ begin
   fInitialized := True;
 {$ENDIF}
 
+  fAction := nil;
   SetLength(fItems, 4);
   fCount := 0;
 end;
@@ -1116,6 +1126,12 @@ begin
 {$IFDEF DEBUG}
   Assert(fInitialized, 'TUsing was not initialized');
 {$ENDIF}
+
+  if Assigned(fAction) then
+  begin
+    fAction();
+    fAction := nil;
+  end;
 
   Clear;
   fItems := nil;
