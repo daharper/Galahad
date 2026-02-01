@@ -32,6 +32,14 @@ type
     [Test] procedure Distinct_PreservesFirstOccurrenceOrder;
     [Test] procedure Distinct_Borrow_WithOnDiscard_Raises;
     [Test] procedure ComparersAndEquality;
+    [Test] procedure Count_From_FreesOwnedContainer;
+    [Test] procedure Count_Borrow_DoesNotFreeContainer;
+    [Test] procedure Any_ShortCircuits;
+    [Test] procedure Any_Borrow_DoesNotFreeContainer;
+    [Test] procedure All_ShortCircuitsOnFirstFailure;
+    [Test] procedure All_Empty_ReturnsTrue;
+    [Test] procedure Reduce_FoldsLeft_FromSeed;
+    [Test] procedure Reduce_Empty_ReturnsSeed;
   end;
 
 implementation
@@ -310,6 +318,123 @@ begin
   Assert.AreEqual(l3[2], l3[3]);
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Count_From_FreesOwnedContainer;
+begin
+  var freed := false;
+
+  var lList := TFlagList.Create(@Freed);
+  lList.AddRange([1, 2, 3]);
+
+  var n := Stream.From<Integer>(lList).Count;
+
+  Assert.AreEqual(3, n);
+  Assert.IsTrue(Freed, 'Expected owned list container to be freed by Count terminal');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Count_Borrow_DoesNotFreeContainer;
+var
+  scope: TScope;
+begin
+  var freed := False;
+
+  var lList := scope.Owns(TFlagList.Create(@Freed));
+
+  lList.AddRange([1, 2, 3]);
+
+  var n := Stream.Borrow<Integer>(lList).Count;
+
+  Assert.AreEqual(3, n);
+  Assert.IsFalse(Freed, 'Borrowed list container must not be freed by Count terminal');
+
+  Assert.AreEqual(3, lList.Count);
+  Assert.AreEqual(1, lList[0]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Any_ShortCircuits;
+begin
+  var calls := 0;
+
+  var found := Stream
+    .From<Integer>([1, 2, 3, 4, 5])
+    .Any(function(const X: TInt): Boolean begin Inc(calls); Result := X = 3; end);
+
+  Assert.IsTrue(found);
+
+  Assert.AreEqual(3, calls);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Any_Borrow_DoesNotFreeContainer;
+var
+  scope: TScope;
+begin
+  var freed := False;
+
+  var lList := scope.Owns(TFlagList.Create(@Freed));
+
+  lList.AddRange([1, 2, 3]);
+
+  var found := Stream
+    .Borrow<Integer>(lList)
+    .Any(function(const X: TInt): Boolean begin Result := X = 2; end);
+
+  Assert.IsTrue(found);
+  Assert.IsFalse(freed, 'Borrowed list container must not be freed by Any terminal');
+
+  Assert.AreEqual(3, lList.Count);
+  Assert.AreEqual(1, lList[0]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.All_ShortCircuitsOnFirstFailure;
+begin
+  var calls := 0;
+
+  var ok := Stream
+    .From<Integer>([2, 4, 6, 7, 8])
+    .All(function(const X: TInt): Boolean begin Inc(Calls); Result := (X mod 2) = 0; end);
+
+  Assert.IsFalse(Ok);
+  Assert.AreEqual(4, Calls);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.All_Empty_ReturnsTrue;
+begin
+  var list := TList<Integer>.Create;
+
+  var ok := Stream
+    .From<Integer>(list)
+    .All(function(const X: TInt): Boolean begin Result := X > 0; end);
+
+  Assert.IsTrue(Ok);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Reduce_FoldsLeft_FromSeed;
+begin
+  var sum := Stream
+    .From<Integer>([1, 2, 3])
+    .Reduce<Integer>(10, function(const Acc, N: TInt): TInt begin Result := Acc + N; end);
+
+  Assert.AreEqual(16, Sum);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Reduce_Empty_ReturnsSeed;
+begin
+  var lList := TList<Integer>.Create;
+
+  var r := Stream
+    .From<Integer>(lList)
+    .Reduce<Integer>(42, function(const Acc, N: TInt): TInt begin Result := Acc + N; end);
+
+  Assert.AreEqual(42, r);
+end;
+
 { TFlagList }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -324,6 +449,7 @@ destructor TFlagList.Destroy;
 begin
   if Assigned(FFlag) then
     FFlag^ := True;
+
   inherited;
 end;
 

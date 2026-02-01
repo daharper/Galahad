@@ -48,10 +48,8 @@ type
 
       class function CreatePipe(aList: TList<T>; aOwnsList: Boolean): TPipe<T>; static;
     public
-      /// <summary>
-      /// Eager filter: always creates a new list buffer.
-      /// OnDiscard is called for each rejected item, if provided.
-      /// </summary>
+      { transformers }
+
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
 
       function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
@@ -60,13 +58,17 @@ type
 
       function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
 
-      /// <summary>
-      /// Terminator: returns a caller-owned list.
-      /// - If buffer is owned by the stream, it is detached and returned.
-      /// - If buffer is borrowed, it is cloned and the clone is returned.
-      /// Stream is consumed after calling AsList.
-      /// </summary>
+      { terminators }
+
       function AsList: TList<T>;
+
+      function Count: Integer;
+
+      function Any(const aPredicate: TConstPredicate<T>): Boolean;
+
+      function All(const aPredicate: TConstPredicate<T>): Boolean;
+
+      function Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
     end;
 
   public
@@ -295,7 +297,7 @@ var
   i: Integer;
   lItem: T;
 begin
-  Ensure.IsAssigned(@aMapper, 'Predicate is nil');
+  Ensure.IsAssigned(@aMapper, 'Mapper is nil');
 
   fState.CheckNotConsumed;
   fState.CheckDisposable(aOnDiscard);
@@ -338,6 +340,123 @@ begin
   Ensure.IsAssigned(lList, 'Stream has no buffer');
 
   Result := if fState.GetOwnsList then lList else TList<T>.Create(lList);
+
+  FState.SetList(nil);
+  FState.SetOwnsList(false);
+  FState.SetConsumed(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Count: Integer;
+var
+  lList: TList<T>;
+begin
+  fState.CheckNotConsumed;
+
+  lList := FState.GetList;
+
+  Ensure.IsAssigned(lList, 'Stream has no buffer');
+
+  Result := lList.Count;
+
+  if FState.GetOwnsList then
+    lList.Free;
+
+  fState.SetList(nil);
+  fState.SetOwnsList(false);
+  fState.SetConsumed(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Any(const aPredicate: TConstPredicate<T>): Boolean;
+var
+  lList: TList<T>;
+  i: Integer;
+begin
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+
+  FState.CheckNotConsumed;
+
+  lList := FState.GetList;
+
+  Ensure.IsAssigned(lList, 'Stream has no buffer');
+
+  Result := False;
+
+  for i := 0 to Pred(lList.Count) do
+  begin
+    if aPredicate(lList[i]) then
+    begin
+      Result := True;
+      Break;
+    end;
+  end;
+
+  if fState.GetOwnsList then
+    lList.Free;
+
+  fState.SetList(nil);
+  fState.SetOwnsList(false);
+  fState.SetConsumed(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.All(const aPredicate: TConstPredicate<T>): Boolean;
+var
+  lList: TList<T>;
+  i: Integer;
+begin
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+
+  FState.CheckNotConsumed;
+
+  lList := FState.GetList;
+
+  Ensure.IsAssigned(lList, 'Stream has no buffer');
+
+  Result := True;
+
+  for I := 0 to Pred(lList.Count) do
+  begin
+    if not aPredicate(lList[i]) then
+    begin
+      Result := False;
+      Break;
+    end;
+  end;
+
+  if FState.GetOwnsList then
+    lList.Free;
+
+  FState.SetList(nil);
+  FState.SetOwnsList(false);
+  FState.SetConsumed(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
+var
+  lList: TList<T>;
+  lAcc: TAcc;
+  i: Integer;
+begin
+  Ensure.IsAssigned(@aReducer, 'Reducer is nil');
+
+  FState.CheckNotConsumed;
+
+  lList := FState.GetList;
+
+  Ensure.IsAssigned(lList, 'Stream has no buffer');
+
+  lAcc := aSeed;
+
+  for i := 0 to Pred(lList.Count) do
+    lAcc := aReducer(lAcc, lList[i]);
+
+  Result := lAcc;
+
+  if FState.GetOwnsList then
+    lList.Free;
 
   FState.SetList(nil);
   FState.SetOwnsList(false);
