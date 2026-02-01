@@ -13,6 +13,8 @@ I'm currently:
 - Refactoring as required
 - Incrementally updating this repository
 
+Once the dust settles, I'll provide documentation.
+
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
 The Holy Grail, in this sense, is maintainable code. 
