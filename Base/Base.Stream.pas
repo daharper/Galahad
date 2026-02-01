@@ -23,6 +23,8 @@ type
         procedure SetConsumed(Value: Boolean);
         procedure CheckNotConsumed;
         procedure CheckDisposable(const aOnDiscard: TConstProc<T>);
+        procedure Terminate;
+        property List: TList<T> read GetList write SetList;
       end;
 
       TState = class(TInterfacedObject, IState)
@@ -41,6 +43,8 @@ type
         procedure SetConsumed(aValue: Boolean);
         procedure CheckNotConsumed;
         procedure CheckDisposable(const aOnDiscard: TConstProc<T>);
+        procedure Terminate;
+        property List: TList<T> read GetList write SetList;
       end;
 
     private
@@ -140,6 +144,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure Stream.TPipe<T>.TState.SetList(const aValue: TList<T>);
 begin
+  if (Assigned(fList)) and (fOwnsList) then
+    fList.Free;
+
   fList := aValue;
 end;
 
@@ -147,6 +154,14 @@ end;
 procedure Stream.TPipe<T>.TState.SetOwnsList(aValue: Boolean);
 begin
   fOwnsList := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.Terminate;
+begin
+  SetList(nil);
+  fOwnsList := false;
+  fConsumed := true;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -173,7 +188,6 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Distinct(const AComparer: IEqualityComparer<T>; const AOnDiscard: TConstProc<T>): TPipe<T>;
 var
-  lOldList: TList<T>;
   lNewList: TList<T>;
   lSeen: TDictionary<T, Byte>;
   lItem: T;
@@ -183,19 +197,17 @@ begin
   fState.CheckNotConsumed;
   fState.CheckDisposable(aOnDiscard);
 
-  lOldList := fState.GetList;
-
-  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   lNewList := TList<T>.Create;
-  lNewList.Capacity := lOldList.Count;
+  lNewList.Capacity := fState.List.Count;
 
   lSeen := scope.Owns(TDictionary<T, Byte>.Create(aComparer));
-  lSeen.Capacity := lOldList.Count;
+  lSeen.Capacity := fState.List.Count;
 
-  for i := 0 to Pred(lOldList.Count) do
+  for i := 0 to Pred(fState.List.Count) do
   begin
-    lItem := lOldList[i];
+    lItem := fState.List[i];
 
     if lSeen.ContainsKey(lItem) then
     begin
@@ -209,9 +221,6 @@ begin
     lNewList.Add(lItem);
   end;
 
-  if fState.GetOwnsList then
-    lOldList.Free;
-
   fState.SetList(lNewList);
   fState.SetOwnsList(true);
 
@@ -221,15 +230,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Sort(const AComparer: IComparer<T>): TPipe<T>;
 var
-  lOldList: TList<T>;
   lNewList: TList<T>;
   lCmp: IComparer<T>;
 begin
   fState.CheckNotConsumed;
 
-  lOldList := fState.GetList;
-
-  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   if aComparer = nil then
     lCmp := TComparer<T>.Default
@@ -237,12 +243,9 @@ begin
     lCmp := AComparer;
 
   lNewList := TList<T>.Create;
-  lNewList.Capacity := lOldList.Count;
-  lNewList.AddRange(lOldList);
+  lNewList.Capacity := fState.List.Count;
+  lNewList.AddRange(fState.List);
   lNewList.Sort(lCmp);
-
-  if fState.GetOwnsList then
-    lOldList.Free;
 
   fState.SetList(lNewList);
   fState.SetOwnsList(true);
@@ -253,7 +256,6 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
 var
-  lOldList: TList<T>;
   lNewList: TList<T>;
   i: Integer;
   lItem: T;
@@ -263,25 +265,21 @@ begin
   fState.CheckNotConsumed;
   fState.CheckDisposable(aOnDiscard);
 
-  lOldList := fState.GetList;
-
-  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   lNewList := TList<T>.Create;
-  lNewList.Capacity := lOldList.Count;
+  lNewList.Capacity := fState.List.Count;
 
-  for i := 0 to Pred(lOldList.Count) do
+  for i := 0 to Pred(fState.List.Count) do
+
   begin
-    lItem := lOldList[i];
+    lItem := fState.List[i];
 
     if aPredicate(lItem) then
       lNewList.Add(lItem)
     else if Assigned(aOnDiscard) then
       aOnDiscard(lItem);
   end;
-
-  if fState.GetOwnsList then
-    lOldList.Free;
 
   fState.SetList(lNewList);
   fState.SetOwnsList(true);
@@ -292,7 +290,6 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T>): TPipe<U>;
 var
-  lOldList: TList<T>;
   lNewList: TList<U>;
   i: Integer;
   lItem: T;
@@ -302,28 +299,21 @@ begin
   fState.CheckNotConsumed;
   fState.CheckDisposable(aOnDiscard);
 
-  lOldList := fState.GetList;
-
-  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   lNewList := TList<U>.Create;
-  lNewList.Capacity := lOldList.Count;
+  lNewList.Capacity := fState.List.Count;
 
- for i := 0 to Pred(lOldList.Count) do
+  for i := 0 to Pred(fState.List.Count) do
   begin
-    lItem := lOldList[i];
-    lNewList.Add(aMapper(lOldList[i]));
+    lItem := fState.List[i];
+    lNewList.Add(aMapper(fState.List[i]));
 
     if Assigned(aOnDiscard) then
       aOnDiscard(lItem);
   end;
 
-  if FState.GetOwnsList then
-    lOldList.Free;
-
-  fState.SetList(nil);
-  fState.SetOwnsList(false);
-  fState.SetConsumed(true);
+  fState.Terminate;
 
   Result := Stream.TPipe<U>.CreatePipe(lNewList, true);
 end;
@@ -341,8 +331,8 @@ begin
 
   Result := if fState.GetOwnsList then lList else TList<T>.Create(lList);
 
-  FState.SetList(nil);
   FState.SetOwnsList(false);
+  FState.SetList(nil);
   FState.SetConsumed(true);
 end;
 
@@ -359,12 +349,7 @@ begin
 
   Result := lList.Count;
 
-  if FState.GetOwnsList then
-    lList.Free;
-
-  fState.SetList(nil);
-  fState.SetOwnsList(false);
-  fState.SetConsumed(true);
+  fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -392,12 +377,7 @@ begin
     end;
   end;
 
-  if fState.GetOwnsList then
-    lList.Free;
-
-  fState.SetList(nil);
-  fState.SetOwnsList(false);
-  fState.SetConsumed(true);
+  fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -425,12 +405,7 @@ begin
     end;
   end;
 
-  if FState.GetOwnsList then
-    lList.Free;
-
-  FState.SetList(nil);
-  FState.SetOwnsList(false);
-  FState.SetConsumed(true);
+  fState.Terminate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -455,12 +430,7 @@ begin
 
   Result := lAcc;
 
-  if FState.GetOwnsList then
-    lList.Free;
-
-  FState.SetList(nil);
-  FState.SetOwnsList(false);
-  FState.SetConsumed(true);
+  fState.Terminate;
 end;
 
 { Stream factories }
