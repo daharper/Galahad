@@ -27,12 +27,60 @@ type
     [Test] procedure AsList_Owned_DetachesSameInstance;
     [Test] procedure Map_From_TakesOwnership_AndFreesContainer;
     [Test] procedure Map_Borrow_DoesNotFreeContainer;
+    [Test] procedure Filter_Borrow_WithOnDiscard_Raises;
+    [Test] procedure Map_Borrow_WithOnDiscard_Raises;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Filter_Borrow_WithOnDiscard_Raises;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<Integer>.Create);
+
+  list.AddRange([1, 2, 3]);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      scope.Owns(Stream
+        .Borrow<Integer>(list)
+        .Filter(
+          function(const x: TInt): Boolean begin Result := True; end,
+          procedure(const X: Integer) begin { disposal attempt } end)
+        .AsList);
+    end,
+    EInvalidOpException,
+    'Use Stream.From(list) or omit OnDiscard.');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Map_Borrow_WithOnDiscard_Raises;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<Integer>.Create);
+
+  list.AddRange([1, 2, 3]);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      scope.Owns(Stream
+        .Borrow<Integer>(list)
+        .Map<Integer>(
+          function(const x: TInt): TInt begin Result := x; end,
+          procedure(const X: Integer) begin { disposal attempt } end)
+        .AsList);
+    end,
+    EInvalidOpException,
+    'Use Stream.From(list) or omit OnDiscard.');
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.From_TakesOwnership_AndFreesContainerOnTransform;
