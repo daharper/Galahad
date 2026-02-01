@@ -5,6 +5,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.Generics.Defaults,
   Base.Core;
 
 type
@@ -53,10 +54,11 @@ type
       /// </summary>
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
 
-      /// <summary>
-      ///
-      /// </summary>
       function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
+
+      function Distinct(const AComparer: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
 
       /// <summary>
       /// Terminator: returns a caller-owned list.
@@ -167,6 +169,86 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Distinct(const AComparer: IEqualityComparer<T>; const AOnDiscard: TConstProc<T>): TPipe<T>;
+var
+  lOldList: TList<T>;
+  lNewList: TList<T>;
+  lSeen: TDictionary<T, Byte>;
+  lItem: T;
+  i: Integer;
+  scope: TScope;
+begin
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  lOldList := fState.GetList;
+
+  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+
+  lNewList := TList<T>.Create;
+  lNewList.Capacity := lOldList.Count;
+
+  lSeen := scope.Owns(TDictionary<T, Byte>.Create(aComparer));
+  lSeen.Capacity := lOldList.Count;
+
+  for i := 0 to Pred(lOldList.Count) do
+  begin
+    lItem := lOldList[i];
+
+    if lSeen.ContainsKey(lItem) then
+    begin
+      if Assigned(AOnDiscard) then
+         aOnDiscard(lItem);
+
+      continue;
+    end;
+
+    lSeen.Add(lItem, 0);
+    lNewList.Add(lItem);
+  end;
+
+  if fState.GetOwnsList then
+    lOldList.Free;
+
+  fState.SetList(lNewList);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Sort(const AComparer: IComparer<T>): TPipe<T>;
+var
+  lOldList: TList<T>;
+  lNewList: TList<T>;
+  lCmp: IComparer<T>;
+begin
+  fState.CheckNotConsumed;
+
+  lOldList := fState.GetList;
+
+  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+
+  if aComparer = nil then
+    lCmp := TComparer<T>.Default
+  else
+    lCmp := AComparer;
+
+  lNewList := TList<T>.Create;
+  lNewList.Capacity := lOldList.Count;
+  lNewList.AddRange(lOldList);
+  lNewList.Sort(lCmp);
+
+  if fState.GetOwnsList then
+    lOldList.Free;
+
+  fState.SetList(lNewList);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
 var
   lOldList: TList<T>;
@@ -248,7 +330,6 @@ end;
 function Stream.TPipe<T>.AsList: TList<T>;
 var
   lList: TList<T>;
-  i: Integer;
 begin
   fState.CheckNotConsumed;
 

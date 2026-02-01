@@ -9,6 +9,59 @@ uses
   Base.Core;
 
 type
+  /// <summary>
+  /// Predefined IComparer<T> helpers (mostly thin wrappers over RTL singletons).
+  /// </summary>
+  Comparers = record
+  strict private
+    type
+      TDescendingComparer<T> = class(TInterfacedObject, IComparer<T>)
+      private
+        fBase: IComparer<T>;
+      public
+        constructor Create(const ABase: IComparer<T>);
+        function Compare(const aLeft, aRight: T): Integer;
+      end;
+  public
+    /// <summary>Default comparer for T (TComparer&lt;T&gt;.Default).</summary>
+    class function Default<T>: IComparer<T>; static;
+
+    /// <summary>
+    /// Returns a comparer that reverses the given comparer. If Base is nil, uses TComparer&lt;T&gt;.Default.
+    /// </summary>
+    class function Descending<T>(const aBase: IComparer<T> = nil): IComparer<T>; static;
+
+    /// <summary>
+    /// Case-insensitive, ordinal string comparer (RTL TIStringComparer.Ordinal).
+    /// Suitable for Sort(...) and other ordering operations.
+    /// </summary>
+    class function StringIgnoreCase: IComparer<string>; static;
+
+    /// <summary>
+    /// Case-sensitive, ordinal string comparer (RTL TStringComparer.Ordinal).
+    /// </summary>
+    class function StringOrdinal: IComparer<string>; static;
+  end;
+
+  /// <summary>
+  /// Predefined IEqualityComparer<T> helpers (mostly thin wrappers over RTL singletons).
+  /// </summary>
+  Equality = record
+  public
+    /// <summary>Default equality comparer for T (TEqualityComparer&lt;T&gt;.Default).</summary>
+    class function Default<T>: IEqualityComparer<T>; static;
+
+    /// <summary>
+    /// Case-insensitive, ordinal string equality comparer (RTL TIStringComparer.Ordinal).
+    /// Suitable for Distinct(...), dictionaries, sets.
+    /// </summary>
+    class function StringIgnoreCase: IEqualityComparer<string>; static;
+
+    /// <summary>
+    /// Case-sensitive, ordinal string equality comparer (RTL TStringComparer.Ordinal).
+    /// </summary>
+    class function StringOrdinal: IEqualityComparer<string>; static;
+  end;
 
   /// <summary>
   /// Stateless collection algorithms.
@@ -222,6 +275,76 @@ end;
 class function TCollect.Sort<T>(const aSource: TList<T>): TList<T>;
 begin
   Result := Sort<T>(aSource, IComparer<T>(nil));
+end;
+
+{ Comparers.TDescendingComparer<T> }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor Comparers.TDescendingComparer<T>.Create(const aBase: IComparer<T>);
+begin
+  inherited Create;
+
+  fBase := aBase;
+
+  if fBase = nil then
+    fBase := TComparer<T>.Default;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Comparers.TDescendingComparer<T>.Compare(const aLeft, aRight: T): Integer;
+begin
+  // Reverse order
+  Result := fBase.Compare(aRight, aLeft);
+end;
+
+{ Comparers }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Comparers.Default<T>: IComparer<T>;
+begin
+  Result := TComparer<T>.Default;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Comparers.Descending<T>(const aBase: IComparer<T>): IComparer<T>;
+begin
+  Result := TDescendingComparer<T>.Create(aBase);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Comparers.StringIgnoreCase: IComparer<string>;
+begin
+  // TIStringComparer.Ordinal is case-insensitive ordinal and implements IComparer<string>
+  Result := TIStringComparer.Ordinal;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Comparers.StringOrdinal: IComparer<string>;
+begin
+  // TStringComparer.Ordinal is case-sensitive ordinal and implements IComparer<string>
+  Result := TStringComparer.Ordinal;
+end;
+
+{ Equality }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Equality.Default<T>: IEqualityComparer<T>;
+begin
+  Result := TEqualityComparer<T>.Default;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Equality.StringIgnoreCase: IEqualityComparer<string>;
+begin
+  // TIStringComparer.Ordinal also implements IEqualityComparer<string>
+  Result := TIStringComparer.Ordinal;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Equality.StringOrdinal: IEqualityComparer<string>;
+begin
+  // TStringComparer.Ordinal also implements IEqualityComparer<string>
+  Result := TStringComparer.Ordinal;
 end;
 
 end.
