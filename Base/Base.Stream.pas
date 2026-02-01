@@ -58,6 +58,10 @@ type
       function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
       function Distinct(const AComparer: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
+      function Reverse: TPipe<T>;
+      function Concat(const aValues: array of T): TPipe<T>; overload;
+      function Concat(const aList: TList<T>; aOwnsList: Boolean): TPipe<T>; overload;
+      function Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload;
 
       { terminators }
 
@@ -249,6 +253,95 @@ begin
 
   fState.SetList(lNewList);
   fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Reverse: TPipe<T>;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  var list := TList<T>.Create;
+
+  list.Capacity := fState.List.Count;
+
+  for var i := Pred(fState.List.Count) downto 0 do
+    list.Add(fState.List[I]);
+
+  FState.SetList(list);
+  FState.SetOwnsList(True);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Concat(const aValues: array of T): TPipe<T>;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  var list := TList<T>.Create;
+
+  list.Capacity := fState.List.Count + Length(aValues);
+  list.AddRange(fState.List);
+
+  for var i := Low(aValues) to High(aValues) do
+    list.Add(aValues[I]);
+
+  FState.SetList(list);
+  FState.SetOwnsList(True);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Concat(const aList: TList<T>; aOwnsList: Boolean): TPipe<T>;
+begin
+  Ensure.IsAssigned(aList, 'List is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  var list := TList<T>.Create;
+
+  list.Capacity := fState.List.Count + aList.Count;
+  list.AddRange(fState.List);
+  list.AddRange(aList);
+
+  if aOwnsList then
+    aList.Free;
+
+  FState.SetList(list);
+  FState.SetOwnsList(True);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean): TPipe<T>;
+begin
+  Ensure.IsAssigned(aEnum, 'Enum is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  var list := TList<T>.Create;
+
+  list.Capacity := fState.List.Count;
+  list.AddRange(fState.List);
+
+  while aEnum.MoveNext do
+    list.Add(aEnum.Current);
+
+  if aOwnsEnum then
+    aEnum.Free;
+
+  FState.SetList(list);
+  FState.SetOwnsList(True);
 
   Result := Self;
 end;

@@ -46,6 +46,11 @@ type
     [Test] procedure FirstOrDefault_Empty_ReturnsDefault;
     [Test] procedure LastOrDefault_NonEmpty_ReturnsLast;
     [Test] procedure LastOrDefault_Empty_ReturnsDefault;
+    [Test] procedure Reverse_ReversesOrder;
+    [Test] procedure Concat_Array_AppendsInOrder;
+    [Test] procedure Concat_List_AppendsInOrder;
+    [Test] procedure Concat_Enumerator_AppendsInOrder;
+    [Test] procedure Concat_List_OwnsListTrue_FreesSourceContainer;
   end;
 
 implementation
@@ -511,8 +516,88 @@ end;
 procedure TStreamFixture.LastOrDefault_Empty_ReturnsDefault;
 begin
   var l := TList<Integer>.Create;
-  var v := Stream.From<Integer>(L).LastOrDefault;
-  Assert.AreEqual(0, V);
+  var v := Stream.From<Integer>(l).LastOrDefault;
+  Assert.AreEqual(0, v);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Reverse_ReversesOrder;
+begin
+  var r := Stream.From<Integer>([1, 2, 3, 4]).Reverse.AsArray;
+
+  Assert.AreEqual(4, Length(r));
+  Assert.AreEqual(4, r[0]);
+  Assert.AreEqual(3, r[1]);
+  Assert.AreEqual(2, r[2]);
+  Assert.AreEqual(1, r[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Concat_Array_AppendsInOrder;
+begin
+  var r := Stream.From<Integer>([1, 2]).Concat([3, 4]).AsArray;
+
+  Assert.AreEqual(4, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+  Assert.AreEqual(4, r[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Concat_List_AppendsInOrder;
+var
+  scope: TScope;
+begin
+  var extra := scope.Owns(TList<Integer>.Create);
+
+  extra.AddRange([3, 4]);
+
+  var r := Stream.From<Integer>([1, 2]).Concat(Extra, false).AsArray;
+
+  Assert.AreEqual(4, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+  Assert.AreEqual(4, r[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Concat_Enumerator_AppendsInOrder;
+var
+  scope: TScope;
+begin
+  var extra := scope.Owns(TList<Integer>.Create);
+
+  extra.AddRange([3, 4]);
+
+  var e := Extra.GetEnumerator;
+
+  var r := Stream.From<Integer>([1, 2]).Concat(E, True).AsArray;
+
+  Assert.AreEqual(4, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+  Assert.AreEqual(4, r[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Concat_List_OwnsListTrue_FreesSourceContainer;
+begin
+  var freed := false;
+  var extra := TFlagList.Create(@freed);
+
+  extra.AddRange([3, 4]);
+
+  var r := Stream.From<Integer>([1, 2]).Concat(extra, true).AsArray;
+
+  Assert.IsTrue(freed, 'Expected concat source list container to be freed when OwnsList=True');
+  Assert.AreEqual(4, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+  Assert.AreEqual(4, r[3]);
 end;
 
 { TFlagList }
