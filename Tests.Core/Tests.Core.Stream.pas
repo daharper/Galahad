@@ -64,7 +64,6 @@ type
     [Test] procedure TakeLast_Basic_KeepsLastN;
     [Test] procedure TakeLast_OnDiscard_Owned_CallsForDiscardedPrefix;
     [Test] procedure Peek_VisitsItemsInOrder_AndDoesNotConsume;
-    [Test] procedure PeekIndexed_VisitsItemsInOrder_AndDoesNotConsume;
     [Test] procedure Map_Same_Allows_Transforms;
     [Test] procedure IsEmpty_Works;
     [Test] procedure None_Works;
@@ -836,33 +835,13 @@ begin
 
   var r := Stream
         .From<Integer>([3, 1, 4])
-        .Peek(procedure(const x: TInt) begin seen.Add(x); end)
+        .Peek(procedure(const idx, x: TInt) begin seen.Add(x); end)
         .Count;
 
   Assert.AreEqual(3, seen.Count);
   Assert.AreEqual(3, seen[0]);
   Assert.AreEqual(1, seen[1]);
   Assert.AreEqual(4, seen[2]);
-
-  Assert.AreEqual(3, r);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TStreamFixture.PeekIndexed_VisitsItemsInOrder_AndDoesNotConsume;
-var
-  scope: TScope;
-begin
-  var indexes := scope.Owns(TList<Integer>.Create);
-
-  var r := Stream
-        .From<Integer>([3, 1, 4])
-        .PeekIndexed(procedure(const n, x: TInt) begin indexes.Add(n); end)
-        .Count;
-
-  Assert.AreEqual(3, indexes.Count);
-  Assert.AreEqual(0, indexes[0]);
-  Assert.AreEqual(1, indexes[1]);
-  Assert.AreEqual(2, indexes[2]);
 
   Assert.AreEqual(3, r);
 end;
@@ -944,7 +923,7 @@ begin
     .Zip<Integer, string>(
         other,
         false,
-        function(const a, b: TInt): string begin Result := a.ToString + ':' + b.ToString; end)
+        function(const idx, a, b: TInt): string begin Result := a.ToString + ':' + b.ToString; end)
     .AsArray;
 
     Assert.AreEqual(2, Length(r));
@@ -970,7 +949,7 @@ begin
         .Borrow<Integer>(list)
         .Zip<Integer, Integer>(
           other, false,
-          function(const a, b: TInt): TInt begin Result := a + b; end,
+          function(const idx, a, b: TInt): TInt begin Result := a + b; end,
           procedure(const a: TInt) begin end,
           nil)
         .AsArray;
@@ -995,7 +974,7 @@ begin
         .Zip<Integer, Integer>(
           other,
           false,
-          function(const a, b: Integer): Integer begin Result := a + b; end,
+          function(const idx, a, b: Integer): Integer begin Result := a + b; end,
           nil,
           procedure(const b: Integer) begin end)
         .AsArray;

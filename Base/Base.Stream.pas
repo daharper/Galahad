@@ -9,6 +9,19 @@ uses
   Base.Core;
 
 type
+  /// <summary>
+  ///  Stream provides an eager, declarative pipeline for processing collections in Delphi.
+  ///
+  ///  Streams are intended to be used in a strict pipeline style:
+  ///    Ingest - Transform - Terminate.
+  ///
+  ///  Stream operations are eager and ownership-aware:
+  ///  - Stream may own internal list containers, but never owns items.
+  ///  - Item disposal occurs only when explicitly requested via OnDiscard callbacks.
+  ///  - All terminal operations consume the stream; using a stream after consumption raises an exception.
+  ///
+  ///  Stream is designed for clarity and correctness over micro-performance and should not be used in hot paths.
+  /// </summary>
   Stream = record
   public type
     TPipe<T> = record
@@ -54,62 +67,297 @@ type
     public
       { transformers }
 
+      /// <summary>
+      ///  Filters the stream, keeping only items where <paramref name="aPredicate"/> returns True.
+      ///  Preserves source order. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer;
+      ///  otherwise an exception is raised.
+      /// </remarks>
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>; overload;
-      function Map(const aMapper: TConstFunc<T, T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
-      function Distinct(const aEquality: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
-      function Reverse: TPipe<T>;
-      function Concat(const aValues: array of T): TPipe<T>; overload;
-      function Concat(const aList: TList<T>; aOwnsList: Boolean): TPipe<T>; overload;
-      function Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload;
-      function Take(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function TakeWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function TakeLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function Skip(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function SkipLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function Peek(const aAction: TConstProc<T>): TPipe<T>;
-      function PeekIndexed(const aAction: TConstProc<Integer, T>): TPipe<T>;
 
+      /// <summary>
+      ///  Maps each item using <paramref name="aMapper"/> to produce a stream of a different element type.
+      ///  Preserves source order. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each original item after it has
+      ///  been mapped. <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its
+      ///  buffer; otherwise an exception is raised.
+      /// </remarks>
+      function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>; overload;
+
+      /// <summary>
+      ///  Maps each item to a new value of the same type using <paramref name="aMapper"/>.
+      ///  Preserves source order. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each original item after it has
+      ///  been mapped. <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its
+      ///  buffer; otherwise an exception is raised.
+      /// </remarks>
+      function Map(const aMapper: TConstFunc<T, T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
+
+      /// <summary>
+      ///  Removes duplicate items using the provided equality comparer and preserves the first occurrence
+      ///  of each distinct value. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aEquality"/> is nil, <c>TEqualityComparer&lt;T&gt;.Default</c> is used.
+      ///  If <paramref name="AOnDiscard"/> is provided, it is invoked for each item that is removed as a duplicate.
+      ///  <paramref name="AOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function Distinct(const aEquality: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Sorts the stream according to the provided comparer. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="AComparer"/> is nil, <c>TComparer&lt;T&gt;.Default</c> is used.
+      ///  Sorting stability is not guaranteed (inherits the behavior of <c>TList.Sort</c>).
+      /// </remarks>
+      function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Reverses the order of items in the stream. This is a transform (does not consume the stream).
+      /// </summary>
+      function Reverse: TPipe<T>;
+
+      /// <summary>
+      ///  Concatenates the current stream with the supplied values (appends them in order).
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      function Concat(const aValues: array of T): TPipe<T>; overload;
+
+      /// <summary>
+      ///  Concatenates the current stream with all items from <paramref name="aList"/> (appends them in order).
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOwnsList"/> is True, the list container <paramref name="aList"/> is freed after its items
+      ///  have been copied. The stream never assumes ownership of items, only the list container when requested.
+      /// </remarks>
+      function Concat(const aList: TList<T>; aOwnsList: Boolean): TPipe<T>; overload;
+
+      /// <summary>
+      ///  Concatenates the current stream with all items produced by <paramref name="aEnum"/>.
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOwnsEnum"/> is True, the enumerator <paramref name="aEnum"/> is freed after enumeration.
+      /// </remarks>
+      function Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload;
+
+      /// <summary>
+      ///  Keeps the first <paramref name="aCount"/> items (in order). This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function Take(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Keeps items from the start of the stream while <paramref name="aPredicate"/> returns True.
+      ///  Stops at the first False. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item after the first False.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function TakeWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Keeps the last <paramref name="aCount"/> items (in order). This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item from the prefix.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function TakeLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Skips the first <paramref name="aCount"/> items and keeps the remainder (in order).
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each skipped item.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function Skip(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Skips items from the start of the stream while <paramref name="aPredicate"/> returns True.
+      ///  Once the predicate returns False, all remaining items are kept (predicate is not evaluated further).
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each skipped item.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Skips the last <paramref name="aCount"/> items and keeps the prefix (in order).
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item from the suffix.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function SkipLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Observes items in the stream without changing them. Invokes <paramref name="aAction"/> for each item,
+      ///  passing a zero-based index and the item value. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  Intended for logging, debugging, metrics, and tracing. Avoid side effects that change program meaning.
+      /// </remarks>
+      function Peek(const aAction: TConstProc<Integer, T>): TPipe<T>;
+
+      /// <summary>
+      ///  Zips the stream with <paramref name="aOther"/> pairwise (index, left, right) using <paramref name="aZipper"/>.
+      ///  Stops at the shorter sequence. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOwnsList"/> is True, the list container <paramref name="aOther"/> is freed after processing.
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each unpaired item remaining in the current stream
+      ///  (i.e. items beyond the zipped length). <paramref name="aOnDiscard"/> is only permitted when the stream currently
+      ///  owns its buffer; otherwise an exception is raised.
+      ///  If <paramref name="aOnDiscardOther"/> is provided, it is invoked for each unpaired item remaining in <paramref name="aOther"/>.
+      /// <paramref name="aOnDiscardOther"/> requires <paramref name="aOwnsList"/> = True.
+      /// </remarks>
       function Zip<T2, TResult>(
         const aOther: TList<T2>;
         aOwnsList: Boolean;
-        const aZipper: TConstFunc<T, T2, TResult>;
+        const aZipper: TConstFunc<Integer, T, T2, TResult>;
         const aOnDiscard: TConstProc<T> = nil;
         const aOnDiscardOther: TConstProc<T2> = nil
       ): TPipe<TResult>; overload;
 
+      /// <summary>
+      ///  Zips the stream with <paramref name="aOther"/> pairwise (index, left, right) using <paramref name="aZipper"/>.
+      ///  Stops at the shorter sequence. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each unpaired item remaining in the current stream.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise an exception is raised.
+      /// </remarks>
       function Zip<T2, TResult>(
         const aOther: array of T2;
-        const aZipper: TConstFunc<T, T2, TResult>;
+        const aZipper: TConstFunc<Integer, T, T2, TResult>;
         const aOnDiscard: TConstProc<T> = nil
       ): TPipe<TResult>; overload;
 
+      /// <summary>
+      ///  Zips the stream with items produced by <paramref name="aEnum"/> pairwise (index, left, right) using <paramref name="aZipper"/>.
+      ///  Stops when either sequence ends. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOwnsEnum"/> is True, the enumerator <paramref name="aEnum"/> is freed after processing.
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each unpaired item remaining in the current stream.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise an exception is raised.
+      ///  If <paramref name="aOnDiscardOther"/> is provided, it is invoked for each unpaired item remaining in the enumerator.
+      ///  <paramref name="aOnDiscardOther"/> requires <paramref name="aOwnsEnum"/> = True.
+      /// </remarks>
       function Zip<T2, TResult>(
         aEnum: TEnumerator<T2>;
         aOwnsEnum: Boolean;
-        const aZipper: TConstFunc<T, T2, TResult>;
+        const aZipper: TConstFunc<Integer, T, T2, TResult>;
         const aOnDiscard: TConstProc<T> = nil;
         const aOnDiscardOther: TConstProc<T2> = nil
       ): TPipe<TResult>; overload;
 
       { terminators }
 
+      /// <summary>
+      ///  Materializes the stream as a list and consumes the stream.
+      ///  The caller owns the returned list container.
+      /// </summary>
       function AsList: TList<T>;
+
+      /// <summary>
+      ///  Materializes the stream as a dynamic array (TArray&lt;T&gt;) and consumes the stream.
+      /// </summary>
       function AsArray: TArray<T>;
+
+      /// <summary>
+      ///  Returns the number of items in the stream and consumes the stream.
+      /// </summary>
       function Count: Integer;
+
+      /// <summary>
+      ///  Returns True if any item satisfies <paramref name="aPredicate"/>. Short-circuits and consumes the stream.
+      /// </summary>
       function Any(const aPredicate: TConstPredicate<T>): Boolean;
+
+      /// <summary>
+      ///  Returns True if all items satisfy <paramref name="aPredicate"/>. Short-circuits and consumes the stream.
+      /// </summary>
       function All(const aPredicate: TConstPredicate<T>): Boolean;
+
+      /// <summary>
+      ///  Reduces (folds) the stream into an accumulator starting from <paramref name="aSeed"/> using <paramref name="aReducer"/>.
+      ///  Preserves source order and consumes the stream.
+      /// </summary>
       function Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
+
+      /// <summary>
+      ///  Returns the first item in the stream; if empty, returns <paramref name="aDefault"/>.
+      ///  Consumes the stream.
+      /// </summary>
       function FirstOr(const aDefault: T): T;
+
+      /// <summary>
+      ///  Returns the first item in the stream; if empty, returns <paramref name="aDefault"/>.
+      ///  Consumes the stream.
+      /// </summary>
       function FirstOrDefault: T;
+
+      /// <summary>
+      ///  Returns the last item in the stream; if empty, returns <paramref name="aDefault"/>.
+      ///  Consumes the stream.
+      /// </summary>
       function LastOr(const aDefault: T): T;
+
+      /// <summary>
+      ///  Returns the last item in the stream; if empty, returns <c>Default(T)</c>.
+      ///  Consumes the stream.
+      /// </summary>
       function LastOrDefault: T;
+
+      /// <summary>
+      ///  Returns True if the stream contains no items and consumes the stream.
+      /// </summary>
       function IsEmpty: Boolean;
+
+      /// <summary>
+      ///  Returns True if no items satisfy <paramref name="aPredicate"/>. Short-circuits and consumes the stream.
+      /// </summary>
       function None(const aPredicate: TConstPredicate<T>): Boolean;
+
+      /// <summary>
+      ///  Returns True if the stream contains <paramref name="aValue"/> according to <paramref name="aEquality"/>.
+      ///  Short-circuits and consumes the stream.
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aEquality"/> is nil, <c>TEqualityComparer&lt;T&gt;.Default</c> is used.
+      /// </remarks>
       function Contains(const aValue: T; const aEquality: IEqualityComparer<T> = nil): Boolean;
 
+      /// <summary>
+      ///  Invokes <paramref name="aAction"/> for each item in the stream and consumes the stream.
+      /// </summary>
       procedure ForEach(const aAction: TConstProc<T>);
     end;
 
@@ -932,26 +1180,26 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function Stream.TPipe<T>.Peek(const aAction: TConstProc<T>): TPipe<T>;
-begin
-  try
-    Ensure.IsAssigned(@aAction, 'Action is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
-
-    fState.CheckNotConsumed;
-
-    for var i := 0 to Pred(fState.List.Count) do
-      aAction(fState.List[i]);
-
-    Result := Self;
-  except
-    fState.Terminate;
-    raise;
-  end;
-end;
+//function Stream.TPipe<T>.Peek(const aAction: TConstProc<T>): TPipe<T>;
+//begin
+//  try
+//    Ensure.IsAssigned(@aAction, 'Action is nil')
+//          .IsAssigned(fState.List, 'Stream has no buffer');
+//
+//    fState.CheckNotConsumed;
+//
+//    for var i := 0 to Pred(fState.List.Count) do
+//      aAction(fState.List[i]);
+//
+//    Result := Self;
+//  except
+//    fState.Terminate;
+//    raise;
+//  end;
+//end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function Stream.TPipe<T>.PeekIndexed(const aAction: TConstProc<Integer, T>): TPipe<T>;
+function Stream.TPipe<T>.Peek(const aAction: TConstProc<Integer, T>): TPipe<T>;
 begin
   try
     Ensure.IsAssigned(@aAction, 'Action is nil')
@@ -973,7 +1221,7 @@ end;
 function Stream.TPipe<T>.Zip<T2, TResult>(
   const aOther: TList<T2>;
   aOwnsList: Boolean;
-  const aZipper: TConstFunc<T, T2, TResult>;
+  const aZipper: TConstFunc<Integer, T, T2, TResult>;
   const aOnDiscard: TConstProc<T>;
   const aOnDiscardOther: TConstProc<T2>
 ): TPipe<TResult>;
@@ -995,7 +1243,7 @@ begin
     list.Capacity := n;
 
     for var i := 0 to Pred(N) do
-      list.Add(aZipper(fState.List[i], aOther[i]));
+      list.Add(aZipper(i, fState.List[i], aOther[i]));
 
     if Assigned(aOnDiscard) then
       for var i := n to Pred(fState.List.Count) do
@@ -1017,7 +1265,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Zip<T2, TResult>(
   const aOther: array of T2;
-  const aZipper: TConstFunc<T, T2, TResult>;
+  const aZipper: TConstFunc<Integer, T, T2, TResult>;
   const aOnDiscard: TConstProc<T>
   ): TPipe<TResult>;
 var
@@ -1037,7 +1285,7 @@ begin
     list.Capacity := n;
 
     for var i := 0 to Pred(N) do
-      list.Add(aZipper(FState.List[i], aOther[i]));
+      list.Add(aZipper(i, FState.List[i], aOther[i]));
 
     if Assigned(aOnDiscard) then
       for var i := n to Pred(fState.List.Count) do
@@ -1056,7 +1304,7 @@ end;
 function Stream.TPipe<T>.Zip<T2, TResult>(
   aEnum: TEnumerator<T2>;
   aOwnsEnum: Boolean;
-  const aZipper: TConstFunc<T, T2, TResult>;
+  const aZipper: TConstFunc<Integer, T, T2, TResult>;
   const aOnDiscard: TConstProc<T>;
   const aOnDiscardOther: TConstProc<T2>
   ): TPipe<TResult>;
@@ -1080,7 +1328,7 @@ begin
     for var i := 0 to Pred(fState.List.Count) do
     begin
       if not aEnum.MoveNext then break;
-      list.Add(aZipper(fState.List[i], aEnum.Current));
+      list.Add(aZipper(i, fState.List[i], aEnum.Current));
       Inc(n);
     end;
 
