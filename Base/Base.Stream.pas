@@ -55,24 +55,24 @@ type
       { transformers }
 
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-
       function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
-
       function Distinct(const AComparer: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
-
       function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
 
       { terminators }
 
       function AsList: TList<T>;
-
+      function AsArray: TArray<T>;
       function Count: Integer;
-
       function Any(const aPredicate: TConstPredicate<T>): Boolean;
-
       function All(const aPredicate: TConstPredicate<T>): Boolean;
-
       function Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
+      function FirstOr(const aDefault: T): T;
+      function FirstOrDefault: T;
+      function LastOr(const aDefault: T): T;
+      function LastOrDefault: T;
+
+      procedure ForEach(const aAction: TConstProc<T>);
     end;
 
   public
@@ -333,6 +333,21 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.AsArray: TArray<T>;
+begin
+  FState.CheckNotConsumed;
+
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  SetLength(Result, fState.List.Count);
+
+  for var i := 0 to Pred(fState.List.Count) do
+    Result[I] := fState.List[I];
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Count: Integer;
 begin
   fState.CheckNotConsumed;
@@ -389,11 +404,10 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
 begin
-  Ensure.IsAssigned(@aReducer, 'Reducer is nil');
+  Ensure.IsAssigned(@aReducer, 'Reducer is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
 
   FState.CheckNotConsumed;
-
-  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   var acc := aSeed;
 
@@ -401,6 +415,62 @@ begin
     acc := aReducer(acc, fState.List[i]);
 
   Result := acc;
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.ForEach(const aAction: TConstProc<T>);
+begin
+  Ensure.IsAssigned(@aAction, 'Action is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  for var i := 0 to Pred(fState.List.Count) do
+    aAction(fState.List[i]);
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.FirstOrDefault: T;
+begin
+  Result := FirstOr(Default(T));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.FirstOr(const aDefault: T): T;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  if fState.List.Count > 0 then
+    Result := fState.List[0]
+  else
+    Result := aDefault;
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.LastOrDefault: T;
+begin
+  Result := LastOr(Default(T));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.LastOr(const aDefault: T): T;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  if fState.List.Count > 0 then
+    Result := fState.List[Pred(fState.List.Count)]
+  else
+    Result := aDefault;
 
   fState.Terminate;
 end;

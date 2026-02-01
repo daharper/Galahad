@@ -40,6 +40,12 @@ type
     [Test] procedure All_Empty_ReturnsTrue;
     [Test] procedure Reduce_FoldsLeft_FromSeed;
     [Test] procedure Reduce_Empty_ReturnsSeed;
+    [Test] procedure AsArray_PreservesOrder;
+    [Test] procedure AsArray_Borrow_DoesNotFreeContainer;
+    [Test] procedure ForEach_VisitsItemsInOrder_AndConsumes;
+    [Test] procedure FirstOrDefault_Empty_ReturnsDefault;
+    [Test] procedure LastOrDefault_NonEmpty_ReturnsLast;
+    [Test] procedure LastOrDefault_Empty_ReturnsDefault;
   end;
 
 implementation
@@ -433,6 +439,80 @@ begin
     .Reduce<Integer>(42, function(const Acc, N: TInt): TInt begin Result := Acc + N; end);
 
   Assert.AreEqual(42, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.AsArray_PreservesOrder;
+begin
+  var a := Stream.From<Integer>([5, 2, 9]).AsArray;
+
+  Assert.AreEqual(3, Length(a));
+  Assert.AreEqual(5, a[0]);
+  Assert.AreEqual(2, a[1]);
+  Assert.AreEqual(9, a[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.AsArray_Borrow_DoesNotFreeContainer;
+var
+  scope: TScope;
+begin
+  var freed := False;
+
+  var list := scope.Owns(TFlagList.Create(@Freed));
+
+  list.AddRange([1, 2, 3]);
+
+  var a := Stream.Borrow<Integer>(list).AsArray;
+
+  Assert.AreEqual(3, Length(a));
+  Assert.AreEqual(1, a[0]);
+  Assert.AreEqual(2, a[1]);
+  Assert.AreEqual(3, a[2]);
+
+  Assert.IsFalse(freed, 'Borrowed list container must not be freed by AsArray terminal');
+  Assert.AreEqual(3, list.Count);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.ForEach_VisitsItemsInOrder_AndConsumes;
+var
+  scope: TScope;
+begin
+  var seen := scope.Owns(TList<Integer>.Create);
+
+  Stream
+    .From<Integer>([3, 1, 4])
+    .ForEach(procedure(const x: TInt) begin Seen.Add(x); end);
+
+  Assert.AreEqual(3, seen.Count);
+  Assert.AreEqual(3, seen[0]);
+  Assert.AreEqual(1, seen[1]);
+  Assert.AreEqual(4, seen[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.FirstOrDefault_Empty_ReturnsDefault;
+begin
+  var list := TList<Integer>.Create;
+  var val  := Stream.From<Integer>(list).FirstOrDefault;
+
+  Assert.AreEqual(0, val);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.LastOrDefault_NonEmpty_ReturnsLast;
+begin
+  var v := Stream.From<Integer>([5, 9, 1]).LastOrDefault;
+  Assert.AreEqual(1, v);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.LastOrDefault_Empty_ReturnsDefault;
+begin
+  var l := TList<Integer>.Create;
+  var v := Stream.From<Integer>(L).LastOrDefault;
+  Assert.AreEqual(0, V);
 end;
 
 { TFlagList }
