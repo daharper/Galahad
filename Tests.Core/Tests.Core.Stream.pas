@@ -55,6 +55,10 @@ type
     [Test] procedure Take_OnDiscard_Owned_CallsForDroppedItems;
     [Test] procedure Skip_Basic_SkipsFirstN;
     [Test] procedure Skip_OnDiscard_Owned_CallsForDroppedItems;
+    [Test] procedure SkipWhile_SkipsLeadingMatchesOnly;
+    [Test] procedure SkipWhile_OnDiscard_Owned_CallsForSkippedItems;
+    [Test] procedure TakeWhile_TakesLeadingMatchesOnly;
+    [Test] procedure TakeWhile_OnDiscard_Owned_CallsForDiscardedItems;
   end;
 
 implementation
@@ -667,6 +671,79 @@ begin
   Assert.AreEqual(1, dropped[0]);
   Assert.AreEqual(2, dropped[1]);
   Assert.AreEqual(3, dropped[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.SkipWhile_SkipsLeadingMatchesOnly;
+begin
+  var r := Stream
+    .From<Integer>([1, 2, 3, 1, 4])
+    .SkipWhile(function(const x: TInt): Boolean begin Result := x < 3; end)
+    .AsArray;
+
+  Assert.AreEqual(3, Length(r));
+  Assert.AreEqual(3, r[0]);
+  Assert.AreEqual(1, r[1]);
+  Assert.AreEqual(4, r[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.SkipWhile_OnDiscard_Owned_CallsForSkippedItems;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+      .From<Integer>([1, 2, 3, 4])
+      .SkipWhile(
+          function(const x: TInt): Boolean begin Result := x < 3; end,
+          procedure(const X: TInt) begin dropped.Add(x); end)
+      .AsArray;
+
+  Assert.AreEqual(2, Length(R));
+  Assert.AreEqual(3, r[0]);
+  Assert.AreEqual(4, r[1]);
+
+  Assert.AreEqual(2, dropped.Count);
+  Assert.AreEqual(1, dropped[0]);
+  Assert.AreEqual(2, dropped[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.TakeWhile_TakesLeadingMatchesOnly;
+begin
+  var r := Stream
+    .From<Integer>([1, 2, 3, 1, 4])
+    .TakeWhile(function(const x: TInt): Boolean begin Result := x < 3;end)
+    .AsArray;
+
+  Assert.AreEqual(2, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.TakeWhile_OnDiscard_Owned_CallsForDiscardedItems;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+      .From<Integer>([1, 2, 3, 4])
+      .TakeWhile(
+          function(const X: TInt): Boolean begin Result := x < 3; end,
+          procedure(const X: TInt) begin dropped.Add(x); end)
+      .AsArray;
+
+  Assert.AreEqual(2, Length(R));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+
+  Assert.AreEqual(2, dropped.Count);
+  Assert.AreEqual(3, dropped[0]);
+  Assert.AreEqual(4, dropped[1]);
 end;
 
 { TFlagList }

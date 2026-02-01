@@ -63,7 +63,9 @@ type
       function Concat(const aList: TList<T>; aOwnsList: Boolean): TPipe<T>; overload;
       function Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload;
       function Take(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function TakeWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function Skip(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
 
       { terminators }
 
@@ -478,11 +480,10 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.All(const aPredicate: TConstPredicate<T>): Boolean;
 begin
-  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
 
   FState.CheckNotConsumed;
-
-  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
   Result := True;
 
@@ -598,6 +599,36 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.TakeWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  var lCount := 0;
+
+  while (lCount < fState.List.Count) and aPredicate(fState.List[lCount]) do
+    Inc(lCount);
+
+  var list := TList<T>.Create;
+  list.Capacity := lCount;
+
+  for var i := 0 to Pred(lCount) do
+    list.Add(fState.List[i]);
+
+  if Assigned(aOnDiscard) then
+    for var i := lCount to Pred(fState.List.Count) do
+      aOnDiscard(fState.List[I]);
+
+  FState.SetList(list);
+  FState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Skip(const aCount: Integer; const aOnDiscard: TConstProc<T>): TPipe<T>;
 begin
   Ensure.IsTrue(aCount >= 0, 'aCount must be >= 0')
@@ -619,6 +650,37 @@ begin
 
   for var i := startIdx to Pred(fState.List.Count) do
     list.Add(fState.List[I]);
+
+  fState.SetList(list);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  var startIdx := 0;
+
+  while (startIdx < fState.List.Count) and aPredicate(fState.List[startIdx]) do
+  begin
+    if Assigned(aOnDiscard) then
+      aOnDiscard(fState.List[startIdx]);
+
+    Inc(startIdx);
+  end;
+
+  var list := TList<T>.Create;
+  list.Capacity := fState.List.Count - startIdx;
+
+  for var i := startIdx to Pred(fState.List.Count) do
+    list.Add(fState.List[i]);
 
   fState.SetList(list);
   fState.SetOwnsList(true);
