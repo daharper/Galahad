@@ -51,6 +51,10 @@ type
     [Test] procedure Concat_List_AppendsInOrder;
     [Test] procedure Concat_Enumerator_AppendsInOrder;
     [Test] procedure Concat_List_OwnsListTrue_FreesSourceContainer;
+    [Test] procedure Take_Basic_KeepsFirstN;
+    [Test] procedure Take_OnDiscard_Owned_CallsForDroppedItems;
+    [Test] procedure Skip_Basic_SkipsFirstN;
+    [Test] procedure Skip_OnDiscard_Owned_CallsForDroppedItems;
   end;
 
 implementation
@@ -598,6 +602,71 @@ begin
   Assert.AreEqual(2, r[1]);
   Assert.AreEqual(3, r[2]);
   Assert.AreEqual(4, r[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Take_Basic_KeepsFirstN;
+begin
+  var r := Stream.From<Integer>([1, 2, 3, 4, 5]).Take(3).AsArray;
+
+  Assert.AreEqual(3, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Take_OnDiscard_Owned_CallsForDroppedItems;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+    .From<Integer>([1, 2, 3, 4, 5])
+    .Take(2, procedure(const x: TInt) begin Dropped.Add(x); end).AsArray;
+
+  Assert.AreEqual(2, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+
+  Assert.AreEqual(3, dropped.Count);
+  Assert.AreEqual(3, dropped[0]);
+  Assert.AreEqual(4, dropped[1]);
+  Assert.AreEqual(5, dropped[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Skip_Basic_SkipsFirstN;
+begin
+  var r := Stream.From<Integer>([1, 2, 3, 4, 5]).Skip(2).AsArray;
+
+  Assert.AreEqual(3, Length(r));
+  Assert.AreEqual(3, r[0]);
+  Assert.AreEqual(4, r[1]);
+  Assert.AreEqual(5, r[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Skip_OnDiscard_Owned_CallsForDroppedItems;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+    .From<Integer>([1, 2, 3, 4, 5])
+    .Skip(3, procedure(const x: TInt) begin dropped.Add(x); end)
+    .AsArray;
+
+  Assert.AreEqual(2, Length(r));
+  Assert.AreEqual(4, r[0]);
+  Assert.AreEqual(5, r[1]);
+
+  Assert.AreEqual(3, dropped.Count);
+  Assert.AreEqual(1, dropped[0]);
+  Assert.AreEqual(2, dropped[1]);
+  Assert.AreEqual(3, dropped[2]);
 end;
 
 { TFlagList }
