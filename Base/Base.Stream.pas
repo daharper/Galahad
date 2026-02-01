@@ -64,6 +64,7 @@ type
       function Concat(aEnum: TEnumerator<T>; aOwnsEnum: Boolean = False): TPipe<T>; overload;
       function Take(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function TakeWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function TakeLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function Skip(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
 
@@ -622,8 +623,37 @@ begin
     for var i := lCount to Pred(fState.List.Count) do
       aOnDiscard(fState.List[I]);
 
-  FState.SetList(list);
-  FState.SetOwnsList(true);
+  fState.SetList(list);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.TakeLast(const aCount: Integer; const aOnDiscard: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsTrue(aCount >= 0, 'aCount must be >= 0')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  var lCount := if aCount > fState.List.Count then fState.List.Count else aCount;
+
+  var startIdx := fState.List.Count - lCount;
+  var list := TList<T>.Create;
+
+  list.Capacity := lCount;
+
+  if Assigned(aOnDiscard) then
+    for var i := 0 to Pred(startIdx) do
+      aOnDiscard(fState.List[i]);
+
+  for var i := startIdx to Pred(fState.List.Count) do
+    list.Add(fState.List[I]);
+
+  fState.SetList(list);
+  fState.SetOwnsList(true);
 
   Result := Self;
 end;

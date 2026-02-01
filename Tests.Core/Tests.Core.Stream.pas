@@ -59,6 +59,8 @@ type
     [Test] procedure SkipWhile_OnDiscard_Owned_CallsForSkippedItems;
     [Test] procedure TakeWhile_TakesLeadingMatchesOnly;
     [Test] procedure TakeWhile_OnDiscard_Owned_CallsForDiscardedItems;
+    [Test] procedure TakeLast_Basic_KeepsLastN;
+    [Test] procedure TakeLast_OnDiscard_Owned_CallsForDiscardedPrefix;
   end;
 
 implementation
@@ -733,8 +735,8 @@ begin
   var r := Stream
       .From<Integer>([1, 2, 3, 4])
       .TakeWhile(
-          function(const X: TInt): Boolean begin Result := x < 3; end,
-          procedure(const X: TInt) begin dropped.Add(x); end)
+          function(const x: TInt): Boolean begin Result := x < 3; end,
+          procedure(const x: TInt) begin dropped.Add(x); end)
       .AsArray;
 
   Assert.AreEqual(2, Length(R));
@@ -744,6 +746,38 @@ begin
   Assert.AreEqual(2, dropped.Count);
   Assert.AreEqual(3, dropped[0]);
   Assert.AreEqual(4, dropped[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.TakeLast_Basic_KeepsLastN;
+begin
+  var r := Stream.From<Integer>([1, 2, 3, 4, 5]).TakeLast(2).AsArray;
+
+  Assert.AreEqual(2, Length(r));
+  Assert.AreEqual(4, r[0]);
+  Assert.AreEqual(5, r[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.TakeLast_OnDiscard_Owned_CallsForDiscardedPrefix;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+      .From<Integer>([1, 2, 3, 4, 5])
+      .TakeLast(2, procedure(const x: Integer) begin dropped.Add(X); end)
+      .AsArray;
+
+  Assert.AreEqual(2, Length(r));
+  Assert.AreEqual(4, r[0]);
+  Assert.AreEqual(5, r[1]);
+
+  Assert.AreEqual(3, dropped.Count);
+  Assert.AreEqual(1, dropped[0]);
+  Assert.AreEqual(2, dropped[1]);
+  Assert.AreEqual(3, dropped[2]);
 end;
 
 { TFlagList }
