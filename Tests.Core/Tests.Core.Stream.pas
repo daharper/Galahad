@@ -71,6 +71,10 @@ type
     [Test] procedure Contains_CustomEquality_Works;
     [Test] procedure Contains_DefaultEquality_Works;
     [Test] procedure Terminal_Consumes_Stream_Guard;
+    [Test] procedure Zip_List_ZipsToMinLength;
+    [Test] procedure Zip_Borrow_WithOnDiscard_Raises;
+    [Test] procedure Zip_OnDiscardOther_RequiresOwnsOther;
+    [Test] procedure Transform_Exception_FreesOwnedBuffer_AndPoisonsStream;
   end;
 
 implementation
@@ -98,7 +102,7 @@ begin
           procedure(const X: Integer) begin { disposal attempt } end)
         .AsList);
     end,
-    EInvalidOpException,
+    EArgumentException,
     'Use Stream.From(list) or omit OnDiscard.');
 end;
 
@@ -121,7 +125,7 @@ begin
           procedure(const X: Integer) begin { disposal attempt } end)
         .AsList);
     end,
-    EInvalidOpException,
+    EArgumentException,
     'Use Stream.From(list) or omit OnDiscard.');
 end;
 
@@ -223,7 +227,7 @@ begin
         .Distinct(nil, procedure(const x: TInt) begin { disposal attempt } end)
         .AsList);
     end,
-    EInvalidOpException,
+    EArgumentException,
     'Use Stream.From(list) or omit OnDiscard.');
 end;
 
@@ -924,6 +928,117 @@ end;
 procedure TStreamFixture.Contains_CustomEquality_Works;
 begin
   Assert.IsTrue(Stream.From<string>(['A', 'b']).Contains('a', Equality.StringIgnoreCase));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Zip_List_ZipsToMinLength;
+var
+  scope: TScope;
+begin
+  var other := scope.Owns(TList<Integer>.Create);
+
+  other.AddRange([10, 20]);
+
+  var r := Stream
+    .From<Integer>([1, 2, 3])
+    .Zip<Integer, string>(
+        other,
+        false,
+        function(const a, b: TInt): string begin Result := a.ToString + ':' + b.ToString; end)
+    .AsArray;
+
+    Assert.AreEqual(2, Length(r));
+    Assert.AreEqual('1:10', r[0]);
+    Assert.AreEqual('2:20', r[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Zip_Borrow_WithOnDiscard_Raises;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<Integer>.Create);
+  var other := scope.Owns(TList<Integer>.Create);
+
+  list.AddRange([1, 2, 3]);
+  other.AddRange([10, 20]);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      Stream
+        .Borrow<Integer>(list)
+        .Zip<Integer, Integer>(
+          other, false,
+          function(const a, b: TInt): TInt begin Result := a + b; end,
+          procedure(const a: TInt) begin end,
+          nil)
+        .AsArray;
+    end,
+    EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Zip_OnDiscardOther_RequiresOwnsOther;
+var
+  scope: TScope;
+begin
+  var other := scope.Owns(TList<Integer>.Create);
+
+  other.AddRange([10, 20, 30]);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      Stream
+        .From<Integer>([1, 2])
+        .Zip<Integer, Integer>(
+          other,
+          false,
+          function(const a, b: Integer): Integer begin Result := a + b; end,
+          nil,
+          procedure(const b: Integer) begin end)
+        .AsArray;
+    end,
+    EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Transform_Exception_FreesOwnedBuffer_AndPoisonsStream;
+begin
+  var freed := False;
+
+  // Owned list container (Stream.From takes ownership of the list)
+  var l := TFlagList.Create(@freed);
+  l.AddRange([1, 2, 3]);
+
+  var p := Stream.From<Integer>(l);
+  var q := p; // copy intentional for test: shared internal state
+
+  // Map throws on the second element
+  Assert.WillRaise(
+    procedure
+    begin
+      p.Map<Integer>(
+        function(const x: Integer): Integer
+        begin
+          if x = 2 then
+            raise Exception.Create('boom');
+          Result := x;
+        end);
+    end,
+    Exception);
+
+  // The owned buffer must be freed even though no terminal ran
+  Assert.IsTrue(freed, 'Expected owned buffer to be freed when transform raises');
+
+  // Stream should be poisoned/consumed after a failed transform
+  Assert.WillRaise(
+    procedure
+    begin
+      q.Count;
+    end,
+    EArgumentException);
 end;
 
 { TFlagList }
