@@ -55,8 +55,9 @@ type
       { transformers }
 
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
-      function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
-      function Distinct(const AComparer: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>; overload;
+      function Map(const aMapper: TConstFunc<T, T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
+      function Distinct(const aEquality: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function Sort(const AComparer: IComparer<T> = nil): TPipe<T>;
       function Reverse: TPipe<T>;
       function Concat(const aValues: array of T): TPipe<T>; overload;
@@ -67,6 +68,9 @@ type
       function TakeLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function Skip(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
       function SkipWhile(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function SkipLast(const aCount: Integer; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function Peek(const aAction: TConstProc<T>): TPipe<T>;
+      function PeekIndexed(const aAction: TConstProc<Integer, T>): TPipe<T>;
 
       { terminators }
 
@@ -80,6 +84,9 @@ type
       function FirstOrDefault: T;
       function LastOr(const aDefault: T): T;
       function LastOrDefault: T;
+      function IsEmpty: Boolean;
+      function None(const aPredicate: TConstPredicate<T>): Boolean;
+      function Contains(const aValue: T; const aEquality: IEqualityComparer<T> = nil): Boolean;
 
       procedure ForEach(const aAction: TConstProc<T>);
     end;
@@ -195,7 +202,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function Stream.TPipe<T>.Distinct(const AComparer: IEqualityComparer<T>; const AOnDiscard: TConstProc<T>): TPipe<T>;
+function Stream.TPipe<T>.Distinct(const aEquality: IEqualityComparer<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
 var
   lNewList: TList<T>;
   lSeen: TDictionary<T, Byte>;
@@ -211,7 +218,7 @@ begin
   lNewList := TList<T>.Create;
   lNewList.Capacity := fState.List.Count;
 
-  lSeen := scope.Owns(TDictionary<T, Byte>.Create(aComparer));
+  lSeen := scope.Owns(TDictionary<T, Byte>.Create(aEquality));
   lSeen.Capacity := fState.List.Count;
 
   for i := 0 to Pred(fState.List.Count) do
@@ -417,6 +424,38 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Map(const aMapper: TConstFunc<T, T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+var
+  lNewList: TList<T>;
+  i: Integer;
+  lItem: T;
+begin
+  Ensure.IsAssigned(@aMapper, 'Mapper is nil');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  lNewList := TList<T>.Create;
+  lNewList.Capacity := fState.List.Count;
+
+  for i := 0 to Pred(fState.List.Count) do
+  begin
+    lItem := fState.List[i];
+    lNewList.Add(aMapper(fState.List[i]));
+
+    if Assigned(aOnDiscard) then
+      aOnDiscard(lItem);
+  end;
+
+  fState.Terminate;
+
+  Result := Stream.TPipe<T>.CreatePipe(lNewList, true);
+
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.AsList: TList<T>;
 begin
   fState.CheckNotConsumed;
@@ -573,6 +612,48 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.IsEmpty: Boolean;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  Result := fState.List.Count = 0;
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.None(const aPredicate: TConstPredicate<T>): Boolean;
+begin
+  if not Assigned(aPredicate) then
+    raise EArgumentNilException.Create('aPredicate is nil');
+
+  Result := not Any(aPredicate);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Contains(const aValue: T; const aEquality: IEqualityComparer<T>): Boolean;
+begin
+  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  var eq := if aEquality = nil then TEqualityComparer<T>.Default else aEquality;
+
+  Result := false;
+
+  for var i := 0 to Pred(fState.List.Count - 1) do
+    if Eq.Equals(fState.List[i], aValue) then
+    begin
+      Result := True;
+      Break;
+    end;
+
+  fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Take(const aCount: Integer; const aOnDiscard: TConstProc<T>): TPipe<T>;
 begin
   Ensure.IsTrue(aCount >= 0, 'aCount must be >= 0')
@@ -714,6 +795,63 @@ begin
 
   fState.SetList(list);
   fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.SkipLast(const aCount: Integer; const aOnDiscard: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsTrue(aCount >= 0, 'aCount must be >= 0')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  var dropCount := if aCount > fState.List.Count then fState.List.Count else aCount;
+  var keepCount := fState.List.Count - DropCount;
+
+  var list := TList<T>.Create;
+
+  list.Capacity := keepCount;
+
+  for var i := 0 to Pred(KeepCount) do
+    list.Add(fState.List[I]);
+
+  if Assigned(aOnDiscard) then
+    for var i := KeepCount to Pred(fState.List.Count) do
+      aOnDiscard(fState.List[i]);
+
+  fState.SetList(list);
+  fState.SetOwnsList(true);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Peek(const aAction: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(@aAction, 'aAction is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  for var i := 0 to Pred(fState.List.Count) do
+    aAction(fState.List[i]);
+
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.PeekIndexed(const aAction: TConstProc<Integer, T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(@aAction, 'aAction is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  FState.CheckNotConsumed;
+
+  for var i := 0 to Pred(fState.List.Count) do
+    aAction(i, fState.List[i]);
 
   Result := Self;
 end;

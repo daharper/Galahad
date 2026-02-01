@@ -51,16 +51,26 @@ type
     [Test] procedure Concat_List_AppendsInOrder;
     [Test] procedure Concat_Enumerator_AppendsInOrder;
     [Test] procedure Concat_List_OwnsListTrue_FreesSourceContainer;
-    [Test] procedure Take_Basic_KeepsFirstN;
-    [Test] procedure Take_OnDiscard_Owned_CallsForDroppedItems;
     [Test] procedure Skip_Basic_SkipsFirstN;
     [Test] procedure Skip_OnDiscard_Owned_CallsForDroppedItems;
     [Test] procedure SkipWhile_SkipsLeadingMatchesOnly;
     [Test] procedure SkipWhile_OnDiscard_Owned_CallsForSkippedItems;
+    [Test] procedure SkipLast_Basic_DropsLastN;
+    [Test] procedure SkipLast_OnDiscard_Owned_CallsForDiscardedSuffix;
+    [Test] procedure Take_Basic_KeepsFirstN;
+    [Test] procedure Take_OnDiscard_Owned_CallsForDroppedItems;
     [Test] procedure TakeWhile_TakesLeadingMatchesOnly;
     [Test] procedure TakeWhile_OnDiscard_Owned_CallsForDiscardedItems;
     [Test] procedure TakeLast_Basic_KeepsLastN;
     [Test] procedure TakeLast_OnDiscard_Owned_CallsForDiscardedPrefix;
+    [Test] procedure Peek_VisitsItemsInOrder_AndDoesNotConsume;
+    [Test] procedure PeekIndexed_VisitsItemsInOrder_AndDoesNotConsume;
+    [Test] procedure Map_Same_Allows_Transforms;
+    [Test] procedure IsEmpty_Works;
+    [Test] procedure None_Works;
+    [Test] procedure Contains_CustomEquality_Works;
+    [Test] procedure Contains_DefaultEquality_Works;
+    [Test] procedure Terminal_Consumes_Stream_Guard;
   end;
 
 implementation
@@ -713,6 +723,39 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.SkipLast_Basic_DropsLastN;
+begin
+  var r := Stream.From<Integer>([1, 2, 3, 4, 5]).SkipLast(2).AsArray;
+
+  Assert.AreEqual(3, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.SkipLast_OnDiscard_Owned_CallsForDiscardedSuffix;
+var
+  scope: TScope;
+begin
+  var dropped := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+    .From<Integer>([1, 2, 3, 4, 5])
+    .SkipLast(2, procedure(const x: TInt) begin dropped.Add(x); end)
+    .AsArray;
+
+  Assert.AreEqual(3, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+
+  Assert.AreEqual(2, Dropped.Count);
+  Assert.AreEqual(4, Dropped[0]);
+  Assert.AreEqual(5, Dropped[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.TakeWhile_TakesLeadingMatchesOnly;
 begin
   var r := Stream
@@ -778,6 +821,109 @@ begin
   Assert.AreEqual(1, dropped[0]);
   Assert.AreEqual(2, dropped[1]);
   Assert.AreEqual(3, dropped[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Peek_VisitsItemsInOrder_AndDoesNotConsume;
+var
+  scope: TScope;
+begin
+  var seen := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+        .From<Integer>([3, 1, 4])
+        .Peek(procedure(const x: TInt) begin seen.Add(x); end)
+        .Count;
+
+  Assert.AreEqual(3, seen.Count);
+  Assert.AreEqual(3, seen[0]);
+  Assert.AreEqual(1, seen[1]);
+  Assert.AreEqual(4, seen[2]);
+
+  Assert.AreEqual(3, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.PeekIndexed_VisitsItemsInOrder_AndDoesNotConsume;
+var
+  scope: TScope;
+begin
+  var indexes := scope.Owns(TList<Integer>.Create);
+
+  var r := Stream
+        .From<Integer>([3, 1, 4])
+        .PeekIndexed(procedure(const n, x: TInt) begin indexes.Add(n); end)
+        .Count;
+
+  Assert.AreEqual(3, indexes.Count);
+  Assert.AreEqual(0, indexes[0]);
+  Assert.AreEqual(1, indexes[1]);
+  Assert.AreEqual(2, indexes[2]);
+
+  Assert.AreEqual(3, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Map_Same_Allows_Transforms;
+begin
+  var r := Stream
+        .From<string>([' HI', 'hI ', ' hi ', 'Hi'])
+        .Map(function(const s: string):string begin Result := s.Trim.ToLower; end)
+        .Distinct
+        .AsArray;
+
+  Assert.AreEqual(1, Length(r));
+  Assert.AreEqual('hi', r[0]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.IsEmpty_Works;
+begin
+  Assert.IsTrue(Stream.From<Integer>([]).IsEmpty);
+  Assert.IsFalse(Stream.From<Integer>([1]).IsEmpty);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.None_Works;
+begin
+  Assert.IsTrue(Stream
+    .From<Integer>([1, 3, 5])
+    .None(function(const x: TInt): Boolean begin Result := x mod 2 = 0; end));
+
+  Assert.IsFalse(Stream
+    .From<Integer>([1, 2, 3])
+    .None(function(const x: TInt): Boolean begin Result := X mod 2 = 0; end));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Contains_DefaultEquality_Works;
+begin
+  Assert.IsTrue(Stream.From<Integer>([1, 2, 3]).Contains(2));
+  Assert.IsFalse(Stream.From<Integer>([1, 2, 3]).Contains(4));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Terminal_Consumes_Stream_Guard;
+begin
+  var p := Stream.From<Integer>([1, 2, 3]);
+  var q := p;
+  var n := p.Count;
+
+  Assert.AreEqual(3, n);
+
+  Assert.WillRaise(
+    procedure begin q.Filter(function(const x: TInt): Boolean begin Result := x > 0; end); end,
+    EArgumentException);
+
+  Assert.WillRaise(
+    procedure begin q.AsList.Free; end,
+    EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Contains_CustomEquality_Works;
+begin
+  Assert.IsTrue(Stream.From<string>(['A', 'b']).Contains('a', Equality.StringIgnoreCase));
 end;
 
 { TFlagList }
