@@ -25,6 +25,8 @@ type
     [Test] procedure Borrow_DoesNotFreeContainerOnTransform;
     [Test] procedure AsList_Borrowed_ClonesAndDoesNotTouchOriginal;
     [Test] procedure AsList_Owned_DetachesSameInstance;
+    [Test] procedure Map_From_TakesOwnership_AndFreesContainer;
+    [Test] procedure Map_Borrow_DoesNotFreeContainer;
   end;
 
 implementation
@@ -43,16 +45,74 @@ begin
 
   list.AddRange([1,2,3,4]);
 
-  var r := scope.Owns(Stream
+  var r := Stream
     .From<Integer>(list)
     .Filter(function(const x:TInt): Boolean begin Result := (x mod 2) = 0; end)
-    .AsList);
+    .AsList;
+
+  scope.Owns(r);
 
   Assert.IsTrue(freed, 'Expected original list container to be freed after first transform');
 
   Assert.AreEqual(2, r.Count);
   Assert.AreEqual(2, r[0]);
   Assert.AreEqual(4, r[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Map_Borrow_DoesNotFreeContainer;
+var
+  scope: TScope;
+begin
+  var freed := false;
+
+  var list := scope.Owns(TFlagList.Create(@freed));
+
+  list.AddRange([10, 20, 30]);
+
+  var r := Stream.Borrow<Integer>(list)
+      .Map<TInt>(function(const X: TInt): TInt begin Result := X + 1; end)
+      .AsList;
+
+  scope.Owns(r);
+
+  Assert.IsFalse(Freed, 'Borrowed list container must not be freed during Map');
+
+  Assert.AreEqual(3, r.Count);
+  Assert.AreEqual(11, r[0]);
+  Assert.AreEqual(21, r[1]);
+  Assert.AreEqual(31, r[2]);
+
+  Assert.AreEqual(3, list.Count);
+  Assert.AreEqual(10, list[0]);
+  Assert.AreEqual(20, list[1]);
+  Assert.AreEqual(30, list[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Map_From_TakesOwnership_AndFreesContainer;
+var
+  scope: TScope;
+begin
+  var freed := false;
+
+  var list := TFlagList.Create(@freed);
+
+  list.AddRange([1, 2, 3]);
+
+  var r := Stream
+    .From<Integer>(list)
+    .Map<string>(function(const X: TInt): string begin Result := 'v' + X.ToString; end)
+    .AsList;
+
+  scope.Owns(r);
+
+  Assert.IsTrue(freed, 'Expected original list container to be freed during Map');
+
+  Assert.AreEqual(3, r.Count);
+  Assert.AreEqual('v1', r[0]);
+  Assert.AreEqual('v2', r[1]);
+  Assert.AreEqual('v3', r[2]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -66,14 +126,12 @@ begin
 
   list.AddRange([1,2,3,4]);
 
-  var r := scope.Owns(Stream
+  var r := Stream
       .Borrow<Integer>(list)
-      .Filter(
-        function(const x: Integer): Boolean
-        begin
-          Result := x > 2;
-        end)
-      .AsList);
+      .Filter(function(const x: TInt): Boolean begin Result := x > 2;end)
+      .AsList;
+
+  scope.Owns(r);
 
   Assert.IsFalse(Freed, 'Borrowed list container must not be freed by Stream');
 

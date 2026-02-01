@@ -21,6 +21,7 @@ type
         function GetConsumed: Boolean;
         procedure SetConsumed(Value: Boolean);
         procedure CheckNotConsumed;
+        procedure CheckDisposable(const aOnDiscard: TConstProc<T>);
       end;
 
       TState = class(TInterfacedObject, IState)
@@ -38,6 +39,7 @@ type
         function GetConsumed: Boolean;
         procedure SetConsumed(aValue: Boolean);
         procedure CheckNotConsumed;
+        procedure CheckDisposable(const aOnDiscard: TConstProc<T>);
       end;
 
     private
@@ -50,6 +52,11 @@ type
       /// OnDiscard is called for each rejected item, if provided.
       /// </summary>
       function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///
+      /// </summary>
+      function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TPipe<U>;
 
       /// <summary>
       /// Terminator: returns a caller-owned list.
@@ -144,6 +151,12 @@ begin
   Ensure.IsFalse(fConsumed, 'Stream has been consumed');
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+procedure Stream.TPipe<T>.TState.CheckDisposable(const aOnDiscard: TConstProc<T>);
+begin
+  Ensure.IsFalse((Assigned(aOnDiscard)) and (not fOwnsList), 'Use Stream.From(list) or omit OnDiscard.');
+end;
+
 { Stream.TPipe<T> }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -163,6 +176,7 @@ begin
   Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
 
   fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
 
   lOldList := fState.GetList;
 
@@ -188,6 +202,45 @@ begin
   fState.SetOwnsList(true);
 
   Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T>): TPipe<U>;
+var
+  lOldList: TList<T>;
+  lNewList: TList<U>;
+  i: Integer;
+  lItem: T;
+begin
+  Ensure.IsAssigned(@aMapper, 'Predicate is nil');
+
+  fState.CheckNotConsumed;
+  fState.CheckDisposable(aOnDiscard);
+
+  lOldList := fState.GetList;
+
+  Ensure.IsAssigned(lOldList, 'Stream has no buffer');
+
+  lNewList := TList<U>.Create;
+  lNewList.Capacity := lOldList.Count;
+
+ for i := 0 to Pred(lOldList.Count) do
+  begin
+    lItem := lOldList[i];
+    lNewList.Add(aMapper(lOldList[i]));
+
+    if Assigned(aOnDiscard) then
+      aOnDiscard(lItem);
+  end;
+
+  if FState.GetOwnsList then
+    lOldList.Free;
+
+  fState.SetList(nil);
+  fState.SetOwnsList(false);
+  fState.SetConsumed(true);
+
+  Result := Stream.TPipe<U>.CreatePipe(lNewList, true);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
