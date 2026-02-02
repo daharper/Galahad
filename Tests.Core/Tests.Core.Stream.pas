@@ -5,6 +5,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.Generics.Defaults,
+  System.Hash,
   DUnitX.TestFramework,
   Base.Core,
   Base.Stream;
@@ -74,6 +76,10 @@ type
     [Test] procedure Zip_Borrow_WithOnDiscard_Raises;
     [Test] procedure Zip_OnDiscardOther_RequiresOwnsOther;
     [Test] procedure Transform_Exception_FreesOwnedBuffer_AndPoisonsStream;
+    [Test] procedure GroupBy_GroupsAndPreservesOrder;
+    [Test] procedure GroupBy_UsesCustomEqualityComparer;
+    [Test] procedure GroupBy_ConsumesStream_Guard;
+    [Test] procedure Partition_SplitsIntoMatchingAndNonMatching;
   end;
 
 implementation
@@ -1018,6 +1024,118 @@ begin
       q.Count;
     end,
     EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.GroupBy_GroupsAndPreservesOrder;
+begin
+  var groups := Stream
+      .From<Integer>([1, 2, 3, 4, 5, 6])
+      .GroupBy<TInt>(function(const X: TInt): TInt begin Result := x mod 2; end);
+
+  try
+    Assert.IsTrue(groups.ContainsKey(0));
+    Assert.IsTrue(groups.ContainsKey(1));
+
+    Assert.AreEqual(3, groups[0].Count);
+    Assert.AreEqual(2, groups[0][0]);
+    Assert.AreEqual(4, groups[0][1]);
+    Assert.AreEqual(6, groups[0][2]);
+
+    Assert.AreEqual(3, groups[1].Count);
+    Assert.AreEqual(1, groups[1][0]);
+    Assert.AreEqual(3, groups[1][1]);
+    Assert.AreEqual(5, groups[1][2]);
+  finally
+    for var list in groups.Values do
+      list.Free;
+
+    groups.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.GroupBy_UsesCustomEqualityComparer;
+begin
+  var eq := TEqualityComparer<string>.Construct(
+    function(const L, R: string): Boolean
+    begin
+      Result := SameText(L, R);
+    end,
+    function(const S: string): Integer
+    begin
+      Result := THashBobJenkins.GetHashValue(PChar(AnsiLowerCase(S))^, Length(S) * SizeOf(Char), 0);
+    end
+  );
+
+  var groups := Stream
+    .From<string>(['A', 'a', 'B'])
+    .GroupBy<string>(function(const S: string): string begin Result := S; end, eq);
+
+  try
+    Assert.AreEqual(2, groups.Count);
+
+    var hasA := False;
+
+    for var key in groups.Keys do
+      if SameText(key, 'a') then
+      begin
+        hasA := true;
+
+        Assert.AreEqual(2, groups[key].Count);
+        Assert.AreEqual('A', groups[key][0]);
+        Assert.AreEqual('a', groups[key][1]);
+      end;
+    Assert.IsTrue(hasA);
+  finally
+    for var list in groups.Values do
+      list.Free;
+
+    groups.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.GroupBy_ConsumesStream_Guard;
+begin
+  var p := Stream.From<Integer>([1, 2, 3]);
+  var q := p;
+  var g := p.GroupBy<TInt>(function(const x: TInt): TInt begin Result := x mod 2; end);
+
+  try
+    // ok
+  finally
+    for var l in g.Values do
+      l.Free;
+
+    g.Free;
+  end;
+
+  Assert.WillRaise(procedure begin Q.Count; end, EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Partition_SplitsIntoMatchingAndNonMatching;
+begin
+  var p := Stream
+    .From<Integer>([1, 2, 3, 4, 5])
+    .Partition(function(const x: TInt): boolean begin Result := (x mod 2) = 0; end);
+
+  try
+    // Matching (even)
+    Assert.AreEqual(2, P.Key.Count);
+    Assert.AreEqual(2, P.Key[0]);
+    Assert.AreEqual(4, P.Key[1]);
+
+    // Non-matching (odd)
+    Assert.AreEqual(3, P.Value.Count);
+    Assert.AreEqual(1, P.Value[0]);
+    Assert.AreEqual(3, P.Value[1]);
+    Assert.AreEqual(5, P.Value[2]);
+  finally
+    p.Key.Free;
+    p.Value.Free;
+  end;
 end;
 
 { TFlagList }

@@ -359,6 +359,34 @@ type
       ///  Invokes <paramref name="aAction"/> for each item in the stream and consumes the stream.
       /// </summary>
       procedure ForEach(const aAction: TConstProc<T>);
+
+      /// <summary>
+      ///  Groups the items in the stream by a key produced by <paramref name="aKeySelector"/>.
+      ///  Each distinct key maps to a list of items that share that key.
+      ///  This is a terminal operation and consumes the stream.
+      /// </summary>
+      /// <remarks>
+      ///  The returned dictionary and all group lists are owned by the caller.
+      ///  Grouping preserves the original order of items within each group.
+      ///  If <paramref name="aEquality"/> is nil, <c>TEqualityComparer&lt;TKey&gt;.Default</c> is used.
+      ///  Stream never assumes ownership of items.
+      /// </remarks>
+      function GroupBy<TKey>(
+        const aKeySelector: TConstFunc<T, TKey>;
+        const aEquality: IEqualityComparer<TKey> = nil): TDictionary<TKey, TList<T>>;
+
+      /// <summary>
+      ///  Splits the stream into two lists based on <paramref name="aPredicate"/>.
+      ///  Items for which the predicate returns True are placed in the first list;
+      ///  all other items are placed in the second list.
+      ///  This is a terminal operation and consumes the stream.
+      /// </summary>
+      /// <remarks>
+      ///  Both returned lists are owned by the caller.
+      ///  The relative order of items is preserved in each list.
+      ///  Stream never assumes ownership of items.
+      /// </remarks>
+      function Partition(const aPredicate: TConstPredicate<T>): TPair<TList<T>, TList<T>>;
     end;
 
   public
@@ -669,6 +697,88 @@ begin
     end;
 
   fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.GroupBy<TKey>(
+  const aKeySelector: TConstFunc<T, TKey>;
+  const aEquality: IEqualityComparer<TKey>
+): TDictionary<TKey, TList<T>>;
+var
+  scope: TScope;
+  Bucket: TList<T>;
+begin
+  Ensure.IsAssigned(@aKeySelector, 'KeySelector is nil')
+        .IsAssigned(fState.List, 'Stream has no buffer');
+
+  fState.CheckNotConsumed;
+
+  var eq := if Assigned(aEquality) then aEquality else TEqualityComparer<TKey>.Default;
+  var dict := scope.Owns(TDictionary<TKey, TList<T>>.Create(Eq));
+
+  try
+    for var i := 0 to Pred(fState.List.Count) do
+    begin
+      var item := fState.List[i];
+      var key := aKeySelector(item);
+
+      if not dict.TryGetValue(key, bucket) then
+      begin
+        bucket := TList<T>.Create;
+        Dict.Add(key, bucket);
+      end;
+
+      Bucket.Add(item);
+    end;
+
+    Result := scope.Release(dict);
+
+    fState.Terminate;
+  except
+    for Bucket in dict.Values do
+      Bucket.Free;
+
+    fState.Terminate;
+
+    raise;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Partition(const aPredicate: TConstPredicate<T>): TPair<TList<T>, TList<T>>;
+var
+  scope: TScope;
+begin
+  try
+    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
+          .IsAssigned(fState.List, 'Stream has no buffer');
+
+    fState.CheckNotConsumed;
+
+    var trueList := scope.Owns(TList<T>.Create);
+    var falseList := scope.Owns(TList<T>.Create);
+
+    var cap := fState.List.Count div 2;
+
+    trueList.Capacity  := cap;
+    falseList.Capacity := cap;
+
+    for var i := 0 to Pred(fState.List.Count) do
+    begin
+      var item := fState.List[i];
+
+      if aPredicate(item) then
+        trueList.Add(item)
+      else
+        falseList.Add(item);
+    end;
+
+    Result := TPair<TList<T>, TList<T>>.Create(scope.Release(trueList), scope.Release(falseList));
+    fState.Terminate;
+  except
+    fState.Terminate;
+    raise;
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
