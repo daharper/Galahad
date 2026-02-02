@@ -156,21 +156,26 @@ type
     class function Recover<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): TResult<T>; static;
   end;
 
+  EScopeCleanupError = class(Exception);
+
   /// <summary>
   ///  Provides scope management, conceptually similar to using/dispose in .NET
   /// </summary>
   TScope = record
   strict private
-    fAction: TProc;
-    fItems: TArray<TObject>;
-    fCount: Integer;
-
 {$IFDEF DEBUG}
     fInitialized: Boolean;
 {$ENDIF}
 
-    procedure Add(aObj: TObject);
+    fItems: TArray<TObject>;
+    fCount: Integer;
+    fActions: TArray<TProc>;
+    fActionCount: Integer;
+
     function Remove(aObj: TObject): Boolean;
+
+    procedure Add(aObj: TObject);
+
   public
     function Release<T: class>(aObj: T): T;
 
@@ -178,7 +183,7 @@ type
     function Owns<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
-    procedure OnExit(const aAction: TProc);
+    procedure Defer(const aAction: System.SysUtils.TProc); overload;
 
     class operator Assign(var  Dest: TScope; const [ref] Src: TScope);
 
@@ -1017,7 +1022,7 @@ begin
   Result := aFunc(aRes.Error);
 end;
 
-{ TUsing }
+{ TScope }
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TScope.Owns<T>(aObj: T): T;
@@ -1028,12 +1033,6 @@ begin
   Add(aObj);
 
   Result := AObj;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TScope.OnExit(const aAction: TProc);
-begin
-  fAction := aAction;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1086,12 +1085,56 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TScope.Defer(const aAction: TProc);
+begin
+{$IFDEF DEBUG}
+  Assert(fInitialized, 'TScope was not initialized');
+{$ENDIF}
+
+  if not Assigned(aAction) then
+    Exit;
+
+  if Length(fActions) = fActionCount then
+  begin
+    var NewCap := Length(fActions);
+
+    if NewCap = 0 then
+      NewCap := 1
+    else
+      NewCap := NewCap * 2;
+    SetLength(fActions, NewCap);
+  end;
+
+  fActions[fActionCount] := aAction;
+  Inc(fActionCount);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TScope.Clear;
+const
+  ERR_MESSAGE = 'Error occurred freeing scoped item: %d %s %s';
 begin
   for var i := Pred(fCount) downto 0 do
   begin
-    fItems[i].Free;
-    fItems[i] := nil;
+    try
+      var item := fItems[i];
+      fItems[i] := nil;
+      item.Free
+    except
+      on E: Exception do
+      begin
+        var Err := EScopeCleanupError.CreateFmt(ERR_MESSAGE, [i, E.ClassName, E.Message]);
+        try
+          try
+            TError.Notify(Err);
+          except
+            // keep cleanup best-effort
+          end;
+        finally
+          Err.Free;
+        end;
+      end;
+    end;
   end;
 
   fCount := 0;
@@ -1101,9 +1144,8 @@ end;
 class operator TScope.Assign(var Dest: TScope; const [ref] Src: TScope);
 begin
   if (Dest.fCount <> 0) or (Src.fCount <> 0) then
-    raise Exception.Create('TUsing is scope-only; do not copy/assign it while owning instances.');
+    raise Exception.Create('TScope is scope-only; do not copy/assign it while owning instances.');
 
-  Dest.fAction := nil;
   Dest.fItems := nil;
   Dest.fCount := 0;
 end;
@@ -1115,26 +1157,67 @@ begin
   fInitialized := True;
 {$ENDIF}
 
-  fAction := nil;
+  SetLength(fActions, 1);
+  fActionCount := 0;
+
   SetLength(fItems, 4);
   fCount := 0;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class operator TScope.Finalize;
+const
+  ERR_MESSAGE = 'Error occurred executing action on exiting scope: %s %s';
 begin
 {$IFDEF DEBUG}
-  Assert(fInitialized, 'TUsing was not initialized');
+  Assert(fInitialized, 'TScope was not initialized');
 {$ENDIF}
 
-  if Assigned(fAction) then
-  begin
-    fAction();
-    fAction := nil;
-  end;
+  // Detach to protect against reentrancy
+  var actions := fActions;
+  var actionCount := fActionCount;
+  fActions := nil;
+  fActionCount := 0;
 
-  Clear;
-  fItems := nil;
+  try
+    while actionCount > 0 do
+    begin
+      Dec(actionCount);
+
+      var action := actions[actionCount];
+      actions[actionCount] := nil;
+
+      try
+        if Assigned(action) then
+          action();
+      except
+        on E: Exception do
+        begin
+          var Err := EScopeCleanupError.CreateFmt(ERR_MESSAGE, [E.ClassName, E.Message]);
+          try
+            try
+              TError.Notify(Err);
+            except
+              // swallow: finalizer must not raise
+            end;
+          finally
+            Err.Free;
+          end;
+        end;
+      end;
+
+    end;
+
+    // Even if something went wrong above, still attempt to clear items.
+    try
+      Clear;
+    except
+      // defensive: finalizer must not raise.
+    end;
+  finally
+    fCount := 0;
+    fItems := nil;
+  end;
 end;
 
 end.

@@ -60,7 +60,7 @@ begin
   begin
       var scope: TScope;
 
-      scope.OnExit(procedure begin text := 'see you soon'; end);
+      scope.Defer(procedure begin text := 'see you soon'; end);
   end;
 
   Assert.AreEqual(text, 'see you soon');
@@ -85,13 +85,12 @@ procedure TUsingFixture.Release_PreventsObjectFromBeingFreed;
 var
   Kept: TFreeProbe;
 begin
-  Kept := nil;
-
   begin
     var scope: TScope;
 
     var a := scope.Owns(TFreeProbe.Create('A'));
-    var b := scope.Owns(TFreeProbe.Create('B'));
+
+    scope.Owns(TFreeProbe.Create('B'));
 
     Kept := scope.Release(a);
 
