@@ -80,6 +80,12 @@ type
     [Test] procedure GroupBy_UsesCustomEqualityComparer;
     [Test] procedure GroupBy_ConsumesStream_Guard;
     [Test] procedure Partition_SplitsIntoMatchingAndNonMatching;
+
+    [Test]
+    [TestCase('Split at 0', '0')]
+    [TestCase('Split at 2', '2')]
+    [TestCase('Split at 5', '5')]
+    procedure SplitAt_SplitsIntoPrefixAndSuffix(const aIndex:integer);
   end;
 
 implementation
@@ -1135,6 +1141,30 @@ begin
   finally
     p.Key.Free;
     p.Value.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.SplitAt_SplitsIntoPrefixAndSuffix(const aIndex:integer);
+const
+  ITEMS: array of integer = [0, 1, 2, 3, 4];
+begin
+  var p := Stream.From<Integer>(ITEMS).SplitAt(aIndex);
+  try
+    Assert.AreEqual(aIndex, p.Key.Count, Format('Left list should have %d items', [aIndex + 1]));
+
+    for var i := 0 to Pred(aIndex) do
+      Assert.AreEqual(i, p.Key[i]);
+
+    var n := Length(ITEMS) - aIndex;
+
+    Assert.AreEqual(n, p.Value.Count, Format('Right list should have %d items', [n]));
+
+    for var i := 0 to Pred(p.Value.Count) do
+      Assert.AreEqual(i + aIndex, p.Value[i]);
+  finally
+    P.Key.Free;
+    P.Value.Free;
   end;
 end;
 

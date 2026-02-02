@@ -387,6 +387,17 @@ type
       ///  Stream never assumes ownership of items.
       /// </remarks>
       function Partition(const aPredicate: TConstPredicate<T>): TPair<TList<T>, TList<T>>;
+
+      /// <summary>
+      ///  Splits the stream into two lists at <paramref name="aIndex"/> and consumes the stream.
+      ///  The first list contains the first <paramref name="aIndex"/> items; the second contains the remaining items.
+      /// </summary>
+      /// <remarks>
+      ///  Both returned lists are owned by the caller.
+      ///  The relative order of items is preserved in each list.
+      ///  Stream never assumes ownership of items.
+      /// </remarks>
+      function SplitAt(const aIndex: Integer): TPair<TList<T>, TList<T>>;
     end;
 
   public
@@ -782,6 +793,39 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.SplitAt(const aIndex: Integer): TPair<TList<T>, TList<T>>;
+var
+  scope: TScope;
+begin
+  try
+    Ensure.IsTrue(aIndex >= 0, 'Index must be >= 0')
+          .IsAssigned(fState.List, 'Stream has no buffer');
+
+    fState.CheckNotConsumed;
+
+    var leftList := scope.Owns(TList<T>.Create);
+    var rightList := scope.Owns(TList<T>.Create);
+
+    var cut := if aIndex > fState.List.Count then fState.List.Count else aIndex;
+
+    leftList.Capacity  := cut;
+    rightList.Capacity := fState.List.Count - cut;
+
+    for var i := 0 to Pred(Cut) do
+      leftList.Add(fState.List[i]);
+
+    for var i := Cut to Pred(fState.List.Count) do
+      rightList.Add(fState.List[i]);
+
+    Result := TPair<TList<T>, TList<T>>.Create(scope.Release(leftList), scope.Release(rightList));
+    fState.Terminate;
+  except
+    fState.Terminate;
+    raise;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Distinct(const aEquality: IEqualityComparer<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
 var
   lSeen: TDictionary<T, Byte>;
@@ -866,17 +910,17 @@ begin
   try
     Ensure.IsAssigned(fState.List, 'Stream has no buffer');
 
-    FState.CheckNotConsumed;
+    fState.CheckNotConsumed;
 
     var list := scope.Owns(TList<T>.Create);
 
     list.Capacity := fState.List.Count;
 
     for var i := Pred(fState.List.Count) downto 0 do
-      list.Add(fState.List[I]);
+      list.Add(fState.List[i]);
 
-    FState.SetList(scope.Release(list));
-    FState.SetOwnsList(True);
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
 
     Result := Self;
   except
@@ -901,10 +945,10 @@ begin
     list.AddRange(fState.List);
 
     for var i := Low(aValues) to High(aValues) do
-      list.Add(aValues[I]);
+      list.Add(aValues[i]);
 
-    FState.SetList(scope.Release(list));
-    FState.SetOwnsList(True);
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
 
     Result := Self;
   except
@@ -933,8 +977,8 @@ begin
     if aOwnsList then
       aList.Free;
 
-    FState.SetList(scope.Release(list));
-    FState.SetOwnsList(True);
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
 
     Result := Self;
   except
@@ -965,8 +1009,8 @@ begin
     if aOwnsEnum then
       aEnum.Free;
 
-    FState.SetList(scope.Release(list));
-    FState.SetOwnsList(True);
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
 
     Result := Self;
   except
@@ -1097,8 +1141,8 @@ begin
       for var i := lCount to Pred(fState.List.Count) do
         aOnDiscard(fState.List[i]);
 
-    FState.SetList(scope.Release(list));
-    FState.SetOwnsList(true);
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
 
     Result := Self;
   except
@@ -1132,7 +1176,7 @@ begin
 
     if Assigned(aOnDiscard) then
       for var i := lCount to Pred(fState.List.Count) do
-        aOnDiscard(fState.List[I]);
+        aOnDiscard(fState.List[i]);
 
     fState.SetList(scope.Release(list));
     fState.SetOwnsList(true);
@@ -1168,7 +1212,7 @@ begin
         aOnDiscard(fState.List[i]);
 
     for var i := startIdx to Pred(fState.List.Count) do
-      list.Add(fState.List[I]);
+      list.Add(fState.List[i]);
 
     fState.SetList(scope.Release(list));
     fState.SetOwnsList(true);
@@ -1274,7 +1318,7 @@ begin
     list.Capacity := keepCount;
 
     for var i := 0 to Pred(KeepCount) do
-      list.Add(fState.List[I]);
+      list.Add(fState.List[i]);
 
     if Assigned(aOnDiscard) then
       for var i := KeepCount to Pred(fState.List.Count) do
@@ -1459,7 +1503,7 @@ class function Stream.Borrow<T>(const aList: TList<T>): TPipe<T>;
 begin
   Ensure.IsAssigned(aList, 'List is nil');
 
-  Result := TPipe<T>.CreatePipe(aList,false);
+  Result := TPipe<T>.CreatePipe(aList, false);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
