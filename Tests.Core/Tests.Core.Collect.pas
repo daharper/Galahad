@@ -44,12 +44,59 @@ type
     [Test] procedure Test_SkipWhile_Eol;
     [Test] procedure Test_SkipUntil;
     [Test] procedure Test_SkipUntil_Eol;
+    [Test] procedure Test_ToArray;
+    [Test] procedure Test_ToObjectList;
+    [Test] procedure Test_ToObjectDictionary;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_ToObjectDictionary;
+var
+  scope: TScope;
+begin
+  var src: TDictionary<Integer, TObject> := TDictionary<Integer, TObject>.Create;
+  src.Add(1, TObject.Create);
+  src.Add(2, TObject.Create);
+
+  var dst := scope.Owns(TCollect.ToObjectDictionary<Integer, TObject>(src));
+
+  Assert.IsNull(src);
+  Assert.AreEqual(2, dst.Count);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_ToObjectList;
+var
+  scope: TScope;
+begin
+  var src := TList<TObject>.Create;
+
+  src.Add(TObject.Create);
+  src.Add(TObject.Create);
+
+  var dst := scope.Owns(TCollect.ToObjectList<TObject>(src));
+
+  Assert.AreEqual(2, dst.Count);
+  Assert.IsFalse(Assigned(src));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_ToArray;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1, 2, 3, 4]));
+  var arr := TCollect.ToArray<Integer>(TCollect.Skip<Integer>(src, 2));
+
+  Assert.AreEqual(2, Length(arr));
+  Assert.AreEqual(3, arr[0]);
+  Assert.AreEqual(4, arr[1]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_SkipUntil;

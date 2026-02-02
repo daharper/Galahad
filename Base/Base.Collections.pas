@@ -68,12 +68,35 @@ type
   ///
   /// Ownership contract:
   /// - Never mutates the input list.
-  /// - Never frees items
+  /// - Never frees items.
   /// - Any returned list is newly allocated and caller-owned.
-  /// - The Dispose utility function being the single exception
+  /// - The Dispose and ToArray utility functions being the exceptions.
   /// </summary>
   TCollect = class
   public
+    /// <summary>
+    /// Copies list contents to a dynamic array, then frees the list.
+    /// Does NOT free any items (even if T is a class).
+    /// Accepts temporaries, so it can be used at the end of a pipeline.
+    /// </summary>
+    class function ToArray<T>(const aList: TList<T>): TArray<T>; static;
+
+    /// <summary>
+    /// Converts a TList<T> into a TObjectList<T> that owns its items.
+    /// Transfers item references, frees the source list.
+    /// </summary>
+    class function ToObjectList<T: class>(var aList: TList<T>; const aOwnsObjects: Boolean = True): TObjectList<T>; static;
+
+    /// <summary>
+    /// Converts a TDictionary to a TObjectDictionary, transferring entries and consuming the source.
+    /// Frees aDict and sets it to nil. Does not clone keys/values.
+    /// Default ownership: owns values.
+    /// </summary>
+    class function ToObjectDictionary<TKey; TValue: class>(
+      var aDict: TDictionary<TKey, TValue>;
+      const aOwnerships: TDictionaryOwnerships = [doOwnsValues]
+    ): TObjectDictionary<TKey, TValue>; static;
+
     /// <summary>
     /// Disposes a list that owns its items.
     /// Frees each item (if T is a class), then frees the list and sets it to nil.
@@ -334,6 +357,57 @@ begin
 
   aSource.Free;
   aSource := nil;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.ToArray<T>(const aList: TList<T>): TArray<T>;
+var
+  scope: TScope;
+begin
+  scope.Owns(aList);
+
+  if aList = nil then exit(nil);
+
+  Result := aList.ToArray;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.ToObjectList<T>(var aList: TList<T>; const aOwnsObjects: Boolean): TObjectList<T>;
+begin
+  Result := TObjectList<T>.Create(aOwnsObjects);
+
+  if aList = nil then exit;
+
+  try
+    Result.Capacity := aList.Count;
+    Result.AddRange(aList);
+  finally
+    aList.Free;
+    aList := nil;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.ToObjectDictionary<TKey; TValue>(
+  var aDict: TDictionary<TKey, TValue>;
+  const aOwnerships: TDictionaryOwnerships
+): TObjectDictionary<TKey, TValue>;
+var
+  pair: TPair<TKey, TValue>;
+begin
+  Result := TObjectDictionary<TKey, TValue>.Create(aOwnerships);
+
+  if aDict = nil then exit;
+
+  try
+    Result.Capacity := aDict.Count;
+
+    for pair in aDict do
+      Result.Add(pair.Key, pair.Value);
+  finally
+    aDict.Free;
+    aDict := nil;
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
