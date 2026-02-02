@@ -857,6 +857,7 @@ begin
     raise;
   end;
 end;
+
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Reverse: TPipe<T>;
 var
@@ -1288,25 +1289,6 @@ begin
     raise;
   end;
 end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-//function Stream.TPipe<T>.Peek(const aAction: TConstProc<T>): TPipe<T>;
-//begin
-//  try
-//    Ensure.IsAssigned(@aAction, 'Action is nil')
-//          .IsAssigned(fState.List, 'Stream has no buffer');
-//
-//    fState.CheckNotConsumed;
-//
-//    for var i := 0 to Pred(fState.List.Count) do
-//      aAction(fState.List[i]);
-//
-//    Result := Self;
-//  except
-//    fState.Terminate;
-//    raise;
-//  end;
-//end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Peek(const aAction: TConstProc<Integer, T>): TPipe<T>;
