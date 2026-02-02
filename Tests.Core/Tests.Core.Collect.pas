@@ -22,12 +22,207 @@ type
     [Test] procedure Any_ShortCircuitsAndReturnsTrueWhenMatch;
     [Test] procedure All_ShortCircuitsAndReturnsFalseWhenAnyFails;
     [Test] procedure Count_CountsPredicateMatches;
+
+    [Test]
+    [TestCase('Take_Zero_Returns_Empty', '0')]
+    [TestCase('Take_Two_Returns_Two', '2')]
+    [TestCase('Take_Three_Returns_Three', '3')]
+    [TestCase('Take_Ten_Returns_Three', '3')]
+    procedure Take_ReturnsCorrectly(const aCount:integer);
+
+    [Test]
+    [TestCase('Take_Zero_Returns_Empty', '0')]
+    [TestCase('Take_Two_Returns_Two', '2')]
+    [TestCase('Take_Three_Returns_Three', '3')]
+    [TestCase('Take_Ten_Returns_Three', '3')]
+    procedure Skip_ReturnsCorrectly(const aCount:integer);
+
+    [Test] procedure Test_TakeWhile;
+    [Test] procedure Test_TakeUntil;
+    [Test] procedure Test_Dispose;
+    [Test] procedure Test_SkipWhile;
+    [Test] procedure Test_SkipWhile_Eol;
+    [Test] procedure Test_SkipUntil;
+    [Test] procedure Test_SkipUntil_Eol;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SkipUntil;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,3,5,6,7]);
+
+  var dst := scope.Owns(
+    TCollect.SkipUntil<Integer>(
+      src,
+      function(const n: Integer): Boolean
+      begin
+        Result := (n mod 2) = 0;
+      end
+    )
+  );
+
+  Assert.AreEqual(2, dst.Count);
+  Assert.AreEqual(6, dst[0]);
+  Assert.AreEqual(7, dst[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SkipUntil_Eol;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,3,5,6,7]);
+
+  var dst := scope.Owns(
+    TCollect.SkipUntil<Integer>(
+      src,
+      function(const n: Integer): Boolean
+      begin
+        Result := n = 8;
+      end
+    )
+  );
+
+  Assert.AreEqual(0, dst.Count);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SkipWhile;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,3,4,5]);
+
+  var dst := scope.Owns(
+    TCollect.SkipWhile<Integer>(
+      src,
+      function(const n: Integer): Boolean
+      begin
+        Result := Odd(n);
+      end
+    )
+  );
+
+  Assert.AreEqual(2, dst.Count);
+  Assert.AreEqual(4, dst[0]);
+  Assert.AreEqual(5, dst[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SkipWhile_Eol;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,3,4,5]);
+
+  var dst := scope.Owns(
+    TCollect.SkipWhile<Integer>(
+      src,
+      function(const n: Integer): Boolean
+      begin
+        Result := n <> 6;
+      end
+    )
+  );
+
+  Assert.AreEqual(0, dst.Count);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Skip_ReturnsCorrectly(const aCount:integer);
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,2,3]);
+
+  var dst := scope.Owns(TCollect.Skip<Integer>(src, aCount));
+  var n := src.Count - aCount;
+
+  if n < 0 then n := 0;
+
+  Assert.IsNotNull(dst);
+  Assert.AreEqual(n, dst.Count);
+
+  for var i := aCount to Pred(aCount) do
+    Assert.AreEqual(src[i], dst[i]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Dispose;
+begin
+  var list := TList<TList<Integer>>.Create;
+
+  list.Add(TList<Integer>.Create);
+  list.Add(TList<Integer>.Create);
+
+  TCollect.Dispose<TList<Integer>>(list);
+
+  Assert.IsNull(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Take_ReturnsCorrectly(const aCount:integer);
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+
+  src.AddRange([1,2,3]);
+
+  var dst := scope.Owns(TCollect.Take<Integer>(src, aCount));
+
+  Assert.IsNotNull(dst);
+  Assert.AreEqual(aCount, dst.Count);
+
+  for var i := 0 to Pred(aCount) do
+    Assert.AreEqual(src[i], dst[i]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_TakeWhile;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+
+  src.AddRange([1,2,3]);
+
+  var dst := scope.Owns(TCollect.TakeWhile<Integer>(src, function(const n:TInt):Boolean begin Result := Odd(n); end));
+
+  Assert.AreEqual(2, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(3, dst[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_TakeUntil;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+
+  src.AddRange([1,3,5,6,7]);
+
+  var dst := scope.Owns(TCollect.TakeUntil<TInt>(src, function(const n: TInt): Boolean begin Result := (n mod 2) = 0; end));
+
+  Assert.AreEqual(3, dst.Count);
+
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(3, dst[1]);
+  Assert.AreEqual(5, dst[2]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Filter_PreservesOrder_AndDoesNotMutateSource;

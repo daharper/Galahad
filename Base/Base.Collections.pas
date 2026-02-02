@@ -68,11 +68,60 @@ type
   ///
   /// Ownership contract:
   /// - Never mutates the input list.
-  /// - Never frees items.
+  /// - Never frees items
   /// - Any returned list is newly allocated and caller-owned.
+  /// - The Dispose utility function being the single exception
   /// </summary>
   TCollect = class
   public
+    /// <summary>
+    /// Disposes a list that owns its items.
+    /// Frees each item (if T is a class), then frees the list and sets it to nil.
+    /// </summary>
+    class procedure Dispose<T: class>(var aSource: TList<T>); static;
+
+    /// <summary>
+    /// Returns a new list containing the first aCount items from Source (or fewer if Source is shorter).
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function Take<T>(const aSource: TList<T>; const aCount: Integer): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source while Predicate(Item) is True.
+    /// Stops at the first False (short-circuit).
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function TakeWhile<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source until Predicate(Item) becomes True.
+    /// The first item that satisfies Predicate is NOT included.
+    /// Stops at the first True (short-circuit).
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function TakeUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source after skipping the first aCount items.
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function Skip<T>(const aSource: TList<T>; const aCount: Integer): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source after skipping leading items
+    /// while Predicate(Item) is True. Once Predicate is False, remaining items are included.
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function SkipWhile<T>(const aSource: TList<T>;const aPredicate: TConstPredicate<T>): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source starting at the first item
+    /// for which Predicate(Item) is True (that item IS included), plus all remaining items.
+    /// If no item satisfies Predicate, returns empty list.
+    /// Stable order. Never mutates Source.
+    /// </summary>
+    class function SkipUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
+
     /// <summary>
     /// Returns a new list containing items from Source that satisfy Predicate.
     /// Order is preserved (stable w.r.t. the source order).
@@ -172,7 +221,8 @@ var
   i: Integer;
   lItem: T;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
 
   Result := TList<T>.Create;
 
@@ -199,7 +249,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aMapper, 'Mapper is nil');
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aMapper, 'Mapper is nil');
 
   Result := TList<U>.Create;
 
@@ -224,7 +275,8 @@ var
   i: Integer;
   lAcc: TAcc;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aReducer, 'Mapper is nil');
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aReducer, 'Mapper is nil');
 
   lAcc := aSeed;
 
@@ -266,9 +318,157 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Sort<T>(const aSource: TList<T>; const aComparison: TComparison<T>): TList<T>;
 begin
-  Ensure.IsAssigned(@aComparison, 'Comparison is nil');
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aComparison, 'Comparison is nil');
 
   Result := Sort<T>(aSource, TComparer<T>.Construct(aComparison));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TCollect.Dispose<T>(var aSource: TList<T>);
+begin
+  if aSource = nil then exit;
+
+  for var item in aSource do
+    item.Free;
+
+  aSource.Free;
+  aSource := nil;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Take<T>(const aSource: TList<T>; const aCount: Integer): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsTrue(aCount >= 0, 'Count must be >= 0');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  var n := if aCount > aSource.Count then aSource.Count else aCount;
+
+  list.Capacity := n;
+
+  for var i := 0 to Pred(n) do
+    list.Add(aSource[i]);
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.TakeWhile<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  for var item in aSource do
+    if aPredicate(item) then
+      list.Add(item);
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.TakeUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  for var item in aSource do
+  begin
+    if aPredicate(item) then break;
+    list.Add(item);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Skip<T>(const aSource: TList<T>; const aCount: Integer): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsTrue(aCount >= 0, 'Count must be >= 0');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  if aCount < aSource.Count then
+  begin
+    list.Capacity := aSource.Count - aCount;
+
+    for var i := aCount to Pred(aSource.Count) do
+      list.Add(aSource[i]);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.SkipWhile<T>(const aSource: TList<T>;const aPredicate: TConstPredicate<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  var list := scope.Owns(TList<T>.Create);
+  var startIdx := 0;
+
+  for var item in aSource do
+  begin
+    if not aPredicate(item) then break;
+    Inc(startIdx);
+  end;
+
+  if startIdx < aSource.Count then
+  begin
+    list.Capacity := aSource.Count - startIdx;
+
+    for var i := startIdx to Pred(aSource.Count) do
+      list.Add(aSource[i]);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.SkipUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  var startIdx := aSource.Count;
+
+  for var i := 0 to Pred(aSource.Count - 1) do
+    if aPredicate(aSource[i]) then
+    begin
+      startIdx := i;
+      Break;
+    end;
+
+  if startIdx < aSource.Count then
+  begin
+    list.Capacity := aSource.Count - startIdx;
+
+    for var i := startIdx to Pred(aSource.Count) do
+      list.Add(aSource[i]);
+  end;
+
+  Result := scope.Release(list);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
