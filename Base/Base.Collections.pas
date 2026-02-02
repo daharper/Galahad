@@ -72,7 +72,7 @@ type
   /// - Any returned list is newly allocated and caller-owned.
   /// - The Dispose and ToArray utility functions being the exceptions.
   /// </summary>
-  TCollect = class
+  TCollect = class sealed
   public
     /// <summary>
     /// Copies list contents to a dynamic array, then frees the list.
@@ -125,6 +125,12 @@ type
     class function TakeUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
 
     /// <summary>
+    /// Returns a new list containing the last aCount items from Source (or fewer if Source is shorter).
+    /// Order is preserved (stable).
+    /// </summary>
+    class function TakeLast<T>(const aSource: TList<T>; const aCount: Integer): TList<T>; static;
+
+    /// <summary>
     /// Returns a new list containing items from Source after skipping the first aCount items.
     /// Stable order. Never mutates Source.
     /// </summary>
@@ -146,10 +152,45 @@ type
     class function SkipUntil<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
 
     /// <summary>
+    /// Returns a new list containing items from Source except the last aCount items.
+    /// Order is preserved (stable).
+    /// </summary>
+    class function SkipLast<T>(const aSource: TList<T>; const aCount: Integer): TList<T>; static;
+
+    /// <summary>
     /// Returns a new list containing items from Source that satisfy Predicate.
     /// Order is preserved (stable w.r.t. the source order).
     /// </summary>
     class function Filter<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing the distinct items from Source (stable, keeps first occurrence).
+    /// If aComparer is nil, the default equality comparer for T is used.
+    /// </summary>
+    class function Distinct<T>(const aSource: TList<T>; const aComparer: IEqualityComparer<T> = nil): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Source, keeping only the first item for each distinct key.
+    /// Order is preserved (stable).
+    /// If aComparer is nil, the default equality comparer for TKey is used.
+    /// </summary>
+    class function DistinctBy<T, TKey>(
+      const aSource: TList<T>;
+      const aKeySelector: TConstFunc<T, TKey>;
+      const aComparer: IEqualityComparer<TKey> = nil
+    ): TList<T>; static;
+
+    /// <summary>
+    /// Groups items by key. Returns a new dictionary mapping each key to a new list of items.
+    /// Order within each group is preserved (stable w.r.t. Source order).
+    /// If aComparer is nil, the default equality comparer for TKey is used.
+    /// Caller owns the dictionary and all lists stored as values.
+    /// </summary>
+    class function GroupBy<T, TKey>(
+      const aSource: TList<T>;
+      const aKeySelector: TConstFunc<T, TKey>;
+      const aComparer: IEqualityComparer<TKey> = nil
+    ): TDictionary<TKey, TList<T>>; static;
 
     /// <summary>
     /// Returns a new list containing Mapper(Source[i]) for all i in source order.
@@ -267,6 +308,107 @@ begin
       TError.Throw(e);
     end;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Distinct<T>(const aSource: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil');
+
+  var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<T>.Default;
+
+  var list := scope.Owns(TList<T>.Create);
+  var seen := scope.Owns(TDictionary<T, Byte>.Create(cmp));
+
+  list.Capacity := aSource.Count;
+
+  for var item in aSource do
+  begin
+    if not seen.ContainsKey(item) then
+    begin
+      seen.Add(item, 0);
+      list.Add(item);
+    end;
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.DistinctBy<T, TKey>(
+  const aSource: TList<T>;
+  const aKeySelector: TConstFunc<T, TKey>;
+  const aComparer: IEqualityComparer<TKey>
+): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aKeySelector, 'KeySelector is nil');
+
+  var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<TKey>.Default;
+
+  var list := scope.Owns(TList<T>.Create);
+  var seen := scope.Owns(TDictionary<TKey, Byte>.Create(cmp));
+
+  list.Capacity := aSource.Count;
+
+  for var item in aSource do
+  begin
+    var key := aKeySelector(item);
+
+    if not seen.ContainsKey(key) then
+    begin
+      seen.Add(key, 0);
+      list.Add(item);
+    end;
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.GroupBy<T, TKey>(
+  const aSource: TList<T>;
+  const aKeySelector: TConstFunc<T, TKey>;
+  const aComparer: IEqualityComparer<TKey>
+): TDictionary<TKey, TList<T>>;
+var
+  group: TList<T>;
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aKeySelector, 'KeySelector is nil');
+
+  var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<TKey>.Default;
+  var map := scope.Owns(TDictionary<TKey, TList<T>>.Create(cmp));
+
+  try
+    for var item in aSource do
+    begin
+      var key := aKeySelector(item);
+
+      if not map.TryGetValue(key, group) then
+      begin
+        group := TList<T>.Create;
+        map.Add(key, group);
+      end;
+
+      group.Add(item);
+    end;
+  except
+    on E:Exception do
+    begin
+      for var pair in map do
+        pair.Value.Free;
+
+      TError.Throw(E);
+    end;
+  end;
+
+  Result := scope.Release(map);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -467,6 +609,34 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.TakeLast<T>(const aSource: TList<T>; const aCount: Integer): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsTrue(aCount >= 0, 'Count must be >= 0');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  if aCount >= aSource.Count then
+  begin
+    list.Capacity := aSource.Count;
+    list.AddRange(aSource);
+  end
+  else
+  begin
+    list.Capacity := aCount;
+
+    var startIdx := aSource.Count - aCount;
+
+    for var i := startIdx to Pred(aSource.Count) do
+      list.Add(aSource[i]);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Skip<T>(const aSource: TList<T>; const aCount: Integer): TList<T>;
 var
   scope: TScope;
@@ -539,6 +709,34 @@ begin
     list.Capacity := aSource.Count - startIdx;
 
     for var i := startIdx to Pred(aSource.Count) do
+      list.Add(aSource[i]);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.SkipLast<T>(const aSource: TList<T>; const aCount: Integer): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+         .IsTrue(aCount >= 0, 'Count must be >= 0');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  var takeCount := aSource.Count - aCount;
+
+  if aCount = 0 then
+  begin
+    list.Capacity := aSource.Count;
+    list.AddRange(aSource);
+  end
+  else if takeCount >0 then
+  begin
+    list.Capacity := takeCount;
+
+    for var i := 0 to takeCount - 1 do
       list.Add(aSource[i]);
   end;
 

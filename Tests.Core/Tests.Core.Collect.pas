@@ -11,6 +11,8 @@ uses
   Base.Collections;
 
 type
+  TTestPair = TPair<Integer, Integer>;
+
   [TestFixture]
   TCollectFixture = class
   public
@@ -47,12 +49,116 @@ type
     [Test] procedure Test_ToArray;
     [Test] procedure Test_ToObjectList;
     [Test] procedure Test_ToObjectDictionary;
+    [Test] procedure Test_TakeLast;
+    [Test] procedure Test_SkipLast;
+    [Test] procedure Test_Distinct;
+    [Test] procedure Test_DistinctBy;
+    [Test] procedure Test_GroupBy;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_GroupBy;
+var
+  scope: TScope;
+  g1, g2: TList<TTestPair>;
+  p: TPair<Integer, Integer>;
+begin
+  var src := scope.Owns(TList<TTestPair>.Create);
+
+  p.Key := 1; p.Value := 10; src.Add(p);
+  p.Key := 2; p.Value := 20; src.Add(p);
+  p.Key := 1; p.Value := 11; src.Add(p);
+
+  var groups := TCollect.GroupBy<TTestPair, Integer>(
+    src,
+    function(const x: TTestPair): Integer begin Result := x.Key; end);
+
+  scope.Owns(groups);
+  scope.Defer(procedure begin for var g in groups do g.Value.Free; end);
+
+  Assert.AreEqual(2, groups.Count);
+
+  Assert.IsTrue(groups.TryGetValue(1, g1));
+  Assert.AreEqual(2, g1.Count);
+  Assert.AreEqual(10, g1[0].Value);
+  Assert.AreEqual(11, g1[1].Value);
+
+  Assert.IsTrue(groups.TryGetValue(2, g2));
+  Assert.AreEqual(1, g2.Count);
+  Assert.AreEqual(20, g2[0].Value);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_DistinctBy;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<TTestPair>.Create);
+
+  src.Add(TTestPair.Create(1, 10));
+  src.Add(TTestPair.Create(2, 20));
+  src.Add(TTestPair.Create(1, 99));
+  src.Add(TTestPair.Create(3, 30));
+
+  var dst := TCollect.DistinctBy<TTestPair, Integer>(
+      src,
+      function(const p: TTestPair): Integer begin Result := p.Key; end);
+
+  scope.Owns(dst);
+
+  Assert.AreEqual(3, dst.Count);
+  Assert.AreEqual(1, dst[0].Key);
+  Assert.AreEqual(10, dst[0].Value);
+  Assert.AreEqual(2, dst[1].Key);
+  Assert.AreEqual(3, dst[2].Key);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Distinct;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,2,3,1,4]));
+  var dst := scope.Owns(TCollect.Distinct<Integer>(src));
+
+  Assert.AreEqual(4, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(2, dst[1]);
+  Assert.AreEqual(3, dst[2]);
+  Assert.AreEqual(4, dst[3]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SkipLast;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+  var dst := scope.Owns(TCollect.SkipLast<Integer>(src, 2));
+
+  Assert.AreEqual(3, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(2, dst[1]);
+  Assert.AreEqual(3, dst[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_TakeLast;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+  var dst := scope.Owns(TCollect.TakeLast<Integer>(src, 2));
+
+  Assert.AreEqual(2, dst.Count);
+  Assert.AreEqual(4, dst[0]);
+  Assert.AreEqual(5, dst[1]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_ToObjectDictionary;
