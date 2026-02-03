@@ -21,7 +21,7 @@ The Holy Grail, in this sense, is maintainable code.
 
 **Project Galahad** aims to be a minimal and opinionated set of types ordered to clean code.
 
-The goal is to augment, not compete with, existing frameworks.
+The goal is to augment, not compete with, existing frameworks. The project is exploratory in nature.
 
 For a more complete and powerful framework, see the battle-hardened *Spring4D*.
 
