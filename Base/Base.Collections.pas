@@ -309,6 +309,13 @@ type
     class function LastOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T; static;
 
     /// <summary>
+    /// Returns exactly one matching item.
+    /// Ok(value) if exactly one match.
+    /// Err if none match or more than one match.
+    /// </summary>
+    class function Single<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TResult<T>; static;
+
+    /// <summary>
     /// Returns a new list that is a sorted copy of Source using the default comparer.
     /// </summary>
     class function Sort<T>(const aSource: TList<T>): TList<T>; overload; static;
@@ -781,6 +788,43 @@ end;
 class function TCollect.LastOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T;
 begin
   Result := LastOr<T>(aSource, aPredicate, Default(T));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Single<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TResult<T>;
+var
+  found: Boolean;
+  singleValue: T;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  found := false;
+  singleValue := default(T);
+
+  for var item in aSource do
+  begin
+    if not aPredicate(item) then Continue;
+
+    if not found then
+    begin
+      singleValue := item;
+      found := True;
+    end
+    else
+    begin
+      Result.SetErr('More than one result');
+      exit;
+    end;
+  end;
+
+  if found then
+  begin
+    Result.SetOk(singleValue);
+    exit;
+  end;
+
+  Result.SetErr('No result found');
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

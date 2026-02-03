@@ -64,12 +64,26 @@ type
     [Test] procedure Test_LastOr;
     [Test] procedure Test_LastOrDefault;
     [Test] procedure Test_First_Maybe;
+    [Test] procedure Test_Single_Result;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Single_Result;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3]));
+
+  var r := TCollect.Single<Integer>(src, function(const n: TInt): Boolean begin Result := (n = 2); end);
+
+  Assert.IsTrue(r.IsOk);
+  Assert.AreEqual(2, r.Value);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_First_Maybe;
