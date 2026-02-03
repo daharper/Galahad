@@ -23,6 +23,28 @@ The Holy Grail, in this sense, is maintainable code.
 
 The goal is to augment, not compete with, existing frameworks. The project is exploratory in nature.
 
+For example, the TScope type:
+
+```pascal
+// Instead of nested try..finally blocks:
+var scope: TScope;
+begin
+  // Automatically freed when the procedure ends
+  var List := scope.Owns(TStringList.Create); 
+  var Map  := scope.Owns(TDictionary<string, string>.Create);
+  
+  // Optional custom cleanup (Go-style defer)
+  scope.Defer(procedure begin 
+    Writeln('Cleaning up extra resources...'); 
+  end);
+  
+  List.Add('Galahad makes this easy.');
+
+  // if there is an exception, List is cleaned up, otherwise we want to return it.
+  Result := scope.Release(List);
+end; 
+```
+
 For a more complete and powerful framework, see the battle-hardened *Spring4D*.
 
 For more information, please see the [Project Hub](https://www.beyondvelocity.com/).
