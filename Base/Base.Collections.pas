@@ -68,6 +68,16 @@ type
     FalseList: TList<T>;
   end;
 
+  TSplit<T> = record
+    Left: TList<T>;
+    Right: TList<T>;
+  end;
+
+  TSpan<T> = record
+    Prefix: TList<T>;
+    Remainder: TList<T>;
+  end;
+
   /// <summary>
   /// Stateless collection algorithms.
   ///
@@ -202,10 +212,23 @@ type
     /// Items satisfying Predicate go to TrueList; others go to FalseList.
     /// Stable order. Never mutates Source. Caller owns both lists.
     /// </summary>
-    class function Partition<T>(
-      const aSource: TList<T>;
-      const aPredicate: TConstPredicate<T>
-    ): TPartition<T>; static;
+    class function Partition<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TPartition<T>; static;
+
+    /// <summary>
+    /// Splits Source into two new lists at the specified index.
+    /// Left contains the first aIndex items; Right contains the remaining items.
+    /// Order is preserved (stable w.r.t. Source order).
+    /// Never mutates Source. Caller owns both lists.
+    /// </summary>
+    class function SplitAt<T>(const aSource: TList<T>; const aIndex: Integer): TSplit<T>; static;
+
+    /// <summary>
+    /// Splits Source into a prefix that satisfies Predicate and the remaining items.
+    /// The prefix is the longest leading run where Predicate(item) is True.
+    /// Order is preserved (stable w.r.t. Source order).
+    /// Never mutates Source. Caller owns both lists.
+    /// </summary>
+    class function Span<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TSpan<T>; static;
 
     /// <summary>
     /// Returns a new list containing Mapper(Source[i]) for all i in source order.
@@ -453,6 +476,81 @@ begin
       Result.FalseList.Free;
       Result.TrueList := nil;
       Result.FalseList := nil;
+      TError.Throw(E);
+    end;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.SplitAt<T>(const aSource: TList<T>; const aIndex: Integer): TSplit<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsTrue(aIndex >= 0, 'Index must be >= 0');
+
+  Result.Left := TList<T>.Create;
+  Result.Right := TList<T>.Create;
+
+  try
+    var cut := if aIndex >= aSource.Count then aSource.Count else aIndex;
+
+    Result.Left.Capacity := cut;
+    Result.Right.Capacity := aSource.Count - cut;
+
+    for var i := 0 to Pred(cut) do
+      Result.Left.Add(aSource[i]);
+
+    for var i := cut to Pred(aSource.Count) do
+      Result.Right.Add(aSource[i]);
+  except
+    on E:Exception do
+    begin
+      Result.Left.Free;
+      Result.Right.Free;
+      Result.Left := nil;
+      Result.Right := nil;
+
+      TError.Throw(E);
+    end;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Span<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TSpan<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  try
+    var cut := 0;
+
+    for var i := 0 to Pred(aSource.Count) do
+    begin
+      if aPredicate(aSource[i]) then
+        Inc(cut)
+      else
+        Break;
+    end;
+
+    Result.Prefix := TList<T>.Create;
+    Result.Remainder := TList<T>.Create;
+
+    Result.Prefix.Capacity := cut;
+    Result.Remainder.Capacity := aSource.Count - cut;
+
+    for var i := 0 to Pred(cut) do
+      Result.Prefix.Add(aSource[i]);
+
+    for var i := cut to Pred(aSource.Count) do
+    Result.Remainder.Add(aSource[i]);
+
+  except
+    on E:Exception do
+    begin
+      Result.Prefix.Free;
+      Result.Remainder.Free;
+      Result.Prefix := nil;
+      Result.Remainder := nil;
+
       TError.Throw(E);
     end;
   end;

@@ -55,12 +55,59 @@ type
     [Test] procedure Test_DistinctBy;
     [Test] procedure Test_GroupBy;
     [Test] procedure Test_Partition;
+    [Test] procedure Test_SplitAt;
+    [Test] procedure Test_Span;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Span;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,3,4,5,7]));
+
+  var parts := TCollect.Span<Integer>(src, function(const n: Integer): Boolean begin Result := Odd(n); end);
+
+  scope.Owns(parts.Prefix);
+  scope.Owns(parts.Remainder);
+
+  Assert.AreEqual(2, parts.Prefix.Count);
+  Assert.AreEqual(1, parts.Prefix[0]);
+  Assert.AreEqual(3, parts.Prefix[1]);
+
+  Assert.AreEqual(3, parts.Remainder.Count);
+  Assert.AreEqual(4, parts.Remainder[0]);
+  Assert.AreEqual(5, parts.Remainder[1]);
+  Assert.AreEqual(7, parts.Remainder[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_SplitAt;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create);
+  src.AddRange([1,2,3,4,5]);
+
+  var parts := TCollect.SplitAt<Integer>(src, 2);
+
+  scope.Owns(parts.Left);
+  scope.Owns(parts.Right);
+
+  Assert.AreEqual(2, parts.Left.Count);
+  Assert.AreEqual(1, parts.Left[0]);
+  Assert.AreEqual(2, parts.Left[1]);
+
+  Assert.AreEqual(3, parts.Right.Count);
+  Assert.AreEqual(3, parts.Right[0]);
+  Assert.AreEqual(4, parts.Right[1]);
+  Assert.AreEqual(5, parts.Right[2]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_Partition;
