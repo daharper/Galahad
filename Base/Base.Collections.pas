@@ -6,7 +6,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Base.Core;
+  Base.Core,
+  Base.Integrity;
 
 type
   /// <summary>
@@ -272,6 +273,18 @@ type
     class function Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>; static;
 
     /// <summary>
+    /// Returns the first item in Source that satisfies Predicate, wrapped in Maybe.
+    /// If no item matches, returns None.
+    /// </summary>
+    class function First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>; static;
+
+    /// <summary>
+    /// Returns the last item in Source that satisfies Predicate, wrapped in Maybe.
+    /// If no item matches, returns None.
+    /// </summary>
+    class function Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>; static;
+
+    /// <summary>
     /// Returns the first item in Source that satisfies Predicate.
     /// If no item matches, returns Fallback.
     /// </summary>
@@ -328,9 +341,6 @@ type
   end;
 
 implementation
-
-uses
-  Base.Integrity;
 
 { TCollect }
 
@@ -701,6 +711,38 @@ begin
       TError.Throw(e);
     end;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  for var item in aSource do
+    if aPredicate(item) then
+    begin
+      Result.SetSome(item);
+      exit;
+    end;
+
+  Result.SetNone;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  for var i := aSource.Count - 1 downto 0 do
+    if aPredicate(aSource[i]) then
+    begin
+      Result.SetSome(aSource[i]);
+      exit;
+    end;
+
+  Result.SetNone;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
