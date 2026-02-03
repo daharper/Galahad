@@ -65,12 +65,49 @@ type
     [Test] procedure Test_LastOrDefault;
     [Test] procedure Test_First_Maybe;
     [Test] procedure Test_Single_Result;
+    [Test] procedure Test_Concat;
+    [Test] procedure Test_Union;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Union;
+var
+  scope: TScope;
+begin
+  var left  := scope.Owns(TList<Integer>.Create([1,2,3]));
+  var right := scope.Owns(TList<Integer>.Create([3,4,5]));
+
+  var dst   := scope.Owns(TCollect.Union<Integer>(left, right));
+
+  Assert.AreEqual(5, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(2, dst[1]);
+  Assert.AreEqual(3, dst[2]);
+  Assert.AreEqual(4, dst[3]);
+  Assert.AreEqual(5, dst[4]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Concat;
+var
+  scope: TScope;
+begin
+  var left  := scope.Owns(TList<Integer>.Create([1,2]));
+  var right := scope.Owns(TList<Integer>.Create([3,4]));
+
+  var dst := scope.Owns(TCollect.Concat<Integer>(left, right));
+
+  Assert.AreEqual(4, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(2, dst[1]);
+  Assert.AreEqual(3, dst[2]);
+  Assert.AreEqual(4, dst[3]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_Single_Result;

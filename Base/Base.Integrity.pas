@@ -193,7 +193,7 @@ type
 
   /// <summary>
   ///  Centralized error handling, used for notifying subscribers of exceptions,
-  ///  and for raising exceptions.
+  ///  and for raising exceptions via guards.
   /// </summary>
   /// <remarks>
   ///  Access this class via the Ensure functions, or the TError function.
@@ -203,15 +203,14 @@ type
     fOnError: TMulticast<Exception>;
 
     class var fInstance: TErrorCentral;
+
+    procedure Throw<T: Exception>(const Msg: string); overload;
+    procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
+    procedure Throw(const [ref] aException: Exception); overload;
   public
     { subscribe for error notifications via OnError.Subscribe }
     property OnError:TMulticast<Exception> read fOnError write fOnError;
 
-    procedure Throw<T: Exception>(const Msg: string); overload;
-    procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
-
-    { for custom behavior modify these two methods }
-    procedure Throw(const [ref] aException: Exception); overload;
     procedure Notify(const [ref] aException: Exception);
 
     constructor Create;
@@ -1121,7 +1120,9 @@ begin
     try
       var item := fItems[i];
       fItems[i] := nil;
-      item.Free
+
+      if Assigned(item) then
+        item.Free
     except
       on E: Exception do
       begin
@@ -1177,7 +1178,7 @@ begin
 
   // Detach to protect against reentrancy
   var actions := fActions;
-  var actionCount := fActionCount;
+  var actionCount := if actions = nil then 0 else fActionCount;
   fActions := nil;
   fActionCount := 0;
 

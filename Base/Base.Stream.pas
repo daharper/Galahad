@@ -501,8 +501,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure Stream.TPipe<T>.TState.CheckDisposable(const aOnDiscard: TConstProc<T>);
 begin
-  if (Assigned(aOnDiscard)) and (not fOwnsList) then
-    TError.Throw(EArgumentException.Create('Use Stream.From(list) or omit OnDiscard.'));
+  Ensure.IsFalse(Assigned(aOnDiscard) and (not fOwnsList), 'Use Stream.From(list) or omit OnDiscard.');
 end;
 
 { Stream.TPipe<T> }

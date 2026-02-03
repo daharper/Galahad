@@ -273,6 +273,20 @@ type
     class function Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>; static;
 
     /// <summary>
+    /// Returns a new list containing all items from Left followed by all items from Right.
+    /// Order is preserved (stable).
+    /// Nil inputs are treated as empty.
+    /// </summary>
+    class function Concat<T>(const aLeft, aRight: TList<T>): TList<T>; static;
+
+    /// <summary>
+    /// Returns the union of Left and Right, preserving the order of first occurrence.
+    /// Items from Left appear first, followed by items from Right that were not already present.
+    /// If aComparer is nil, the default equality comparer for T is used.
+    /// </summary>
+    class function Union<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T> = nil): TList<T>; static;
+
+    /// <summary>
     /// Returns the first item in Source that satisfies Predicate, wrapped in Maybe.
     /// If no item matches, returns None.
     /// </summary>
@@ -396,32 +410,24 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Filter<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TList<T>;
 var
-  i: Integer;
-  lItem: T;
+  scope: TScope;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil')
         .IsAssigned(@aPredicate, 'Predicate is nil');
 
-  Result := TList<T>.Create;
+  var list := scope.Owns(TList<T>.Create);
 
-  try
-    Result.Capacity := aSource.Count;
+  list.Capacity := aSource.Count;
 
-    for i := 0 to Pred(aSource.Count) do
-    begin
-      lItem := aSource[i];
+  for var i := 0 to Pred(aSource.Count) do
+  begin
+    var lItem := aSource[i];
 
-      if aPredicate(lItem) then
-        Result.Add(lItem);
-    end;
-
-  except
-    on e: Exception do
-    begin
-      Result.Free;
-      TError.Throw(e);
-    end;
+    if aPredicate(lItem) then
+      list.Add(lItem);
   end;
+
+  Result := scope.Release(list);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -513,13 +519,10 @@ begin
       group.Add(item);
     end;
   except
-    on E:Exception do
-    begin
-      for var pair in map do
-        pair.Value.Free;
+    for var pair in map do
+      pair.Value.Free;
 
-      TError.Throw(E);
-    end;
+    raise;
   end;
 
   Result := scope.Release(map);
@@ -552,7 +555,7 @@ begin
       Result.FalseList.Free;
       Result.TrueList := nil;
       Result.FalseList := nil;
-      TError.Throw(E);
+      raise;
     end;
   end;
 end;
@@ -584,8 +587,7 @@ begin
       Result.Right.Free;
       Result.Left := nil;
       Result.Right := nil;
-
-      TError.Throw(E);
+      raise;
     end;
   end;
 end;
@@ -626,8 +628,7 @@ begin
       Result.Remainder.Free;
       Result.Prefix := nil;
       Result.Remainder := nil;
-
-      TError.Throw(E);
+      raise;
     end;
   end;
 end;
@@ -639,27 +640,21 @@ var
 begin
   Ensure.IsAssigned(aSource, 'Source is nil');
 
-  var list := scope.Owns(TList<T>.Create);
+  var list  := scope.Owns(TList<T>.Create);
+  var total := 0;
 
-  try
-    var total := 0;
+  for var inner in aSource do
+    if inner <> nil then
+      Inc(total, inner.Count);
 
-    for var inner in aSource do
-      if inner <> nil then
-        Inc(total, inner.Count);
+  list.Capacity := total;
 
-    list.Capacity := total;
+  for var inner in aSource do
+  begin
+    if inner = nil then Continue;
 
-    for var inner in aSource do
-    begin
-      if inner = nil then Continue;
-
-      for var i := 0 to Pred(inner.Count) do
-        list.Add(inner[i]);
-    end;
-  except
-    on E:Exception do
-      TError.Throw(E);
+    for var i := 0 to Pred(inner.Count) do
+      list.Add(inner[i]);
   end;
 
   Result := scope.Release(list);
@@ -676,13 +671,8 @@ begin
         .IsAssigned(@aMapper, 'Mapper is nil')
         .IsAssigned(aDest, 'Dest is nil');
 
-  try
-    for var item in aSource do
-      aMapper(item, aDest);
-  except
-    on E: Exception do
-      TError.Throw(E);
-  end;
+  for var item in aSource do
+    aMapper(item, aDest);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -699,25 +689,96 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>;
+var
+  scope: TScope;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil')
         .IsAssigned(@aMapper, 'Mapper is nil');
 
-  Result := TList<U>.Create;
+  var list := scope.Owns(TList<U>.Create);
 
+  list.Capacity := aSource.Count;
+
+  for var i := 0 to Pred(aSource.Count) do
+    list.Add(aMapper(aSource[i]));
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Concat<T>(const aLeft, aRight: TList<T>): TList<T>;
+var
+  leftCount, rightCount: Integer;
+begin
+  Result := TList<T>.Create;
   try
-    Result.Capacity := aSource.Count;
+    leftCount := 0;
+    rightCount := 0;
 
-    for var i := 0 to Pred(aSource.Count) do
-      Result.Add(aMapper(aSource[i]));
+    if aLeft <> nil then
+      leftCount := aLeft.Count;
 
+    if aRight <> nil then
+      rightCount := aRight.Count;
+
+    Result.Capacity := leftCount + rightCount;
+
+    if aLeft <> nil then
+      Result.AddRange(aLeft);
+
+    if aRight <> nil then
+      Result.AddRange(aRight);
   except
-    on e: Exception do
+    on E:Exception do
     begin
       Result.Free;
-      TError.Throw(e);
+      raise;
     end;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Union<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<T>.Create);
+
+  var cmp  := if aComparer <> nil then aComparer else TEqualityComparer<T>.Default;
+  var seen := scope.Owns(TDictionary<T, Byte>.Create(cmp));
+
+  var capacity := if aLeft <> nil then aLeft.Count else 0;
+
+  if aRight <> nil then
+    Inc(capacity, aRight.Capacity);
+
+  list.Capacity := capacity;
+
+  if aLeft <> nil then
+  begin
+
+    for var item in aLeft do
+      if not seen.ContainsKey(item) then
+      begin
+        seen.Add(item, 0);
+        list.Add(item);
+      end;
+
+  end;
+
+  if aRight <> nil then
+  begin
+
+    for var item in aRight do
+      if not seen.ContainsKey(item) then
+      begin
+        seen.Add(item, 0);
+        list.Add(item);
+      end;
+
+  end;
+
+  Result := scope.Release(list);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -843,29 +904,24 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Sort<T>(const aSource: TList<T>; const aComparer: IComparer<T>): TList<T>;
+var
+  scope: TScope;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil');
 
-  Result := TList<T>.Create;
+  var list := Scope.Owns(TList<T>.Create);
 
-  try
-    Result.Capacity := aSource.Count;
+  list.Capacity := aSource.Count;
 
-    for var i := 0 to Pred(aSource.Count) do
-      Result.Add(aSource[i]);
+  for var i := 0 to Pred(aSource.Count) do
+    list.Add(aSource[i]);
 
-    if not Assigned(aComparer) then
-      Result.Sort
-    else
-      Result.Sort(aComparer);
+  if not Assigned(aComparer) then
+    list.Sort
+  else
+    list.Sort(aComparer);
 
-  except
-    on e: Exception do
-    begin
-      Result.Free;
-      TError.Throw(e);
-    end;
-  end;
+  Result := scope.Release(list);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
