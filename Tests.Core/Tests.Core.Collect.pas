@@ -54,12 +54,35 @@ type
     [Test] procedure Test_Distinct;
     [Test] procedure Test_DistinctBy;
     [Test] procedure Test_GroupBy;
+    [Test] procedure Test_Partition;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Partition;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+
+  var parts := TCollect.Partition<Integer>(src, function(const n: TInt): Boolean begin Result := Odd(n); end);
+
+  scope.Owns(parts.TrueList);
+  scope.Owns(parts.FalseList);
+
+  Assert.AreEqual(3, parts.TrueList.Count);
+  Assert.AreEqual(1, parts.TrueList[0]);
+  Assert.AreEqual(3, parts.TrueList[1]);
+  Assert.AreEqual(5, parts.TrueList[2]);
+
+  Assert.AreEqual(2, parts.FalseList.Count);
+  Assert.AreEqual(2, parts.FalseList[0]);
+  Assert.AreEqual(4, parts.FalseList[1]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_GroupBy;

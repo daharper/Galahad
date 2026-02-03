@@ -63,6 +63,11 @@ type
     class function StringOrdinal: IEqualityComparer<string>; static;
   end;
 
+  TPartition<T> = record
+    TrueList: TList<T>;
+    FalseList: TList<T>;
+  end;
+
   /// <summary>
   /// Stateless collection algorithms.
   ///
@@ -191,6 +196,16 @@ type
       const aKeySelector: TConstFunc<T, TKey>;
       const aComparer: IEqualityComparer<TKey> = nil
     ): TDictionary<TKey, TList<T>>; static;
+
+    /// <summary>
+    /// Splits Source into two new lists based on Predicate.
+    /// Items satisfying Predicate go to TrueList; others go to FalseList.
+    /// Stable order. Never mutates Source. Caller owns both lists.
+    /// </summary>
+    class function Partition<T>(
+      const aSource: TList<T>;
+      const aPredicate: TConstPredicate<T>
+    ): TPartition<T>; static;
 
     /// <summary>
     /// Returns a new list containing Mapper(Source[i]) for all i in source order.
@@ -409,6 +424,38 @@ begin
   end;
 
   Result := scope.Release(map);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Partition<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TPartition<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  Result.TrueList := TList<T>.Create;
+  Result.FalseList := TList<T>.Create;
+
+  try
+    Result.TrueList.Capacity := aSource.Count;
+    Result.FalseList.Capacity := aSource.Count;
+
+    for var item in aSource do
+    begin
+      if aPredicate(item) then
+        Result.TrueList.Add(item)
+      else
+        Result.FalseList.Add(item);
+    end;
+  except
+    on E:Exception do
+    begin
+      Result.TrueList.Free;
+      Result.FalseList.Free;
+      Result.TrueList := nil;
+      Result.FalseList := nil;
+      TError.Throw(E);
+    end;
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
