@@ -231,10 +231,69 @@ type
     class function Span<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TSpan<T>; static;
 
     /// <summary>
+    /// Flattens a list of lists into a single list by concatenating all inner lists.
+    /// Order is preserved (stable w.r.t. outer and inner list order).
+    /// Nil inner lists are skipped.
+    /// </summary>
+    class function Flatten<T>(const aSource: TList<TList<T>>): TList<T>; static;
+
+    /// <summary>
+    /// Applies Mapper to each item in Source, appending zero or more results
+    /// directly into Dest.
+    /// </summary>
+    /// <remarks>
+    /// Mapper is responsible for adding items to Dest for each source item.
+    /// No intermediate lists are created.
+    /// Order is preserved (stable w.r.t. Source order and append order).
+    /// Never mutates Source. Dest is appended to, not cleared.
+    /// </remarks>
+    class procedure FlatMapInto<T, U>(
+      const aSource: TList<T>;
+      const aMapper: TConstProc<T, TList<U>>;
+      const aDest: TList<U>
+    ); static;
+
+    /// <summary>
+    /// Maps each item in Source to zero or more items and flattens the results
+    /// into a single new list.
+    /// </summary>
+    /// <remarks>
+    /// This is a convenience wrapper over FlatMapInto that allocates
+    /// and returns a new list.
+    /// Order is preserved (stable w.r.t. Source order and append order).
+    /// Never mutates Source. Caller owns the returned list.
+    /// </remarks>
+    class function FlatMap<T, U>(const aSource: TList<T>; const aMapper: TConstProc<T, TList<U>>): TList<U>; static;
+
+    /// <summary>
     /// Returns a new list containing Mapper(Source[i]) for all i in source order.
     /// Order is preserved.
     /// </summary>
     class function Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>; static;
+
+    /// <summary>
+    /// Returns the first item in Source that satisfies Predicate.
+    /// If no item matches, returns Fallback.
+    /// </summary>
+    class function FirstOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T; static;
+
+    /// <summary>
+    /// Returns the first item in Source that satisfies Predicate.
+    /// If no item matches, returns Default(T).
+    /// </summary>
+    class function FirstOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T; static;
+
+    /// <summary>
+    /// Returns the last item in Source that satisfies Predicate.
+    /// If no item matches, returns Fallback.
+    /// </summary>
+    class function LastOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T; static;
+
+    /// <summary>
+    /// Returns the last item in Source that satisfies Predicate.
+    /// If no item matches, returns Default(T).
+    /// </summary>
+    class function LastOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T; static;
 
     /// <summary>
     /// Returns a new list that is a sorted copy of Source using the default comparer.
@@ -557,6 +616,71 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Flatten<T>(const aSource: TList<TList<T>>): TList<T>;
+var
+  scope: TScope;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil');
+
+  var list := scope.Owns(TList<T>.Create);
+
+  try
+    var total := 0;
+
+    for var inner in aSource do
+      if inner <> nil then
+        Inc(total, inner.Count);
+
+    list.Capacity := total;
+
+    for var inner in aSource do
+    begin
+      if inner = nil then Continue;
+
+      for var i := 0 to Pred(inner.Count) do
+        list.Add(inner[i]);
+    end;
+  except
+    on E:Exception do
+      TError.Throw(E);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TCollect.FlatMapInto<T, U>(
+  const aSource: TList<T>;
+  const aMapper: TConstProc<T, TList<U>>;
+  const aDest: TList<U>
+);
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aMapper, 'Mapper is nil')
+        .IsAssigned(aDest, 'Dest is nil');
+
+  try
+    for var item in aSource do
+      aMapper(item, aDest);
+  except
+    on E: Exception do
+      TError.Throw(E);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.FlatMap<T, U>(const aSource: TList<T>; const aMapper: TConstProc<T, TList<U>>): TList<U>;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<U>.Create);
+
+  FlatMapInto<T, U>(aSource, aMapper, list);
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Map<T, U>(const aSource: TList<T>; const aMapper: TConstFunc<T, U>): TList<U>;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil')
@@ -580,17 +704,52 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TCollect.Reduce<TItem, TAcc>(const aSource: TList<TItem>; const aSeed: TAcc; const aReducer: TConstFunc<TAcc, TItem, TAcc>): TAcc;
-var
-  i: Integer;
-  lAcc: TAcc;
+class function TCollect.FirstOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aReducer, 'Mapper is nil');
+        .IsAssigned(@aPredicate, 'Predicate is nil');
 
-  lAcc := aSeed;
+  for var item in aSource do
+    if aPredicate(item) then
+      Exit(item);
 
-  for i := 0 to Pred(aSource.Count) do
+  Result := aFallback;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.FirstOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T;
+begin
+  Result := FirstOr<T>(aSource, aPredicate, Default(T));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.LastOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aPredicate, 'Predicate is nil');
+
+  for var i := aSource.Count - 1 downto 0 do
+    if aPredicate(aSource[i]) then
+      Exit(aSource[i]);
+
+  Result := aFallback;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.LastOrDefault<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): T;
+begin
+  Result := LastOr<T>(aSource, aPredicate, Default(T));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Reduce<TItem, TAcc>(const aSource: TList<TItem>; const aSeed: TAcc; const aReducer: TConstFunc<TAcc, TItem, TAcc>): TAcc;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil')
+        .IsAssigned(@aReducer, 'Reducer is nil');
+
+  var lAcc := aSeed;
+
+  for var i := 0 to Pred(aSource.Count) do
     lAcc := aReducer(lAcc, aSource[i]);
 
   Result := lAcc;
@@ -598,8 +757,6 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Sort<T>(const aSource: TList<T>; const aComparer: IComparer<T>): TList<T>;
-var
-  i: Integer;
 begin
   Ensure.IsAssigned(aSource, 'Source is nil');
 
@@ -608,7 +765,7 @@ begin
   try
     Result.Capacity := aSource.Count;
 
-    for i := 0 to Pred(aSource.Count) do
+    for var i := 0 to Pred(aSource.Count) do
       Result.Add(aSource[i]);
 
     if not Assigned(aComparer) then

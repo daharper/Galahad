@@ -57,12 +57,123 @@ type
     [Test] procedure Test_Partition;
     [Test] procedure Test_SplitAt;
     [Test] procedure Test_Span;
+    [Test] procedure Test_Flatten;
+    [Test] procedure Test_FlatMap;
+    [Test] procedure Test_FirstOr;
+    [Test] procedure Test_FirstOrDefault;
+    [Test] procedure Test_LastOr;
+    [Test] procedure Test_LastOrDefault;
   end;
 
 implementation
 
 uses
   Base.Integrity;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_LastOrDefault;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([2,4,6]));
+
+  var r := TCollect.LastOrDefault<TInt>(src, function(const n: TInt): Boolean begin Result := Odd(n); end);
+
+  Assert.AreEqual(0, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_LastOr;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+
+  var r := TCollect.LastOr<TInt>(src, function(const n: TInt): Boolean begin Result := Odd(n); end, -1);
+
+  Assert.AreEqual(5, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_FirstOrDefault;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([2,4,6]));
+
+  var r := TCollect.FirstOrDefault<TInt>(src, function(const n: TInt): Boolean begin Result := Odd(n); end);
+
+  Assert.AreEqual(0, r);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_FirstOr;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([2,4,6]));
+
+  var result := TCollect.FirstOr<Integer>(
+    src,
+    function(const n: Integer): Boolean begin Result := Odd(n); end,
+    -1);
+
+  Assert.AreEqual(-1, result);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_FlatMap;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3]));
+
+  var dst := scope.Owns(
+    TCollect.FlatMap<Integer, Integer>(
+      src,
+      procedure(const n: Integer; const outList: TList<Integer>)
+      begin
+        outList.Add(n);
+        outList.Add(n * 10);
+      end
+    )
+  );
+
+  Assert.AreEqual(6, dst.Count);
+
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(10, dst[1]);
+
+  Assert.AreEqual(2, dst[2]);
+  Assert.AreEqual(20, dst[3]);
+
+  Assert.AreEqual(3, dst[4]);
+  Assert.AreEqual(30, dst[5]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectFixture.Test_Flatten;
+var
+  scope: TScope;
+begin
+  var a := scope.Owns(TList<Integer>.Create([1,2]));
+  var b := scope.Owns(TList<Integer>.Create([3]));
+  var c := scope.Owns(TList<Integer>.Create);
+
+  var src := scope.Owns(TList<TList<Integer>>.Create);
+
+  src.Add(a);
+  src.Add(b);
+  src.Add(nil);
+  src.Add(c);
+
+  var dst := scope.Owns(TCollect.Flatten<Integer>(src));
+
+  Assert.AreEqual(3, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(2, dst[1]);
+  Assert.AreEqual(3, dst[2]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectFixture.Test_Span;

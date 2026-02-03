@@ -1027,6 +1027,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TScope.Owns<T>(aObj: T): T;
 begin
+  if aObj = nil then exit(nil);
+
   for var i := 0 to Pred(fCount) do
     if fItems[i] = TObject(aObj) then exit(aObj);
 
