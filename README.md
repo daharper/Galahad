@@ -21,9 +21,7 @@ The name **Galahad** was chosen after King Arthur's knight, pure and of great in
 
 The Holy Grail, in this sense, is maintainable code. 
 
-**Project Galahad** aims to be a minimal and opinionated set of types ordered to clean code.
-
-The goal is to augment, not compete with, existing frameworks.
+**Project Galahad** aims to be a minimal and opinionated set of types ordered to clean code. 
 
 For example, the TScope type:
 
@@ -47,8 +45,12 @@ begin
 end; 
 ```
 
-This project is exploratory in nature.
+This project is experimental and exploratory in nature.
 
-For a more complete and powerful framework, see the battle-hardened *Spring4D*.
+It targets desktop and mobile applications requiring a SQLite database, with basic database requirements. 
+
+For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
+
+For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
 
 For more information, please see the [Project Hub](https://www.beyondvelocity.com/).
