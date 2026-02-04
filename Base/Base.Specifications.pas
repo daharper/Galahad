@@ -351,7 +351,6 @@ begin
   Ensure.IsAssigned(aSpecClass, 'SpecClass is nil')
         .IsAssigned(aAdapter, 'Adapter is nil');
 
-  // Replace if already registered
   FAdapters.AddOrSetValue(aSpecClass, aAdapter);
 end;
 
@@ -362,7 +361,6 @@ begin
 
   if aSpec = nil then exit(false);
 
-  // Exact type match (simple + predictable)
   Result := FAdapters.TryGetValue((aSpec as TObject).ClassType, aAdapter);
 end;
 
