@@ -193,7 +193,7 @@ type
 
   /// <summary>
   ///  Centralized error handling, used for notifying subscribers of exceptions,
-  ///  and for raising exceptions via guards.
+  ///  and for raising exceptions via guard methods (Ensure).
   /// </summary>
   /// <remarks>
   ///  Access this class via the Ensure functions, or the TError function.
@@ -205,7 +205,6 @@ type
     class var fInstance: TErrorCentral;
 
     procedure Throw<T: Exception>(const Msg: string); overload;
-    procedure Throw<T: Exception>(const Fmt: string; const Args: array of const); overload;
     procedure Throw(const [ref] aException: Exception); overload;
   public
     { subscribe for error notifications via OnError.Subscribe }
@@ -697,15 +696,6 @@ procedure TErrorCentral.Throw<T>(const Msg: string);
 begin
   var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
   var err := cls.Create(Msg);
-
-  Throw(err);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TErrorCentral.Throw<T>(const Fmt: string; const Args: array of const);
-begin
-  var cls := TExceptionClass(GetTypeData(TypeInfo(T))^.ClassType);
-  var err := cls.CreateFmt(Fmt, Args);
 
   Throw(err);
 end;

@@ -280,6 +280,29 @@ type
     class function Concat<T>(const aLeft, aRight: TList<T>): TList<T>; static;
 
     /// <summary>
+    /// Returns a new list containing items from Left that do not appear in Right.
+    /// Order is preserved (stable w.r.t. Left).
+    /// If aComparer is nil, the default equality comparer for T is used.
+    /// </summary>
+    class function Subtract<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T> = nil): TList<T>; static;
+
+    /// <summary>
+    /// Returns the symmetric difference (XOR) of Left and Right:
+    /// items that appear in exactly one of the two lists.
+    /// Result is distinct and stable (Left order first, then Right order).
+    /// If aComparer is nil, the default equality comparer for T is used.
+    /// </summary>
+    class function Difference<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T> = nil): TList<T>; static;
+
+    /// <summary>
+    /// Returns a new list containing items from Left that also appear in Right.
+    /// Order is preserved (stable w.r.t. Left).
+    /// Duplicates from Left are preserved if the item exists in Right.
+    /// If aComparer is nil, the default equality comparer for T is used.
+    /// </summary>
+    class function Intersect<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T> = nil): TList<T>; static;
+
+    /// <summary>
     /// Returns the union of Left and Right, preserving the order of first occurrence.
     /// Items from Left appear first, followed by items from Right that were not already present.
     /// If aComparer is nil, the default equality comparer for T is used.
@@ -343,6 +366,18 @@ type
     /// Returns a new list that is a sorted copy of Source using the provided comparison.
     /// </summary>
     class function Sort<T>(const aSource: TList<T>; const aComparison: TComparison<T>): TList<T>; overload; static;
+
+    /// <summary>
+    /// Returns a list of integers from Start (inclusive) to End (exclusive).
+    /// If Start >= End, returns an empty list.
+    /// </summary>
+    class function Range(const aStart, aEnd: Integer): TList<Integer>; static;
+
+    /// <summary>
+    /// Returns Source[Index] wrapped in Maybe.
+    /// If Index is out of range (including negative), returns None.
+    /// </summary>
+    class function At<T>(const aSource: TList<T>; const aIndex: Integer): TMaybe<T>; static;
 
     /// <summary>
     /// Fold-left / reduce with seed.
@@ -738,6 +773,116 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Subtract<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<T>.Create);
+
+  var cmp := if aComparer <> nil then aComparer else TEqualityComparer<T>.Default;
+
+  var excluded := scope.Owns(TDictionary<T, Byte>.Create(cmp));
+
+  if aRight <> nil then
+    for var item in aRight do
+      if not excluded.ContainsKey(item) then
+        excluded.Add(item, 0);
+
+  if aLeft <> nil then
+  begin
+    list.Capacity := aLeft.Count;
+
+    for var item in aLeft do
+      if not excluded.ContainsKey(item) then
+        list.Add(item);
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Difference<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
+const
+  IN_LEFT  = 1;
+  IN_RIGHT = 2;
+  IN_BOTH  = 3;
+var
+  state: Byte;
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<T>.Create);
+
+  var cmp := if aComparer <> nil then aComparer else TEqualityComparer<T>.Default;
+
+  var membership := scope.Owns(TDictionary<T, Byte>.Create(cmp));
+
+  if aLeft <> nil then
+    for var item in aLeft do
+      if not membership.ContainsKey(item) then
+        membership.Add(item, IN_LEFT);
+
+  if aRight <> nil then
+    for var item in aRight do
+    begin
+      if membership.TryGetValue(item, state) then
+      begin
+        if state = IN_LEFT then
+          membership[item] := IN_BOTH;
+      end
+      else
+        membership.Add(item, IN_RIGHT);
+    end;
+
+  if aLeft <> nil then
+    for var item in aLeft do
+      if membership.TryGetValue(item, state) and (state = IN_LEFT) then
+      begin
+        list.Add(item);
+        membership.Remove(item);
+      end;
+
+  if aRight <> nil then
+    for var item in aRight do
+      if membership.TryGetValue(item, state) and (state = IN_RIGHT) then
+      begin
+        list.Add(item);
+        membership.Remove(item);
+      end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Intersect<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
+var
+  scope: TScope;
+begin
+  var list := scope.Owns(TList<T>.Create);
+
+  var cmp := if aComparer <> nil then aComparer else TEqualityComparer<T>.Default;
+
+  var present := scope.Owns(TDictionary<T, Byte>.Create(cmp));
+
+  if aRight <> nil then
+    for var item in aRight do
+      if not present.ContainsKey(item) then
+        present.Add(item, 0);
+
+  if aLeft <> nil then
+  begin
+    list.Capacity := aLeft.Count;
+    for var item in aLeft do
+      if present.ContainsKey(item) then
+      begin
+        list.Add(item);
+        present.Remove(item);
+      end;
+  end;
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Union<T>(const aLeft, aRight: TList<T>; const aComparer: IEqualityComparer<T>): TList<T>;
 var
   scope: TScope;
@@ -931,6 +1076,37 @@ begin
         .IsAssigned(@aComparison, 'Comparison is nil');
 
   Result := Sort<T>(aSource, TComparer<T>.Construct(aComparison));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.Range(const aStart, aEnd: Integer): TList<Integer>;
+var
+  scope: TScope;
+begin
+  Ensure.IsTrue(aStart < aEnd , 'Start must be less than end');
+
+  var list := scope.Owns(TList<Integer>.Create);
+
+  list.Capacity := aEnd - aStart;
+
+  for var i := aStart to Pred(aEnd) do
+    list.Add(i);
+
+  Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.At<T>(const aSource: TList<T>; const aIndex: Integer): TMaybe<T>;
+begin
+  Ensure.IsAssigned(aSource, 'Source is nil');
+
+  if (aIndex < 0) or (aIndex >= aSource.Count) then
+  begin
+    Result.SetNone;
+    Exit;
+  end;
+
+  Result.SetSome(aSource[aIndex]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
