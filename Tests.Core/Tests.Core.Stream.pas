@@ -91,6 +91,7 @@ type
     [Test] procedure Partition_Specification_Works;
     [Test] procedure Any_Specification_Works;
     [Test] procedure All_Specification_Works;
+    [Test] procedure DistinctBy_Works;
   end;
 
 implementation
@@ -99,6 +100,23 @@ uses
   Base.Integrity,
   Base.Collections,
   Base.Specifications;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.DistinctBy_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<string>.Create(['a', 'A', 'b', 'B', 'a']));
+
+  var dst := Stream
+      .Borrow<string>(src)
+      .DistinctBy<string>(function(const s: string): string begin Result := s.ToLower; end)
+      .AsArray;
+
+  Assert.AreEqual(2, Length(dst));
+  Assert.AreEqual('a', dst[0]);
+  Assert.AreEqual('b', dst[1]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.All_Specification_Works;

@@ -79,7 +79,6 @@ type
       /// </remarks>
       function Filter(const aSpec: ISpecification<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
 
-
       /// <summary>
       ///  Filters the stream, keeping only items where <paramref name="aPredicate"/> returns True.
       ///  Preserves source order. This is a transform (does not consume the stream).
@@ -124,6 +123,22 @@ type
       ///  an exception is raised.
       /// </remarks>
       function Distinct(const aEquality: IEqualityComparer<T> = nil; const AOnDiscard: TConstProc<T> = nil): TPipe<T>;
+
+      /// <summary>
+      ///  Removes duplicate items by key, preserving the first occurrence of each distinct key.
+      ///  This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aKeyEquality"/> is nil, <c>TEqualityComparer&lt;TKey&gt;.Default</c> is used.
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each item removed as a duplicate.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer; otherwise
+      ///  an exception is raised.
+      /// </remarks>
+      function DistinctBy<TKey>(
+        const aKeySelector: TConstFunc<T, TKey>;
+        const aKeyEquality: IEqualityComparer<TKey> = nil;
+        const aOnDiscard: TConstProc<T> = nil
+      ): TPipe<T>;
 
       /// <summary>
       ///  Sorts the stream according to the provided comparer. This is a transform (does not consume the stream).
@@ -422,7 +437,6 @@ type
       ///  Stream never assumes ownership of items.
       /// </remarks>
       function Partition(const aSpec: ISpecification<T>): TPair<TList<T>, TList<T>>; overload;
-
 
       /// <summary>
       ///  Splits the stream into two lists at <paramref name="aIndex"/> and consumes the stream.
@@ -933,6 +947,55 @@ begin
 
       lSeen.Add(lItem, 0);
       list.Add(lItem);
+    end;
+
+    fState.SetList(scope.Release(list));
+    fState.SetOwnsList(true);
+
+    Result := Self;
+  except
+    fState.Terminate;
+    raise;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.DistinctBy<TKey>(
+  const aKeySelector: TConstFunc<T, TKey>;
+  const aKeyEquality: IEqualityComparer<TKey>;
+  const aOnDiscard: TConstProc<T>
+): TPipe<T>;
+var
+  scope : TScope;
+begin
+  try
+    Ensure.IsAssigned(@aKeySelector, 'KeySelector is nil')
+          .IsAssigned(fState.List, 'Stream has no buffer');
+
+    fState.CheckNotConsumed;
+    fState.CheckDisposable(aOnDiscard);
+
+    var list := scope.Owns(TList<T>.Create);
+    list.Capacity := fState.List.Count;
+
+    var eq   := if aKeyEquality <> nil then aKeyEquality else TEqualityComparer<TKey>.Default;
+    var seen := scope.Owns(TDictionary<TKey, Byte>.Create(eq));
+
+    for var i := 0 to Pred(fState.List.Count) do
+    begin
+      var item := fState.List[i];
+      var key := aKeySelector(item);
+
+      if seen.ContainsKey(key) then
+      begin
+        if Assigned(AOnDiscard) then
+           aOnDiscard(item);
+
+        continue;
+      end;
+
+      seen.Add(key, 0);
+      list.Add(item);
     end;
 
     fState.SetList(scope.Release(list));

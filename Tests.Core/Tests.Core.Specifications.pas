@@ -25,21 +25,38 @@ type
     [Test] procedure DairyOrAlcoholSales_ContainsExpectedProducts;
     [Test] procedure NotITCustomer_ReturnsNonIT;
     [Test] procedure PredicateSpecification_Works;
+    [Test] procedure Filtering_In_Stream;
   end;
 
-
 implementation
+
+uses
+  Base.Stream;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.Filtering_In_Stream;
+begin
+  var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
+
+  var names := Stream
+        .From<TCustomer>(fCustomers.GetEnumerator, true)
+        .Filter(spec)
+        .Map<string>(function(const c: TCustomer): string begin Result := c.Name; end)
+        .AsArray;
+
+  Assert.Contains<string>(names, 'Aidan');
+  Assert.Contains<string>(names, 'Slim');
+  Assert.DoesNotContain<string>(names, 'Eduardo');
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSpecificationTests.ITCustomerWithHighSalary_ReturnsMatches;
 var
-  spec: ISpecification<TCustomer>;
-  c: TCustomer;
   matches: TArray<string>;
 begin
-  spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
+  var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
 
-  for c in fCustomers do
+  for var c in fCustomers do
     if spec.IsSatisfiedBy(c) then
       matches := matches + [c.Name];
 
