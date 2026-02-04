@@ -92,6 +92,8 @@ type
     [Test] procedure Any_Specification_Works;
     [Test] procedure All_Specification_Works;
     [Test] procedure DistinctBy_Works;
+    [Test] procedure FlatMap_Works;
+    [Test] procedure CountBy_Works;
   end;
 
 implementation
@@ -100,6 +102,57 @@ uses
   Base.Integrity,
   Base.Collections,
   Base.Specifications;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.CountBy_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<string>.Create(['a','b','a','c','b','a']));
+
+  var dict := Stream
+    .Borrow<string>(src)
+    .CountBy<string>(function(const s: string): string begin Result := s; end);
+
+  scope.Owns(dict);
+
+  Assert.IsTrue(dict.ContainsKey('a'));
+  Assert.IsTrue(dict.ContainsKey('b'));
+  Assert.IsTrue(dict.ContainsKey('c'));
+
+  Assert.AreEqual(3, dict['a']);
+  Assert.AreEqual(2, dict['b']);
+  Assert.AreEqual(1, dict['c']);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.FlatMap_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3]));
+
+  var dst := Stream
+      .Borrow<Integer>(src)
+      .FlatMap<Integer>(
+        function(const n: Integer): TList<Integer>
+        begin
+          Result := TList<Integer>.Create;
+          Result.Add(n);
+          Result.Add(n * 10);
+        end)
+      .AsArray;
+
+  Assert.AreEqual(6, Length(dst));
+
+  Assert.AreEqual(1,  dst[0]);
+  Assert.AreEqual(10, dst[1]);
+  Assert.AreEqual(2,  dst[2]);
+  Assert.AreEqual(20, dst[3]);
+  Assert.AreEqual(3,  dst[4]);
+  Assert.AreEqual(30, dst[5]);
+end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.DistinctBy_Works;
