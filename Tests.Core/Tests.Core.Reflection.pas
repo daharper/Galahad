@@ -57,6 +57,9 @@ type
 
   TSimpleProc = procedure of object;
 
+  TSmallSetEnum = (e0, e1, e2, e3, e4, e5);
+  TSmallSet = set of TSmallSetEnum;
+
   [TestFixture]
   TReflectionFixture = class
   private
@@ -104,11 +107,62 @@ type
     [Test] procedure ConvertArgsFor_FailsOnCountMismatch;
     [Test] procedure ConvertArgsFor_RejectsVarAndOutParams;
     [Test] procedure Debug_StringKind;
+    [Test] procedure RoundTrip_EmptyByteArray;
+    [Test] procedure RoundTrip_Set_Int64Mask;
+    [Test] procedure VariantToTValue_Set_AllowsNullAsEmpty;
+
   end;
 
 implementation
 
 { TReflectionFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_Set_Int64Mask;
+var
+  S1, S2: TSmallSet;
+  TV, TV2: TValue;
+  V: Variant;
+begin
+  S1 := [e1, e4, e5];
+
+  TV := TValue.From<TSmallSet>(S1);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TSmallSet), TV2));
+  S2 := TV2.AsType<TSmallSet>;
+
+  Assert.IsTrue(S1 = S2);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.VariantToTValue_Set_AllowsNullAsEmpty;
+var
+  TV: TValue;
+  S: TSmallSet;
+begin
+  Assert.IsTrue(TReflection.TryVariantToTValue(Null, TypeInfo(TSmallSet), TV));
+  S := TV.AsType<TSmallSet>;
+  Assert.IsTrue(S = []);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_EmptyByteArray;
+var
+  InB, OutB: TBytes;
+  V: Variant;
+  TV, TV2: TValue;
+begin
+  InB := nil;
+
+  TV := TValue.From<TBytes>(InB);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TBytes), TV2));
+  OutB := TV2.AsType<TBytes>;
+
+  Assert.AreEqual(0, Length(OutB));
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TReflectionFixture.GetMethod(const AClass: TClass; const AName: string): TRttiMethod;

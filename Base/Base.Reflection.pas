@@ -360,27 +360,6 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-//class function TReflection.FullNameOf<T>: string;
-//var
-//  lInfo: PTypeInfo;
-//  lData: PTypeData;
-//  lUnit : string;
-//begin
-//  lInfo := TypeInfo(T);
-//  Result := GetTypeName(lInfo);
-//  lData := GetTypeData(lInfo);
-//
-//  case lInfo.Kind of
-//    tkClass, tkInterface, tkRecord:
-//      lUnit := string(lData.UnitName);
-//  else
-//      lUnit := '';
-//  end;
-//
-//  if lUnit <> '' then
-//    Result := lUnit + '.' + Result;
-//end;
-
 class function TReflection.FullNameOf<T>: string;
 var
   Ctx: TRttiContext;
@@ -402,10 +381,46 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TReflection.TryTValueToVariant(const aValue: TValue; out aOutVar: Variant): Boolean;
 var
-  lTypeInfo: PTypeInfo;
+  TI: PTypeInfo;
+  I: Integer;
+  Len: Integer;
+  El: TValue;
+  VEl: Variant;
+  Obj: TObject;
+  Data: PTypeData;
+  ElType: PTypeInfo;
+  disp: IDispatch;
+  unk: IInterface;
 begin
+  // Special-case dynamic array of Byte -> Variant byte array
+  if (aValue.Kind = tkDynArray) and (aValue.TypeInfo <> nil) then
+  begin
+    var PTData: PTypeData := GetTypeData(aValue.TypeInfo);
+    if (PTData <> nil) and (PTData.DynArrElType <> nil) and (PTData.DynArrElType^ = TypeInfo(Byte)) then
+    begin
+      Len := aValue.GetArrayLength;
+
+      if Len = 0 then
+      begin
+        // Represent empty bytes as an empty varByte array
+        aOutVar := VarArrayCreate([0, -1], varByte); // some RTLs accept this, some don't
+        // safer portable approach:
+        aOutVar := VarArrayCreate([0, 0], varByte);
+        VarArrayRedim(aOutVar, -1); // makes it empty
+        Exit(True);
+      end;
+
+      aOutVar := VarArrayCreate([0, Len - 1], varByte);
+
+      for i := 0 to Len - 1 do
+        aOutVar[i] := aValue.GetArrayElement(i).AsType<Byte>;
+
+      Exit(True);
+    end;
+  end;
+
   Result := True;
-  lTypeInfo := aValue.TypeInfo;
+  TI := aValue.TypeInfo;
 
   case aValue.Kind of
     tkVariant:
@@ -415,45 +430,110 @@ begin
       aOutVar := aValue.ToString;
 
     tkChar:
-      aOutVar := string(aValue.AsType<Char>);           // single-char string
+      aOutVar := string(aValue.AsType<Char>);
     tkWChar:
       aOutVar := string(aValue.AsType<WideChar>);
 
     tkInteger, tkInt64:
-      aOutVar := aValue.AsInt64;                        // use varInt64 to be safe
+      aOutVar := aValue.AsInt64;
 
     tkEnumeration:
+      if TI = TypeInfo(Boolean) then
+        aOutVar := aValue.AsBoolean
+      else
+        aOutVar := aValue.AsOrdinal;
+
+    tkSet:
       begin
-        if lTypeInfo = TypeInfo(Boolean) then
-          aOutVar := aValue.AsBoolean
-        else
-          aOutVar := aValue.AsOrdinal;                  // enum as ordinal (lossless with DestType on return)
+        var SetData: PTypeData := GetTypeData(aValue.TypeInfo);
+        if (SetData = nil) or (SetData.CompType = nil) or (SetData.CompType^ = nil) then
+          Exit(False);
+
+        // Element (base) type of the set (typically an enum)
+        var ElemInfo: PTypeInfo := SetData.CompType^;
+        var ElemData: PTypeData := GetTypeData(ElemInfo);
+        if ElemData = nil then
+          Exit(False);
+
+        var BitCount := ElemData.MaxValue - ElemData.MinValue + 1;
+        if BitCount <= 0 then
+          Exit(False);
+
+        var ByteCount := (BitCount + 7) div 8;
+
+        // Int64 mask contract: only sets that fit in 64 bits
+        if ByteCount > SizeOf(Int64) then
+          Exit(False);
+
+        var Mask: Int64 := 0;
+        Move(aValue.GetReferenceToRawData^, Mask, ByteCount);
+
+        aOutVar := Mask; // varInt64
+        Exit(True);
       end;
 
     tkFloat:
       begin
-        if lTypeInfo = TypeInfo(TDateTime) then
-          aOutVar := VarFromDateTime(aValue.AsType<TDateTime>) // varDate
-        else if lTypeInfo = TypeInfo(Currency) then
-          aOutVar := VarAsType(aValue.AsExtended, varCurrency) // varCurrency
+        if TI = TypeInfo(TDateTime) then
+          aOutVar := VarFromDateTime(aValue.AsType<TDateTime>)
+        else if TI = TypeInfo(Currency) then
+          aOutVar := VarAsType(aValue.AsExtended, varCurrency)
         else
-          aOutVar := aValue.AsExtended;               // varDouble
+          aOutVar := aValue.AsExtended;
       end;
 
     tkInterface:
       begin
-        // Prefer IDispatch if available; otherwise IUnknown
         if Supports(aValue.AsInterface, IDispatch) then
           aOutVar := IDispatch(aValue.AsInterface)
         else
           aOutVar := IUnknown(aValue.AsInterface);
       end;
 
+    tkClass:
+      begin
+        Obj := aValue.AsObject;
+
+        if Obj = nil then
+          aOutVar := Null
+        else if Supports(Obj, IDispatch, disp) then
+          aOutVar := disp                           // varDispatch
+        else if Supports(Obj, IInterface, unk) then
+          aOutVar := IUnknown(unk)                  // varUnknown
+        else
+          Exit(False);
+      end;
+
+    tkDynArray:
+      begin
+        Data := GetTypeData(aValue.TypeInfo);
+
+        if (Data = nil) or (Data.DynArrElType = nil) then
+          Exit(False);
+
+        ElType := Data.DynArrElType^;
+
+        if ElType = nil then exit(False);
+
+        Len := aValue.GetArrayLength;
+        aOutVar := VarArrayCreate([0, Len - 1], varVariant);
+
+        for i := 0 to Len - 1 do
+        begin
+          El := aValue.GetArrayElement(I);
+
+          if not TryTValueToVariant(El, VEl) then
+            Exit(False);
+
+          aOutVar[I] := VEl;
+        end;
+      end;
+
   else
-    // Not supported without custom boxing
     Result := False;
   end;
 end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TReflection.TryVariantToTValue(const aVar: Variant; aDestType: PTypeInfo; out aOutValue: TValue): Boolean;
@@ -470,6 +550,13 @@ var
   isBool: Boolean;
   intfType: TRttiInterfaceType;
   anyIntf: IInterface;
+  lDestData: PTypeData;
+  lElType: PTypeInfo;
+  lLow, lHigh, Len, i: Integer;
+  lElTV: TValue;
+  lArr: TValue;
+  ArrPtr: Pointer;
+  obj: TObject;
 begin
   Result := False;
   if aDestType = nil then
@@ -550,9 +637,50 @@ begin
           end
           else
             ord := VarAsType(aVar, varInt64);
+
           aOutValue := TValue.FromOrdinal(aDestType, ord);
           Exit(True);
         end;
+      end;
+
+    { sets (encoded as Int64 bitmask) }
+    tkSet:
+      begin
+        // Null/Empty => empty set
+        if VarIsNull(aVar) or VarIsEmpty(aVar) then
+          ord := 0
+        else
+          ord := VarAsType(aVar, varInt64);
+
+        var SetData: PTypeData := GetTypeData(aDestType);
+        if (SetData = nil) or (SetData.CompType = nil) or (SetData.CompType^ = nil) then
+          Exit(False);
+
+        var ElemInfo: PTypeInfo := SetData.CompType^;
+        var ElemData: PTypeData := GetTypeData(ElemInfo);
+        if ElemData = nil then
+          Exit(False);
+
+        var BitCount := ElemData.MaxValue - ElemData.MinValue + 1;
+        if BitCount <= 0 then
+          Exit(False);
+
+        var ByteCount := (BitCount + 7) div 8;
+
+        // Int64 mask contract
+        if ByteCount > SizeOf(Int64) then
+          Exit(False);
+
+        // Allocate a set storage buffer and copy bytes from ord
+        var Buf: array[0..7] of Byte;
+        FillChar(Buf, SizeOf(Buf), 0);
+        Move(ord, Buf[0], ByteCount);
+
+        // Create TValue of the set type and copy raw bytes into it
+        TValue.Make(nil, aDestType, aOutValue);
+        Move(Buf[0], aOutValue.GetReferenceToRawData^, ByteCount);
+
+        Exit(True);
       end;
 
     { floats / date / currency }
@@ -605,7 +733,6 @@ begin
           var Ctx: TRttiContext := TRttiContext.Create;
           try
             intfType := Ctx.GetType(aDestType) as TRttiInterfaceType;
-
             if (intfType = nil) or (not Supports(anyIntf, intfType.GUID)) then
               Exit(False);
           finally
@@ -618,11 +745,81 @@ begin
 
         Exit(False);
       end;
-      else
-        // classes, records, dyn arrays, sets: not supported here
+
+    { classes: support only COM/Automation carriers (varDispatch/varUnknown) + Null/Empty => nil }
+    tkClass:
+      begin
+        // Only support "no object" -> nil reference.
+        if VarIsNull(aVar) or VarIsEmpty(aVar) then
+        begin
+          obj := nil;
+          TValue.Make(@obj, aDestType, aOutValue);
+          Exit(True);
+        end;
+
+        // We deliberately do NOT try to convert varDispatch/varUnknown into TObject:
+        // COM objects are not generally Delphi TObject instances.
         Exit(False);
+      end;
+
+    { dynamic arrays: Variant array -> TArray<T> (or any dynarray type) }
+    tkDynArray:
+      begin
+        // Must be a 1D Variant array
+        if (VarType(aVar) and varArray) = 0 then
+          Exit(False);
+
+        if VarArrayDimCount(aVar) <> 1 then
+          Exit(False);
+
+        lLow  := VarArrayLowBound(aVar, 1);
+        lHigh := VarArrayHighBound(aVar, 1);
+        Len := lHigh - lLow + 1;
+
+        lDestData := GetTypeData(aDestType);
+        if (lDestData = nil) or (lDestData.DynArrElType = nil) then
+          Exit(False);
+
+        lElType := lDestData.DynArrElType^;
+        if lElType = nil then
+          Exit(False);
+
+        // Allocate destination dynarray storage
+        ArrPtr := nil;
+        DynArraySetLength(ArrPtr, aDestType, 1, @Len);
+        TValue.Make(@ArrPtr, aDestType, lArr);
+
+        // Byte-array specialization (fast + direct)
+        if lElType = TypeInfo(Byte) then
+        begin
+          for i := 0 to Len - 1 do
+          begin
+            // Coerce numeric variants; works for varByte, varSmallint, etc.
+            var b: Byte := Byte(VarAsType(aVar[i + lLow], varInteger));
+            lArr.SetArrayElement(i, TValue.From<Byte>(b));
+          end;
+
+          aOutValue := lArr;
+          Exit(True);
+        end;
+
+        // Generic element conversion
+        for i := 0 to Len - 1 do
+        begin
+          if not TryVariantToTValue(aVar[i + lLow], lElType, lElTV) then
+            Exit(False);
+
+          lArr.SetArrayElement(i, lElTV);
+        end;
+
+        aOutValue := lArr;
+        Exit(True);
+      end;
+  else
+    Exit(False);
   end;
 end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TReflection.TryVariantToTValue(const aVar: Variant; const aDestRttiType: TRttiType; out aOutValue: TValue): Boolean;
