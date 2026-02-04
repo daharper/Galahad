@@ -88,6 +88,9 @@ type
     procedure SplitAt_SplitsIntoPrefixAndSuffix(const aIndex:integer);
 
     [Test] procedure Filter_Specification_Works;
+    [Test] procedure Partition_Specification_Works;
+    [Test] procedure Any_Specification_Works;
+    [Test] procedure All_Specification_Works;
   end;
 
 implementation
@@ -96,6 +99,69 @@ uses
   Base.Integrity,
   Base.Collections,
   Base.Specifications;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.All_Specification_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,3,5]));
+
+  var spec := TSpecification<Integer>.FromPredicate(
+    function(const n: Integer): Boolean
+    begin
+      Result := Odd(n);
+    end
+  );
+
+  Assert.IsTrue(Stream.Borrow<Integer>(src).All(spec));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Any_Specification_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([2,4,6,7]));
+
+  var spec := TSpecification<Integer>.FromPredicate(
+    function(const n: Integer): Boolean
+    begin
+      Result := Odd(n);
+    end
+  );
+
+  Assert.IsTrue(Stream.Borrow<Integer>(src).Any(spec));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Partition_Specification_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+
+  var spec := TSpecification<Integer>.FromPredicate(
+    function(const n: Integer): Boolean
+    begin
+      Result := Odd(n);
+    end
+  );
+
+  var pair := Stream.Borrow<Integer>(src).Partition(spec);
+
+  var odds := scope.Owns(pair.Key);
+  var evens := scope.Owns(pair.Value);
+
+  Assert.AreEqual(3, odds.Count);
+  Assert.AreEqual(1, odds[0]);
+  Assert.AreEqual(3, odds[1]);
+  Assert.AreEqual(5, odds[2]);
+
+  Assert.AreEqual(2, evens.Count);
+  Assert.AreEqual(2, evens[0]);
+  Assert.AreEqual(4, evens[1]);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.Filter_Specification_Works;

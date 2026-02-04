@@ -312,12 +312,22 @@ type
       /// <summary>
       ///  Returns True if any item satisfies <paramref name="aPredicate"/>. Short-circuits and consumes the stream.
       /// </summary>
-      function Any(const aPredicate: TConstPredicate<T>): Boolean;
+      function Any(const aPredicate: TConstPredicate<T>): Boolean; overload;
+
+      /// <summary>
+      ///  Returns True if any item satisfies <paramref name="aSpec"/>. Short-circuits and consumes the stream.
+      /// </summary>
+      function Any(const aSpec: ISpecification<T>): Boolean; overload;
 
       /// <summary>
       ///  Returns True if all items satisfy <paramref name="aPredicate"/>. Short-circuits and consumes the stream.
       /// </summary>
-      function All(const aPredicate: TConstPredicate<T>): Boolean;
+      function All(const aPredicate: TConstPredicate<T>): Boolean; overload;
+
+      /// <summary>
+      ///  Returns True if all items satisfy <paramref name="aSpec"/>. Short-circuits and consumes the stream.
+      /// </summary>
+      function All(const aSpec: ISpecification<T>): Boolean; overload;
 
       /// <summary>
       ///  Reduces (folds) the stream into an accumulator starting from <paramref name="aSeed"/> using <paramref name="aReducer"/>.
@@ -399,7 +409,20 @@ type
       ///  The relative order of items is preserved in each list.
       ///  Stream never assumes ownership of items.
       /// </remarks>
-      function Partition(const aPredicate: TConstPredicate<T>): TPair<TList<T>, TList<T>>;
+      function Partition(const aPredicate: TConstPredicate<T>): TPair<TList<T>, TList<T>>; overload;
+
+      /// <summary>
+      ///  Splits the stream into two lists based on <paramref name="aSpec"/> and consumes the stream.
+      ///  Items for which the specification is satisfied are placed in the first list;
+      ///  all other items are placed in the second list.
+      /// </summary>
+      /// <remarks>
+      ///  Both returned lists are owned by the caller.
+      ///  The relative order of items is preserved in each list.
+      ///  Stream never assumes ownership of items.
+      /// </remarks>
+      function Partition(const aSpec: ISpecification<T>): TPair<TList<T>, TList<T>>; overload;
+
 
       /// <summary>
       ///  Splits the stream into two lists at <paramref name="aIndex"/> and consumes the stream.
@@ -588,6 +611,19 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Any(const aSpec: ISpecification<T>): Boolean;
+begin
+  Ensure.IsAssigned(aSpec, 'Spec is nil');
+
+  Result := Any(
+    function(const item: T): Boolean
+    begin
+      Result := aSpec.IsSatisfiedBy(item);
+    end
+  );
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.All(const aPredicate: TConstPredicate<T>): Boolean;
 begin
   Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
@@ -605,6 +641,19 @@ begin
     end;
 
   fState.Terminate;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.All(const aSpec: ISpecification<T>): Boolean;
+begin
+  Ensure.IsAssigned(aSpec, 'Spec is nil');
+
+  Result := All(
+    function(const item: T): Boolean
+    begin
+      Result := aSpec.IsSatisfiedBy(item);
+    end
+  );
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -802,6 +851,19 @@ begin
     fState.Terminate;
     raise;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Partition(const aSpec: ISpecification<T>): TPair<TList<T>, TList<T>>;
+begin
+  Ensure.IsAssigned(aSpec, 'Spec is nil');
+
+  Result := Partition(
+    function(const item: T): Boolean
+    begin
+      Result := aSpec.IsSatisfiedBy(item);
+    end
+  );
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
