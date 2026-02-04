@@ -72,6 +72,15 @@ type
     ): Boolean;
   end;
 
+  TDecliningCustomerAdapter = class(TInterfacedObject, ISpecSqlAdapter<TCustomer>)
+  public
+    function TryBuildWhere(
+      const aSpec: ISpecification<TCustomer>;
+      const aCtx: ISqlBuildContext;
+      out aSql: string
+    ): Boolean;
+  end;
+
 implementation
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -199,6 +208,17 @@ begin
   p := aCtx.AddParam(secSpec.Section);
   aSql := col + ' = ' + p;
   Result := True;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDecliningCustomerAdapter.TryBuildWhere(
+  const aSpec: ISpecification<TCustomer>;
+  const aCtx: ISqlBuildContext;
+  out aSql: string
+): Boolean;
+begin
+  aSql := '';
+  Result := False;
 end;
 
 end.

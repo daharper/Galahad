@@ -32,12 +32,162 @@ type
     [Test] procedure SaleSectionNot_Builds_Where_Clause;
     [Test] procedure SaleSection_Or_NotSection_Builds_Composed_Where_Clause;
     [Test] procedure Customer_And_Or_Not_Builds_Composed_Where_Clause;
+    [Test] procedure Customer_DoubleNot_Builds_Where_Clause;
+    [Test] procedure Sale_BalancedTree_Builds_Composed_Where_Clause;
+    [Test] procedure Sale_ReusedLeafInstance_Produces_Two_Params;
+    [Test] procedure MissingAdapter_Raises_NotTranslatable;
+    [Test] procedure AdapterDeclines_Raises_NotTranslatable;
   end;
 
 implementation
 
 uses
   Base.Stream;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.AdapterDeclines_Raises_NotTranslatable;
+var
+  builder: TSpecSqlBuilder<TCustomer>;
+  spec: ISpecification<TCustomer>;
+begin
+  builder := TSpecSqlBuilder<TCustomer>.Create('c');
+  try
+    builder.RegisterAdapter(TDepartmentIs, TDecliningCustomerAdapter.Create);
+
+    spec := TDepartmentIs.Create('IT');
+
+    Assert.WillRaise(
+      procedure
+      begin
+        builder.BuildWhere(spec);
+      end,
+      ESpecNotTranslatable
+    );
+  finally
+    builder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.MissingAdapter_Raises_NotTranslatable;
+var
+  builder: TSpecSqlBuilder<TCustomer>;
+  spec: ISpecification<TCustomer>;
+begin
+  builder := TSpecSqlBuilder<TCustomer>.Create('c');
+  try
+    spec := TDepartmentIs.Create('IT');
+
+    Assert.WillRaise(
+      procedure
+      begin
+        builder.BuildWhere(spec);
+      end,
+      ESpecNotTranslatable
+    );
+  finally
+    builder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.Sale_ReusedLeafInstance_Produces_Two_Params;
+var
+  builder: TSpecSqlBuilder<TSale>;
+  leaf: ISpecification<TSale>;
+  spec: ISpecification<TSale>;
+  where: TSqlWhere;
+begin
+  builder := TSpecSqlBuilder<TSale>.Create('s');
+  try
+    builder.RegisterAdapter(TSaleSectionIs, TSaleSectionIsSqlAdapter.Create);
+
+    leaf := TSaleSectionIs.Create('Dairy');
+    spec := leaf.OrElse(leaf); // reuse the same instance
+
+    where := builder.BuildWhere(spec);
+
+    Assert.AreEqual('(s.Section = :p0 OR s.Section = :p1)', where.Sql);
+    Assert.AreEqual(2, Length(where.Params));
+
+    Assert.AreEqual(':p0', where.Params[0].Name);
+    Assert.AreEqual('Dairy', string(where.Params[0].Value));
+
+    Assert.AreEqual(':p1', where.Params[1].Name);
+    Assert.AreEqual('Dairy', string(where.Params[1].Value));
+  finally
+    builder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.Sale_BalancedTree_Builds_Composed_Where_Clause;
+var
+  builder: TSpecSqlBuilder<TSale>;
+  spec: ISpecification<TSale>;
+  where: TSqlWhere;
+begin
+  builder := TSpecSqlBuilder<TSale>.Create('s');
+  try
+    builder.RegisterAdapter(TSaleSectionIs, TSaleSectionIsSqlAdapter.Create);
+
+    spec :=
+      TSaleSectionIs.Create('Dairy')
+        .OrElse(TSaleSectionIs.Create('Alcohol'))
+        .AndAlso(
+          TSaleSectionIs.Create('Meat').NotThis
+            .OrElse(TSaleSectionIs.Create('Bakery'))
+        );
+
+    where := builder.BuildWhere(spec);
+
+    Assert.AreEqual(
+      '((s.Section = :p0 OR s.Section = :p1) AND ((NOT s.Section = :p2) OR s.Section = :p3))',
+      where.Sql
+    );
+
+    Assert.AreEqual(4, Length(where.Params));
+
+    Assert.AreEqual(':p0', where.Params[0].Name);
+    Assert.AreEqual('Dairy', string(where.Params[0].Value));
+
+    Assert.AreEqual(':p1', where.Params[1].Name);
+    Assert.AreEqual('Alcohol', string(where.Params[1].Value));
+
+    Assert.AreEqual(':p2', where.Params[2].Name);
+    Assert.AreEqual('Meat', string(where.Params[2].Value));
+
+    Assert.AreEqual(':p3', where.Params[3].Name);
+    Assert.AreEqual('Bakery', string(where.Params[3].Value));
+  finally
+    builder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.Customer_DoubleNot_Builds_Where_Clause;
+var
+  builder: TSpecSqlBuilder<TCustomer>;
+  spec: ISpecification<TCustomer>;
+  where: TSqlWhere;
+begin
+  builder := TSpecSqlBuilder<TCustomer>.Create('c');
+  try
+    builder.RegisterAdapter(TDepartmentIs, TDepartmentIsSqlAdapter.Create);
+
+    spec := TDepartmentIs.Create('IT').NotThis.NotThis;
+
+    where := builder.BuildWhere(spec);
+
+    Assert.AreEqual('(NOT (NOT c.Department = :p0))', where.Sql);
+    Assert.AreEqual(1, Length(where.Params));
+
+    Assert.AreEqual(':p0', where.Params[0].Name);
+    Assert.AreEqual('IT', string(where.Params[0].Value));
+  finally
+    builder.Free;
+  end;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSpecificationTests.Customer_And_Or_Not_Builds_Composed_Where_Clause;
