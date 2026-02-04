@@ -37,12 +37,79 @@ type
     [Test] procedure Sale_ReusedLeafInstance_Produces_Two_Params;
     [Test] procedure MissingAdapter_Raises_NotTranslatable;
     [Test] procedure AdapterDeclines_Raises_NotTranslatable;
+    [Test] procedure EmptyAlias_Produces_Unqualified_Column;
+    [Test] procedure ExplicitGrouping_And_With_Inner_Or;
   end;
 
 implementation
 
 uses
   Base.Stream;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.ExplicitGrouping_And_With_Inner_Or;
+var
+  builder: TSpecSqlBuilder<TCustomer>;
+  spec: ISpecification<TCustomer>;
+  where: TSqlWhere;
+begin
+  builder := TSpecSqlBuilder<TCustomer>.Create('c');
+  try
+    builder.RegisterAdapter(TDepartmentIs, TDepartmentIsSqlAdapter.Create);
+    builder.RegisterAdapter(TSalaryAbove, TSalaryAboveSqlAdapter.Create);
+
+    // (Department = 'IT') AND (Salary > 50000 OR Salary > 80000)
+    spec :=
+      TDepartmentIs.Create('IT')
+        .AndAlso(
+          TSalaryAbove.Create(50000)
+            .OrElse(TSalaryAbove.Create(80000))
+        );
+
+    where := builder.BuildWhere(spec);
+
+    Assert.AreEqual(
+      '(c.Department = :p0 AND (c.Salary > :p1 OR c.Salary > :p2))',
+      where.Sql
+    );
+
+    Assert.AreEqual(3, Length(where.Params));
+
+    Assert.AreEqual(':p0', where.Params[0].Name);
+    Assert.AreEqual('IT', string(where.Params[0].Value));
+
+    Assert.AreEqual(':p1', where.Params[1].Name);
+    Assert.AreEqual<Integer>(50000, where.Params[1].Value);
+
+    Assert.AreEqual(':p2', where.Params[2].Name);
+    Assert.AreEqual<Integer>(80000, where.Params[2].Value);
+  finally
+    builder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecificationTests.EmptyAlias_Produces_Unqualified_Column;
+var
+  builder: TSpecSqlBuilder<TCustomer>;
+  spec: ISpecification<TCustomer>;
+  where: TSqlWhere;
+begin
+  builder := TSpecSqlBuilder<TCustomer>.Create('');
+  try
+    builder.RegisterAdapter(TDepartmentIs, TDepartmentIsSqlAdapter.Create);
+
+    spec := TDepartmentIs.Create('IT');
+
+    where := builder.BuildWhere(spec);
+
+    Assert.AreEqual('Department = :p0', where.Sql);
+    Assert.AreEqual(1, Length(where.Params));
+    Assert.AreEqual('IT', string(where.Params[0].Value));
+  finally
+    builder.Free;
+  end;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSpecificationTests.AdapterDeclines_Raises_NotTranslatable;

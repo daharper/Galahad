@@ -36,6 +36,10 @@ type
     function Inner: ISpecification<T>;
   end;
 
+  /// <remarks>
+  /// Specification composition is explicit. Grouping is defined by nesting
+  /// (AndAlso / OrElse calls), not by operator precedence. It's just like function calls.
+  /// </remarks>
   TSpecification<T> = class(TInterfacedObject, ISpecification<T>)
   public
     function IsSatisfiedBy(const aCandidate: T): Boolean; virtual; abstract;
