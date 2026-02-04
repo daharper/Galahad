@@ -470,7 +470,6 @@ var
   isBool: Boolean;
   intfType: TRttiInterfaceType;
   anyIntf: IInterface;
-  ptr: Pointer;
 begin
   Result := False;
   if aDestType = nil then
@@ -592,8 +591,8 @@ begin
         // Allow Null/Empty to nil
         if VarIsNull(aVar) or VarIsEmpty(aVar) then
         begin
-          ptr := nil;
-          TValue.Make(@ptr, aDestType, aOutValue);
+          anyIntf := nil;
+          TValue.Make(@anyIntf, aDestType, aOutValue);
           Exit(True);
         end;
 
@@ -601,22 +600,27 @@ begin
         if (VarType(aVar) and varTypeMask) in [varUnknown, varDispatch] then
         begin
           anyIntf := IInterface(VarAsType(aVar, varUnknown));
+
           // Ensure it supports the requested interface GUID
-          intfType := TRttiContext.Create.GetType(aDestType) as TRttiInterfaceType;
+          var Ctx: TRttiContext := TRttiContext.Create;
+          try
+            intfType := Ctx.GetType(aDestType) as TRttiInterfaceType;
 
-          if not Supports(anyIntf, intfType.GUID) then
-            Exit(False);
+            if (intfType = nil) or (not Supports(anyIntf, intfType.GUID)) then
+              Exit(False);
+          finally
+            Ctx.Free;
+          end;
 
-          ptr := Pointer(anyIntf);
-          TValue.Make(@ptr, aDestType, aOutValue);
+          TValue.Make(@anyIntf, aDestType, aOutValue);
           Exit(True);
         end;
 
         Exit(False);
       end;
-  else
-    // classes, records, dyn arrays, sets: not supported here
-    Exit(False);
+      else
+        // classes, records, dyn arrays, sets: not supported here
+        Exit(False);
   end;
 end;
 
