@@ -86,13 +86,43 @@ type
     [TestCase('Split at 2', '2')]
     [TestCase('Split at 5', '5')]
     procedure SplitAt_SplitsIntoPrefixAndSuffix(const aIndex:integer);
+
+    [Test] procedure Filter_Specification_Works;
   end;
 
 implementation
 
 uses
   Base.Integrity,
-  Base.Collections;
+  Base.Collections,
+  Base.Specifications;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStreamFixture.Filter_Specification_Works;
+var
+  scope: TScope;
+begin
+  var src := scope.Owns(TList<Integer>.Create([1,2,3,4,5]));
+
+  var spec := TSpecification<Integer>.FromPredicate(
+    function(const n: Integer): Boolean
+    begin
+      Result := Odd(n);
+    end
+  );
+
+  var dst := scope.Owns(
+    Stream.Borrow<Integer>(src)
+      .Filter(spec)
+      .AsList
+  );
+
+  Assert.AreEqual(3, dst.Count);
+  Assert.AreEqual(1, dst[0]);
+  Assert.AreEqual(3, dst[1]);
+  Assert.AreEqual(5, dst[2]);
+end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TStreamFixture.Filter_Borrow_WithOnDiscard_Raises;

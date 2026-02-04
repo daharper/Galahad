@@ -1,4 +1,4 @@
-unit Tests.Messaging.MulticastFixture;
+unit Tests.Core.Messaging;
 
 interface
 

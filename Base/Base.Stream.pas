@@ -6,7 +6,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Base.Core;
+  Base.Core,
+  Base.Specifications;
 
 type
   /// <summary>
@@ -68,6 +69,18 @@ type
       { transformers }
 
       /// <summary>
+      ///  Filters the stream using a specification (keeps items where Spec is satisfied).
+      ///  Preserves source order. This is a transform (does not consume the stream).
+      /// </summary>
+      /// <remarks>
+      ///  If <paramref name="aOnDiscard"/> is provided, it is invoked for each discarded item.
+      ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer;
+      ///  otherwise an exception is raised.
+      /// </remarks>
+      function Filter(const aSpec: ISpecification<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
+
+
+      /// <summary>
       ///  Filters the stream, keeping only items where <paramref name="aPredicate"/> returns True.
       ///  Preserves source order. This is a transform (does not consume the stream).
       /// </summary>
@@ -76,7 +89,7 @@ type
       ///  <paramref name="aOnDiscard"/> is only permitted when the stream currently owns its buffer;
       ///  otherwise an exception is raised.
       /// </remarks>
-      function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
+      function Filter(const aPredicate: TConstPredicate<T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>; overload;
 
       /// <summary>
       ///  Maps each item using <paramref name="aMapper"/> to produce a stream of a different element type.
@@ -1016,6 +1029,19 @@ begin
     fState.Terminate;
     raise;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Stream.TPipe<T>.Filter(const aSpec: ISpecification<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
+begin
+  Ensure.IsAssigned(aSpec, 'Spec is nil');
+
+  Result := Filter(
+    function(const item: T): Boolean
+    begin
+      Result := aSpec.IsSatisfiedBy(item);
+    end,
+    aOnDiscard);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

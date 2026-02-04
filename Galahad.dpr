@@ -16,7 +16,7 @@ uses
   Base.Integrity in 'Base\Base.Integrity.pas',
   Base.Core in 'Base\Base.Core.pas',
   Tests.Integrity.Result in 'Tests.Integrity\Tests.Integrity.Result.pas',
-  Tests.Messaging.MulticastFixture in 'Tests.Messaging\Tests.Messaging.MulticastFixture.pas',
+  Tests.Core.Messaging in 'Tests.Core\Tests.Core.Messaging.pas',
   Tests.Integrity.Ensure in 'Tests.Integrity\Tests.Integrity.Ensure.pas',
   Tests.Integrity.ResultOp in 'Tests.Integrity\Tests.Integrity.ResultOp.pas',
   Tests.Integrity.Scope in 'Tests.Integrity\Tests.Integrity.Scope.pas',
@@ -25,7 +25,12 @@ uses
   Tests.Core.Collect in 'Tests.Core\Tests.Core.Collect.pas',
   Base.Messaging in 'Base\Base.Messaging.pas',
   Base.Stream in 'Base\Base.Stream.pas',
-  Tests.Core.Stream in 'Tests.Core\Tests.Core.Stream.pas';
+  Tests.Core.Stream in 'Tests.Core\Tests.Core.Stream.pas',
+  Base.Specifications in 'Base\Base.Specifications.pas',
+  Tests.Core.Specifications in 'Tests.Core\Tests.Core.Specifications.pas',
+  Mocks.Entities in 'Mocks\Mocks.Entities.pas',
+  Mocks.Repositories in 'Mocks\Mocks.Repositories.pas',
+  Mocks.Specifications in 'Mocks\Mocks.Specifications.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

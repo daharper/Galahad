@@ -143,7 +143,7 @@
         <DCCReference Include="Base\Base.Integrity.pas"/>
         <DCCReference Include="Base\Base.Core.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Result.pas"/>
-        <DCCReference Include="Tests.Messaging\Tests.Messaging.MulticastFixture.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Messaging.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Ensure.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.ResultOp.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Scope.pas"/>
@@ -153,6 +153,11 @@
         <DCCReference Include="Base\Base.Messaging.pas"/>
         <DCCReference Include="Base\Base.Stream.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Stream.pas"/>
+        <DCCReference Include="Base\Base.Specifications.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Specifications.pas"/>
+        <DCCReference Include="Mocks\Mocks.Entities.pas"/>
+        <DCCReference Include="Mocks\Mocks.Repositories.pas"/>
+        <DCCReference Include="Mocks\Mocks.Specifications.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
