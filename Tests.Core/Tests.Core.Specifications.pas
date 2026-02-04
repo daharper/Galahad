@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TSpecificationTests = class
+  TSpecificationFixture = class
   private
     fCustomers: TCustomerRepository;
     fSales: TSaleRepository;
@@ -47,7 +47,7 @@ uses
   Base.Stream;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.ExplicitGrouping_And_With_Inner_Or;
+procedure TSpecificationFixture.ExplicitGrouping_And_With_Inner_Or;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -89,7 +89,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.EmptyAlias_Produces_Unqualified_Column;
+procedure TSpecificationFixture.EmptyAlias_Produces_Unqualified_Column;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -112,7 +112,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.AdapterDeclines_Raises_NotTranslatable;
+procedure TSpecificationFixture.AdapterDeclines_Raises_NotTranslatable;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -136,7 +136,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.MissingAdapter_Raises_NotTranslatable;
+procedure TSpecificationFixture.MissingAdapter_Raises_NotTranslatable;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -158,7 +158,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Sale_ReusedLeafInstance_Produces_Two_Params;
+procedure TSpecificationFixture.Sale_ReusedLeafInstance_Produces_Two_Params;
 var
   builder: TSpecSqlBuilder<TSale>;
   leaf: ISpecification<TSale>;
@@ -188,7 +188,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Sale_BalancedTree_Builds_Composed_Where_Clause;
+procedure TSpecificationFixture.Sale_BalancedTree_Builds_Composed_Where_Clause;
 var
   builder: TSpecSqlBuilder<TSale>;
   spec: ISpecification<TSale>;
@@ -232,7 +232,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Customer_DoubleNot_Builds_Where_Clause;
+procedure TSpecificationFixture.Customer_DoubleNot_Builds_Where_Clause;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -257,7 +257,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Customer_And_Or_Not_Builds_Composed_Where_Clause;
+procedure TSpecificationFixture.Customer_And_Or_Not_Builds_Composed_Where_Clause;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -292,7 +292,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.SaleSection_Or_NotSection_Builds_Composed_Where_Clause;
+procedure TSpecificationFixture.SaleSection_Or_NotSection_Builds_Composed_Where_Clause;
 var
   builder: TSpecSqlBuilder<TSale>;
   spec: ISpecification<TSale>;
@@ -322,7 +322,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.SaleSectionNot_Builds_Where_Clause;
+procedure TSpecificationFixture.SaleSectionNot_Builds_Where_Clause;
 var
   builder: TSpecSqlBuilder<TSale>;
   spec: ISpecification<TSale>;
@@ -347,7 +347,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.SaleSectionOr_Builds_Composed_Where_Clause;
+procedure TSpecificationFixture.SaleSectionOr_Builds_Composed_Where_Clause;
 var
   builder: TSpecSqlBuilder<TSale>;
   spec: ISpecification<TSale>;
@@ -376,7 +376,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.DepartmentAndSalary_Builds_Composed_Where_Clause;
+procedure TSpecificationFixture.DepartmentAndSalary_Builds_Composed_Where_Clause;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -406,7 +406,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.DepartmentIs_Builds_Where_Clause;
+procedure TSpecificationFixture.DepartmentIs_Builds_Where_Clause;
 var
   builder: TSpecSqlBuilder<TCustomer>;
   spec: ISpecification<TCustomer>;
@@ -430,7 +430,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Filtering_In_Stream;
+procedure TSpecificationFixture.Filtering_In_Stream;
 begin
   var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
 
@@ -446,7 +446,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.ITCustomerWithHighSalary_ReturnsMatches;
+procedure TSpecificationFixture.ITCustomerWithHighSalary_ReturnsMatches;
 var
   matches: TArray<string>;
 begin
@@ -462,7 +462,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.DairyOrAlcoholSales_ContainsExpectedProducts;
+procedure TSpecificationFixture.DairyOrAlcoholSales_ContainsExpectedProducts;
 var
   spec: ISpecification<TSale>;
   s: TSale;
@@ -480,7 +480,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.NotITCustomer_ReturnsNonIT;
+procedure TSpecificationFixture.NotITCustomer_ReturnsNonIT;
 var
   spec: ISpecification<TCustomer>;
   c: TCustomer;
@@ -498,7 +498,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.PredicateSpecification_Works;
+procedure TSpecificationFixture.PredicateSpecification_Works;
 begin
   var spec := TSpecification<TCustomer>.FromPredicate(
     function(const x: TCustomer): Boolean
@@ -512,20 +512,20 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.Setup;
+procedure TSpecificationFixture.Setup;
 begin
   fCustomers := TCustomerRepository.Create;
   fSales := TSaleRepository.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSpecificationTests.TearDown;
+procedure TSpecificationFixture.TearDown;
 begin
   fCustomers.Free;
   fSales.Free;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TSpecificationTests);
+  TDUnitX.RegisterTestFixture(TSpecificationFixture);
 
 end.

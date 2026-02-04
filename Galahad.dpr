@@ -30,7 +30,9 @@ uses
   Tests.Core.Specifications in 'Tests.Core\Tests.Core.Specifications.pas',
   Mocks.Entities in 'Mocks\Mocks.Entities.pas',
   Mocks.Repositories in 'Mocks\Mocks.Repositories.pas',
-  Mocks.Specifications in 'Mocks\Mocks.Specifications.pas';
+  Mocks.Specifications in 'Mocks\Mocks.Specifications.pas',
+  Base.Reflection in 'Base\Base.Reflection.pas',
+  Tests.Core.Reflection in 'Tests.Core\Tests.Core.Reflection.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

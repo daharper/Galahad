@@ -158,6 +158,8 @@
         <DCCReference Include="Mocks\Mocks.Entities.pas"/>
         <DCCReference Include="Mocks\Mocks.Repositories.pas"/>
         <DCCReference Include="Mocks\Mocks.Specifications.pas"/>
+        <DCCReference Include="Base\Base.Reflection.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Reflection.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
