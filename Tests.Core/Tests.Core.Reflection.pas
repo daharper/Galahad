@@ -60,6 +60,32 @@ type
   TSmallSetEnum = (e0, e1, e2, e3, e4, e5);
   TSmallSet = set of TSmallSetEnum;
 
+  ICustomer = interface
+    ['{2C5F44E9-6068-4E35-826B-27C03E4F5083}']
+    function GetId: integer;
+    procedure SetId(const aValue: integer);
+
+    function GetName: string;
+    procedure SetName(const aValue: string);
+
+    property Id: integer read GetId write SetId;
+    property Name: string read GetName write SetName;
+  end;
+
+  TCustomer = class(TInterfacedObject, ICustomer)
+  private
+    fId: integer;
+    fName: string;
+  public
+    function GetId: integer;
+    procedure SetId(const aValue: integer);
+
+    function GetName: string;
+    procedure SetName(const aValue: string);
+
+    class function Make(const aId: integer; const aValue: string): TCustomer;
+  end;
+
   [TestFixture]
   TReflectionFixture = class
   private
@@ -67,31 +93,20 @@ type
 
     procedure ExpectAsInvalidCast(const Obj: TObject);
   public
-    { Kind helpers }
     [Test] procedure KindHelpers_Basics;
     [Test] procedure KindHelpers_OrdinalFloatString;
     [Test] procedure KindHelpers_ArrayDynArrayMethodPointer;
     [Test] procedure KindHelpers_PointerVariantPrimitive;
-
-    { Managed / copy semantics helpers }
     [Test] procedure ManagedHelpers_ManagedVsTrivial;
     [Test] procedure ManagedHelpers_NonOwningSafe;
-
-    { Array element type helpers }
     [Test] procedure ElementType_StaticArray;
     [Test] procedure ElementType_DynArray;
     [Test] procedure ElementType_NonArrayReturnsNil;
-
-    { Names & metadata }
     [Test] procedure Names_KindTypeInfoTypeName;
     [Test] procedure Names_FullName_HasUnitPrefixForStructuredTypes;
-
-    { Interface helpers }
     [Test] procedure Interface_TryGetGuid_SucceedsForInterface;
     [Test] procedure Interface_TryGetGuid_FailsForNonInterface;
     [Test] procedure Interface_AsAndImplements_ObjectAndInterface;
-
-    { TValue <-> Variant conversions }
     [Test] procedure TValueToVariant_SupportedKinds;
     [Test] procedure TValueToVariant_UnsupportedKinds;
     [Test] procedure VariantToTValue_StringsAndChars;
@@ -101,8 +116,6 @@ type
     [Test] procedure VariantToTValue_Interface_NullBecomesNil;
     [Test] procedure VariantToTValue_Interface_SupportsGuid;
     [Test] procedure VariantToTValue_Interface_RejectsWrongGuid;
-
-    { Argument conversion }
     [Test] procedure ConvertArgsFor_SucceedsForSimpleParams;
     [Test] procedure ConvertArgsFor_FailsOnCountMismatch;
     [Test] procedure ConvertArgsFor_RejectsVarAndOutParams;
@@ -110,12 +123,128 @@ type
     [Test] procedure RoundTrip_EmptyByteArray;
     [Test] procedure RoundTrip_Set_Int64Mask;
     [Test] procedure VariantToTValue_Set_AllowsNullAsEmpty;
-
+    [Test] procedure RoundTrip_Guid_String;
+    [Test] procedure VariantToTValue_Guid_AllowsNullAsEmpty;
+    [Test] procedure VariantToTValue_Guid_InvalidStringFails;
+    [Test] procedure RoundTrip_TArray_Integer;
+    [Test] procedure RoundTrip_TArray_String;
+    [Test] procedure RoundTrip_TArray_Interface;
   end;
 
 implementation
 
 { TReflectionFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_TArray_Interface;
+var
+  InA, OutA: TArray<ICustomer>;
+  V: Variant;
+  TV, TV2: TValue;
+begin
+  SetLength(InA, 2);
+  InA[0] := TCustomer.Make(1, 'Fred');
+  InA[1] := TCustomer.Make(2, 'Jack');
+
+  TV := TValue.From<TArray<ICustomer>>(InA);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TArray<ICustomer>), TV2));
+  OutA := TV2.AsType<TArray<ICustomer>>;
+
+  Assert.AreEqual(2, Length(OutA));
+  Assert.IsTrue(Assigned(OutA[0]));
+  Assert.IsTrue(Assigned(OutA[1]));
+
+  Assert.AreEqual(1, OutA[0].Id);
+  Assert.AreEqual(2, OutA[1].Id);
+
+  Assert.AreEqual('Fred', OutA[0].Name);
+  Assert.AreEqual('Jack', OutA[1].Name);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_TArray_Integer;
+var
+  InA, OutA: TArray<Integer>;
+  TV, TV2: TValue;
+  V: Variant;
+begin
+  InA := TArray<Integer>.Create(1, 2, 3);
+
+  TV := TValue.From<TArray<Integer>>(InA);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TArray<Integer>), TV2));
+  OutA := TV2.AsType<TArray<Integer>>;
+
+  Assert.AreEqual(Length(InA), Length(OutA));
+  Assert.AreEqual(1, OutA[0]);
+  Assert.AreEqual(2, OutA[1]);
+  Assert.AreEqual(3, OutA[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_TArray_String;
+var
+  InA, OutA: TArray<string>;
+  TV, TV2: TValue;
+  V: Variant;
+begin
+  InA := TArray<string>.Create('a', 'b');
+
+  TV := TValue.From<TArray<string>>(InA);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TArray<string>), TV2));
+  OutA := TV2.AsType<TArray<string>>;
+
+  Assert.AreEqual(Length(InA), Length(OutA));
+  Assert.AreEqual('a', OutA[0]);
+  Assert.AreEqual('b', OutA[1]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_Guid_String;
+var
+  G1, G2: TGUID;
+  TV, TV2: TValue;
+  V: Variant;
+begin
+  G1 := TGUID.Create('{6F9619FF-8B86-D011-B42D-00C04FC964FF}');
+
+  TV := TValue.From<TGUID>(G1);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+  Assert.AreEqual(GUIDToString(G1), VarToStr(V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TGUID), TV2));
+  G2 := TV2.AsType<TGUID>;
+
+  Assert.IsTrue(IsEqualGUID(G1, G2));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.VariantToTValue_Guid_AllowsNullAsEmpty;
+var
+  TV: TValue;
+  G: TGUID;
+begin
+  Assert.IsTrue(TReflection.TryVariantToTValue(Null, TypeInfo(TGUID), TV));
+  G := TV.AsType<TGUID>;
+  Assert.IsTrue(IsEqualGUID(G, AnEmptyGuid));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(Unassigned, TypeInfo(TGUID), TV));
+  G := TV.AsType<TGUID>;
+  Assert.IsTrue(IsEqualGUID(G, AnEmptyGuid));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.VariantToTValue_Guid_InvalidStringFails;
+var
+  TV: TValue;
+begin
+  Assert.IsFalse(TReflection.TryVariantToTValue('not-a-guid', TypeInfo(TGUID), TV));
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TReflectionFixture.RoundTrip_Set_Int64Mask;
@@ -682,6 +811,40 @@ end;
 procedure TMethodHost.HasOutParam(out A: Integer);
 begin
   A := 123;
+end;
+
+{ TCustomer }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TCustomer.GetId: integer;
+begin
+  Result := fId;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TCustomer.GetName: string;
+begin
+  Result := fName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCustomer.Make(const aId: integer; const aValue: string): TCustomer;
+begin
+  Result := TCustomer.Create;
+  Result.fId := aId;
+  Result.fName := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCustomer.SetId(const aValue: integer);
+begin
+  fId := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCustomer.SetName(const aValue: string);
+begin
+  fName := aValue;
 end;
 
 initialization

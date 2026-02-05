@@ -9,6 +9,7 @@ uses
   System.Variants;
 
 type
+  // Objects cross the boundary as interfaces; values cross as values.
   TReflection = record
   public
     // Basic kind helpers
@@ -392,6 +393,13 @@ var
   disp: IDispatch;
   unk: IInterface;
 begin
+  // Special-case records we know how to represent
+  if (aValue.Kind = tkRecord) and (aValue.TypeInfo = TypeInfo(TGUID)) then
+  begin
+    aOutVar := GUIDToString(aValue.AsType<TGUID>);
+    Exit(True);
+  end;
+
   // Special-case dynamic array of Byte -> Variant byte array
   if (aValue.Kind = tkDynArray) and (aValue.TypeInfo <> nil) then
   begin
@@ -784,10 +792,11 @@ begin
         if lElType = nil then
           Exit(False);
 
-        // Allocate destination dynarray storage
-        ArrPtr := nil;
-        DynArraySetLength(ArrPtr, aDestType, 1, @Len);
-        TValue.Make(@ArrPtr, aDestType, lArr);
+        // Create an empty dynarray TValue (owns lifetime)
+        TValue.Make(nil, aDestType, lArr);
+
+        // Set its length by operating on the dynarray variable stored inside TValue
+        DynArraySetLength(PPointer(lArr.GetReferenceToRawData)^, aDestType, 1, @Len);
 
         // Byte-array specialization (fast + direct)
         if lElType = TypeInfo(Byte) then
@@ -815,6 +824,35 @@ begin
         aOutValue := lArr;
         Exit(True);
       end;
+
+    tkRecord:
+      begin
+        if aDestType = TypeInfo(TGUID) then
+        begin
+          // Policy: Null/Empty => empty GUID (symmetric with other “empty” conversions)
+          if VarIsNull(aVar) or VarIsEmpty(aVar) then
+          begin
+            var G: TGUID := AnEmptyGuid;
+            aOutValue := TValue.From<TGUID>(G);
+            Exit(True);
+          end;
+
+          S := VarToStr(aVar);
+          var G: TGUID;
+
+          try
+            G := StringToGUID(S);
+          except
+            Exit(False);
+          end;
+
+          aOutValue := TValue.From<TGUID>(G);
+          Exit(True);
+        end;
+
+        Exit(False);
+      end;
+
   else
     Exit(False);
   end;
