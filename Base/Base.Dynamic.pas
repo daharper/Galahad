@@ -1,3 +1,41 @@
+{***************************************************************************************************
+  Project:     Galahad
+  Author:      David Harper
+  Unit:        Base.Dynamic
+  Purpose:     Provides dynamic and extended objects exposed via IDispatch (OleVariant),
+               enabling runtime dispatch, method interception, and "method_missing" behaviour.
+
+  Design contract:
+  - Objects cross the automation boundary as interfaces (varUnknown / varDispatch).
+  - Values cross the boundary as Variant-compatible value types.
+  - Supported value types are intentionally restricted to ensure deterministic,
+    lossless conversion between Variant and TValue.
+
+  Dynamic dispatch model:
+  - TDynamicObject:
+      * Attempts RTTI-based static dispatch first (methods, properties, indexed properties).
+      * Falls back to MethodMissing if no match is found.
+  - TExtendedObject:
+      * Does NOT attempt RTTI-based dispatch.
+      * Always routes dynamic invocations directly to MethodMissing.
+  - TDynamicDecorator:
+      * Allows decorator-style dynamic dispatch:
+          1) decorator instance
+          2) wrapped source object
+          3) MethodMissing fallback
+
+  Typical usage:
+  - Use normal Delphi interfaces for strongly-typed, compile-time dispatch.
+  - Use OleVariant / IDispatch only when dynamic behaviour or interception is required.
+
+  Notes:
+  - This unit relies on COM Automation semantics; callers are expected to initialize COM
+    (CoInitializeEx / CoUninitialize) at application or thread boundaries.
+  - Overload resolution is deterministic:
+      * strict matching first
+      * permissive (coercing) matching as fallback
+***************************************************************************************************}
+
 unit Base.Dynamic;
 
 interface
@@ -27,8 +65,15 @@ type
   TVariantArray    = array[0..MaxInt div SizeOf(Variant) - 1] of Variant;
 
   /// <summary>
-  /// Cache for RTTI methods, properties, and indexed properties against names for faster look up,
-  /// but does not cache overloaded methods, RTTI lacks information, the client has params to help
+  ///  Per-class RTTI cache for dynamic dispatch.
+  ///
+  ///  Stores a lookup of method / property / indexed-property names to RTTI handles for a specific metaclass.
+  ///  This avoids repeated RTTI enumeration on each IDispatch invocation.
+  ///
+  ///  Notes:
+  ///  - Designed for dynamic dispatch performance; lookups are name-based.
+  ///  - Overloaded methods are intentionally not cached as a single entry (RTTI does not uniquely identify
+  ///    overloads by name alone; overload selection is performed at call time using argument conversion).
   /// </summary>
   TDynamicClassCache = class
   private
@@ -51,7 +96,14 @@ type
   end;
 
   /// <summary>
-  /// Central cache for RTII class cache. Use this to register and request a TDynamicClassCache.
+  ///  Central registry of <see cref="TDynamicClassCache"/> instances.
+  ///
+  ///  Provides one cache per metaclass to support dynamic dispatch across many instances.
+  ///  The cache is process-wide and guarded by a lock for thread-safe registration.
+  ///
+  ///  Typical usage:
+  ///  - Request a cache for a class via <c>GetCache</c>
+  ///  - Or pre-register classes on startup via <c>RegisterClasses</c>
   /// </summary>
   TDynamicCache = class
   private
@@ -73,7 +125,16 @@ type
   end;
 
   /// <summary>
-  /// Helpers for dynamic behavior.
+  ///  Utility helpers for dynamic invocation.
+  ///
+  ///  Provides:
+  ///  - A convenience <c>Invoke</c> helper to call an IDispatch member by name.
+  ///  - Core dispatch logic (<c>TryInvokeOnType</c>) that resolves methods and properties via RTTI.
+  ///  - Property-flag inference to distinguish METHOD vs PROPERTYGET vs PROPERTYPUT/PUTREF in ambiguous calls.
+  ///
+  ///  This unit assumes the "automation boundary" contract:
+  ///  - Objects cross the boundary as interfaces (varUnknown/varDispatch).
+  ///  - Values cross as Variant-compatible value types (and supported arrays via SAFEARRAY).
   /// </summary>
   TDynamicHelper = class
   private
@@ -89,10 +150,16 @@ type
   end;
 
   /// <summary>
-  /// Inherit from this object to implement dynamic objects that first try to dispatch to static
-  /// methods, if not successful, then method missing will be called.
+  ///  Base class for "dynamic objects" exposed via IDispatch (OleVariant).
   ///
-  /// This class relies upon OleVariant dispatch, declare variables of type TDynamic accordingly.
+  ///  When invoked dynamically (through OleVariant), this object:
+  ///  1) Attempts to resolve and invoke a matching method/property/indexed-property via RTTI ("static dispatch").
+  ///  2) If resolution fails, falls back to <c>MethodMissing</c> with the member name and arguments.
+  ///
+  ///  This provides Ruby-style "method_missing" behaviour while still allowing fast, strongly-typed
+  ///  dispatch when the member exists.
+  ///
+  ///  The IDispatch name => DISPID mapping is maintained lazily per-instance to satisfy COM invocation.
   /// </summary>
   TDynamicObject = class(TInterfacedObject, IDispatch)
   private
@@ -110,6 +177,11 @@ type
     class var fContext: TRttiContext;
   public
     function AsVariant: OleVariant;
+
+    /// <summary>
+    /// Fallback handler invoked when a member cannot be resolved via RTTI.
+    /// Override to implement "method_missing" behaviour.
+    /// </summary>
     function MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant; virtual;
 
     procedure AfterConstruction; override;
@@ -119,14 +191,19 @@ type
   end;
 
   /// <summary>
-  /// This class provides method missing functionality when invoked via an OleVariant. It does not
-  /// try to resolve static type methods first like TDynamicObject. It simply provides method missing.
-  /// Please see the repository class as an example implementation that uses the X method accordingly.
+  ///  Base class for "extended objects" exposed via IDispatch (OleVariant) that always use MethodMissing.
+  ///
+  ///  Difference vs <see cref="TDynamicObject"/>:
+  ///  - <c>TExtendedObject</c> does NOT attempt RTTI-based static dispatch.
+  ///  - Any dynamic invocation is routed directly to <c>MethodMissing</c>.
+  ///
+  ///  Intended usage:
+  ///  - Call via a normal Delphi interface for strongly-typed, compile-time dispatch.
+  ///  - Call via OleVariant only when you explicitly want fully dynamic behaviour (e.g. interception,
+  ///    proxies, decorators, Ruby-style method_missing patterns) without the overhead of RTTI lookup.
+  ///
+  ///  The IDispatch name=>DISPID mapping is maintained lazily per-instance to satisfy COM invocation.
   /// </summary>
-  /// <remarks>
-  /// It's best to call "inherited Create" in child constructors, but effort has been made to initialize
-  /// the dispatch maps lazily if it hasn't been done.
-  /// </remarks>
   TExtendedObject = class(TInterfacedObject, IDispatch)
   private
     fNameToId: TDictionary<string, Integer>;
@@ -144,6 +221,10 @@ type
 
   public
     function AsVariant: OleVariant;
+
+    /// <summary>
+    /// Handles all dynamic invocations. Override to implement interception / "method_missing" behaviour.
+    /// </summary>
     function MethodMissing(const Name: string; const Args: TArray<Variant>): Variant; virtual;
 
     procedure AfterConstruction; override;
@@ -153,8 +234,20 @@ type
   end;
 
   /// <summary>
-  /// Provides the same behavior as DynamicObject except it tries to delegate to a wrapped object as well,
-  /// allowing decorator like behavior in the wrapping class. Inherit from this and add decorator methods.
+  ///  Dynamic decorator exposed via IDispatch (OleVariant) that wraps a source object of type <c>T</c>.
+  ///
+  ///  Dispatch order when invoked dynamically:
+  ///  1) Attempt RTTI-based static dispatch on the decorator instance itself (so the wrapper can provide
+  ///     additional/overriding members).
+  ///  2) If not resolved, attempt RTTI-based dispatch on the wrapped <see cref="Source"/> instance.
+  ///  3) If still not resolved, fall back to <c>MethodMissing</c>.
+  ///
+  ///  This enables "decorator-like" behaviour for dynamic invocation, while still supporting normal
+  ///  strongly-typed use of the wrapper and/or source via interfaces.
+  ///
+  ///  Ownership note:
+  ///  - The default implementation frees <see cref="Source"/> in the decorator destructor unless
+  ///    the caller calls <c>ReleaseSource</c>.
   /// </summary>
   TDynamicDecorator<T:class> = class(TInterfacedObject, IDispatch)
   private
@@ -175,7 +268,15 @@ type
     property Source: T read fSource write fSource;
 
     function AsVariant: OleVariant;
+
+    /// <summary>
+    /// Fallback handler invoked when neither decorator nor source can resolve the member via RTTI.
+    /// </summary>
     function MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant; virtual;
+
+    /// <summary>
+    /// Detaches the wrapped source from the decorator (preventing the decorator from freeing it).
+    /// </summary>
     function ReleaseSource: T;
 
     procedure AfterConstruction; override;
@@ -187,7 +288,10 @@ type
   end;
 
   /// <summary>
-  /// Access method for the dynamic cache.
+  /// Returns the process-wide singleton instance of <see cref="TDynamicCache"/>.
+  ///
+  /// This cache provides per-class RTTI lookup tables used by dynamic dispatch
+  /// to avoid repeated RTTI enumeration.
   /// </summary>
   function DynamicCache: TDynamicCache;
 
