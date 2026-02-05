@@ -47,7 +47,7 @@ end;
 
 This project is experimental and exploratory in nature.
 
-It targets desktop and mobile applications requiring a SQLite database, with basic database requirements. 
+It targets desktop and mobile applications with basic database requirements. 
 
 Subsequent releases will aim to expand upon the initial core feature set.
 
