@@ -9,69 +9,245 @@ uses
   System.Variants;
 
 type
-  // Objects cross the boundary as interfaces; values cross as values.
+  /// <summary>
+  ///  Reflection and interop helpers for safely bridging Delphi types with RTTI,
+  ///  Variant, and Automation (IDispatch) boundaries.
+  ///
+  ///  Design principles:
+  ///    - Objects cross the boundary as interfaces (IUnknown / IDispatch).
+  ///    - Values cross the boundary as values (Variant-compatible representations).
+  ///    - Only a well-defined, Automation-safe subset of types is supported.
+  ///    - Unsupported kinds fail deterministically (return False or raise).
+  ///
+  ///  This unit is intended for:
+  ///    - RTTI-based invocation
+  ///    - Automation / OleVariant dispatch
+  ///    - Dynamic method interception (method-missing patterns)
+  ///    - Script- or plugin-facing APIs
+  ///
+  ///  The conversion rules enforced here mirror COM/Automation constraints,
+  ///  ensuring binary compatibility and predictable lifetime semantics.
+  /// </summary>
   TReflection = record
   public
-    // Basic kind helpers
+    // -------------------------------------------------------------------------
+    // Basic type-kind classification helpers
+    // -------------------------------------------------------------------------
+
+    /// <summary>Returns True if T is an interface type (tkInterface).</summary>
     class function IsInterface<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a class type (tkClass).</summary>
     class function IsClass<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a record type (tkRecord).</summary>
     class function IsRecord<T>: Boolean; static; inline;
-    class function IsClassRef<T>: Boolean; static; inline;   // metaclass
-    class function IsOrdinal<T>: Boolean; static; inline;    // enums, sets, integers, chars, int64
-    class function IsFloat<T>: Boolean; static; inline;      // Float/Curr
-    class function IsString<T>: Boolean; static; inline;     // Short/Ansi/Wide/UnicodeString
-    class function IsArray<T>: Boolean; static; inline;      // static array
-    class function IsDynArray<T>: Boolean; static; inline;   // dynamic array
-    class function IsMethod<T>: Boolean; static; inline;     // method pointer
+
+    /// <summary>Returns True if T is a class reference (metaclass).</summary>
+    class function IsClassRef<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if T is an ordinal type: integers, int64, chars, enums, or sets.
+    /// </summary>
+    class function IsOrdinal<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a floating-point or currency type.</summary>
+    class function IsFloat<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if T is a string type (ShortString, AnsiString, WideString, UnicodeString).
+    /// </summary>
+    class function IsString<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a static (fixed-length) array.</summary>
+    class function IsArray<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a dynamic array (TArray&lt;T&gt;).</summary>
+    class function IsDynArray<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a method pointer (of object).</summary>
+    class function IsMethod<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a raw pointer type.</summary>
     class function IsPointer<T>: Boolean; static; inline;
+
+    /// <summary>Returns True if T is a Variant.</summary>
     class function IsVariant<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if T is a primitive, trivially representable value
+    ///  suitable for simple Variant transport.
+    /// </summary>
     class function IsPrimitive<T>: Boolean; static; inline;
 
-    // Managed-type (ref-counted / compiler-managed) check
+    // -------------------------------------------------------------------------
+    // Managed / lifetime semantics
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    ///  Returns True if T is a compiler-managed type (reference-counted or requires finalization).
+    /// </summary>
     class function IsManaged<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if values of type T do not imply ownership
+    ///  and are safe to pass without transfer-of-ownership semantics.
+    /// </summary>
     class function IsNonOwningSafe<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if values of type T require finalization when leaving scope.
+    /// </summary>
     class function NeedsFinalization<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if values of type T are reference-counted (interfaces, strings, dynamic arrays).
+    /// </summary>
     class function IsReferenceCounted<T>: Boolean; static; inline;
+
+    /// <summary>
+    ///  Returns True if values of type T are trivially copyable
+    ///  (safe for Move/memcpy and no finalization required).
+    /// </summary>
     class function IsTriviallyCopyable<T>: Boolean; static; inline;
 
-    // array element type
+    // -------------------------------------------------------------------------
+    // Array metadata
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    ///  Returns the PTypeInfo of the element type of an array or dynamic array.
+    ///  Returns nil if T is not an array type.
+    /// </summary>
     class function ElementTypeInfo<T>: PTypeInfo; static;
+
+    /// <summary>
+    ///  Returns the type name of the element type of an array or dynamic array.
+    ///  Returns an empty string if T is not an array type.
+    /// </summary>
     class function ElementTypeName<T>: string; static;
 
-    // Names & metadata
+    // -------------------------------------------------------------------------
+    // Type metadata and naming
+    // -------------------------------------------------------------------------
+
+    /// <summary>Returns the RTTI kind (TTypeKind) of T.</summary>
     class function KindOf<T>: TTypeKind; static; inline;
+
+    /// <summary>Returns the PTypeInfo for T.</summary>
     class function TypeInfoOf<T>: PTypeInfo; static; inline;
+
+    /// <summary>Returns the short (unqualified) type name of T.</summary>
     class function TypeNameOf<T>: string; static; inline;
+
+    /// <summary>
+    /// Returns the fully qualified type name of T (Unit.Type),
+    /// where applicable.
+    /// </summary>
     class function FullNameOf<T>: string; static; inline;
 
-    // Utility
+// -------------------------------------------------------------------------
+    // Utility helpers
+    // -------------------------------------------------------------------------
+
+    /// <summary>Returns the default (zero-initialized) value of T.</summary>
     class function DefaultOf<T>: T; static; inline;
+
+    /// <summary>
+    /// Returns the interface GUID for T. T must be an interface type.
+    /// </summary>
     class function InterfaceGuidOf<T>: TGUID; static; inline;
 
+    /// <summary>
+    /// Raises in debug builds if T is not an interface type.
+    /// Used to enforce interface-only object boundaries.
+    /// </summary>
     class procedure RequireInterfaceType<T>; static; inline;
 
+    /// <summary>
+    /// Casts an object reference to interface T, raising if unsupported.
+    /// </summary>
     class function &As<T>(const aSource: TObject): T; overload; static; inline;
+
+    /// <summary>
+    /// Casts an interface reference to interface T, raising if unsupported.
+    /// </summary>
     class function &As<T>(const aSource: IInterface): T; overload; static; inline;
 
+    /// <summary>
+    /// Returns True if the object implements interface T.
+    /// </summary>
     class function Implements<T>(const aSource: TObject): Boolean; overload; static; inline;
+
+    /// <summary>
+    /// Returns True if the object implements interface T and outputs the cast.
+    /// </summary>
     class function Implements<T>(const aSource: TObject; out aTarget: T): Boolean; overload; static; inline;
+
+    /// <summary>
+    /// Returns True if the interface implements interface T.
+    /// </summary>
     class function Implements<T>(const aSource: IInterface): Boolean; overload; static; inline;
+
+    /// <summary>
+    /// Returns True if the interface implements interface T and outputs the cast.
+    /// </summary>
     class function Implements<T>(const aSource: IInterface; out aTarget: T): Boolean; overload; static; inline;
 
-    // Interface GUID helper
+    /// <summary>
+    ///  Sets aGuid to the Interface GUID of the specified T if found, otherwise to an empty good.
+    ///  Returns true if found, otherwise false.
+    /// </summary>
     class function TryGetInterfaceGuid<T>(out aGuid: TGUID): Boolean; static;
 
-    // TValue to Variant (lossless for supported kinds). Returns False if not supported.
-    class function TryTValueToVariant(const aValue: TValue; out aOutVar: Variant): Boolean; static;
+    // -------------------------------------------------------------------------
+    // Variant / TValue interop
+    // -------------------------------------------------------------------------
 
-    // Variant to TValue of the exact DestType (PTypeInfo). Returns False if not supported/convertible.
-    class function TryVariantToTValue(const aVar: Variant; aDestType: PTypeInfo; out aOutValue: TValue): Boolean; overload; static;
+    /// <summary>
+    ///  Attempts to convert a TValue into a Variant using a lossless,
+    ///  Automation-compatible representation.
+    ///
+    ///  Returns False if the TValue kind is not supported by the interop contract.
+    /// </summary>
+    class function TryTValueToVariant(
+      const aValue: TValue;
+      out aOutVar: Variant
+    ): Boolean; static;
 
-    // Convenience overload for TRttiType
-    class function TryVariantToTValue(const aVar: Variant; const aDestRttiType: TRttiType; out aOutValue: TValue): Boolean; overload; static;
+    /// <summary>
+    ///  Attempts to convert a Variant into a TValue of the exact destination type.
+    ///
+    ///  Returns False if the Variant cannot be represented as the destination type
+    ///  under the supported interop rules.
+    /// </summary>
+    class function TryVariantToTValue(
+      const aVar: Variant;
+      aDestType: PTypeInfo;
+      out aOutValue: TValue
+    ): Boolean; overload; static;
 
-    class function ConvertArgsFor(const aParams: TArray<TRttiParameter>; const aInArgs: TArray<Variant>; out aCallArgs: TArray<TValue>): Boolean; static;
-  end;
+    /// <summary>
+    ///  Convenience overload accepting a TRttiType as the destination.
+    /// </summary>
+    class function TryVariantToTValue(
+      const aVar: Variant;
+      const aDestRttiType: TRttiType;
+      out aOutValue: TValue
+    ): Boolean; overload; static;
+
+    /// <summary>
+    ///  Converts an array of Variant arguments into TValue call arguments
+    ///  suitable for invoking an RTTI-described method.
+    ///
+    ///  Parameter counts and types must match exactly; var/out parameters
+    ///  are currently rejected.
+    /// </summary>
+    class function ConvertArgsFor(
+      const aParams: TArray<TRttiParameter>;
+      const aInArgs: TArray<Variant>;
+      out aCallArgs: TArray<TValue>
+    ): Boolean; static;  end;
 
 const
   AnEmptyGuid: TGUID = '{00000000-0000-0000-0000-000000000000}';
@@ -563,7 +739,6 @@ var
   lLow, lHigh, Len, i: Integer;
   lElTV: TValue;
   lArr: TValue;
-  ArrPtr: Pointer;
   obj: TObject;
 begin
   Result := False;
