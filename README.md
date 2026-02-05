@@ -25,7 +25,7 @@ The Holy Grail, in this sense, is maintainable code.
 
 For example, the TScope type:
 
-```pascal
+```delphi
 // Instead of nested try..finally blocks:
 var scope: TScope;
 begin
