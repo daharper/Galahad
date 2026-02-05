@@ -83,7 +83,7 @@ type
     function GetName: string;
     procedure SetName(const aValue: string);
 
-    class function Make(const aId: integer; const aValue: string): TCustomer;
+    class function Make(const aId: integer; const aValue: string): ICustomer; static;
   end;
 
   [TestFixture]
@@ -129,11 +129,70 @@ type
     [Test] procedure RoundTrip_TArray_Integer;
     [Test] procedure RoundTrip_TArray_String;
     [Test] procedure RoundTrip_TArray_Interface;
+    [Test] procedure RoundTrip_TArray_Guid;
+    [Test] procedure RoundTrip_TArray_Guid_Empty;
+    [Test] procedure VariantToTValue_TArray_Guid_InvalidElementFails;
+
   end;
 
 implementation
 
 { TReflectionFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_TArray_Guid;
+var
+  InA, OutA: TArray<TGUID>;
+  V: Variant;
+  TV, TV2: TValue;
+begin
+  SetLength(InA, 2);
+  InA[0] := StringToGUID('{6F9619FF-8B86-D011-B42D-00C04FC964FF}');
+  InA[1] := StringToGUID('{2C5F44E9-6068-4E35-826B-27C03E4F5083}');
+
+  TV := TValue.From<TArray<TGUID>>(InA);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TArray<TGUID>), TV2));
+  OutA := TV2.AsType<TArray<TGUID>>;
+
+  Assert.AreEqual(2, Length(OutA));
+  Assert.IsTrue(IsEqualGUID(InA[0], OutA[0]));
+  Assert.IsTrue(IsEqualGUID(InA[1], OutA[1]));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.RoundTrip_TArray_Guid_Empty;
+var
+  InA, OutA: TArray<TGUID>;
+  V: Variant;
+  TV, TV2: TValue;
+begin
+  SetLength(InA, 0);
+
+  TV := TValue.From<TArray<TGUID>>(InA);
+  Assert.IsTrue(TReflection.TryTValueToVariant(TV, V));
+
+  Assert.IsTrue(TReflection.TryVariantToTValue(V, TypeInfo(TArray<TGUID>), TV2));
+  OutA := TV2.AsType<TArray<TGUID>>;
+
+  Assert.AreEqual(0, Length(OutA));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TReflectionFixture.VariantToTValue_TArray_Guid_InvalidElementFails;
+var
+  V: Variant;
+  TV: TValue;
+begin
+  V := VarArrayCreate([0, 1], varVariant);
+
+  V[0] := '{6F9619FF-8B86-D011-B42D-00C04FC964FF}';
+  V[1] := 'not-a-guid';
+
+  Assert.IsFalse(TReflection.TryVariantToTValue(V, TypeInfo(TArray<TGUID>), TV));
+end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TReflectionFixture.RoundTrip_TArray_Interface;
@@ -828,11 +887,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TCustomer.Make(const aId: integer; const aValue: string): TCustomer;
+class function TCustomer.Make(const aId: integer; const aValue: string): ICustomer;
 begin
-  Result := TCustomer.Create;
-  Result.fId := aId;
-  Result.fName := aValue;
+  var c := TCustomer.Create;
+  c.fId := aId;
+  c.fName := aValue;
+  Result := c;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
