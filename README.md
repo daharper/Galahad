@@ -49,6 +49,8 @@ This project is experimental and exploratory in nature.
 
 It targets desktop and mobile applications requiring a SQLite database, with basic database requirements. 
 
+Subsequent releases will aim to expand upon the initial core feature set.
+
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
 For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
