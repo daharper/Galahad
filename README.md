@@ -49,7 +49,7 @@ This project is experimental and exploratory in nature.
 
 It targets desktop and mobile applications with basic database requirements. 
 
-Subsequent releases will aim to expand upon the initial core feature set.
+Subsequent releases will aim to expand upon the initial limited core feature set.
 
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
