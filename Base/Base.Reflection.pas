@@ -238,6 +238,11 @@ type
       out aOutValue: TValue
     ): Boolean; overload; static;
 
+    class function TryVariantToTValueStrict(
+      const aVar: Variant;
+      aDestType: PTypeInfo;
+      out aOutValue: TValue): Boolean; static;
+
     /// <summary>
     ///  Converts an array of Variant arguments into TValue call arguments
     ///  suitable for invoking an RTTI-described method.
@@ -249,7 +254,14 @@ type
       const aParams: TArray<TRttiParameter>;
       const aInArgs: TArray<Variant>;
       out aCallArgs: TArray<TValue>
-    ): Boolean; static;  end;
+    ): Boolean; static;
+
+    class function ConvertArgsForStrict(
+      const aParams: TArray<TRttiParameter>;
+      const aInArgs: TArray<Variant>;
+      out aCallArgs: TArray<TValue>
+    ): Boolean; static;
+  end;
 
 const
   AnEmptyGuid: TGUID = '{00000000-0000-0000-0000-000000000000}';
@@ -1057,6 +1069,89 @@ begin
   end;
 end;
 
+class function TReflection.TryVariantToTValueStrict(const aVar: Variant; aDestType: PTypeInfo; out aOutValue: TValue): Boolean;
+begin
+  // Strict rules:
+  //  - No string -> numeric coercion (int/float/currency/datetime/set mask)
+  //  - Enum: allow enum *name* strings, but not numeric strings
+  //  - Everything else same as TryVariantToTValue
+  //
+  // Implementation strategy: copy TryVariantToTValue and change only the numeric branches.
+
+  Result := False;
+  if aDestType = nil then Exit;
+
+  try
+    case aDestType^.Kind of
+      tkInteger, tkInt64:
+        begin
+          if VarIsStr(aVar) then Exit(False);
+          aOutValue := TValue.FromOrdinal(aDestType, VarAsType(aVar, varInt64));
+          Exit(True);
+        end;
+
+      tkFloat:
+        begin
+          if VarIsStr(aVar) then Exit(False);
+
+          if aDestType = TypeInfo(TDateTime) then
+          begin
+            if VarIsNull(aVar) or VarIsEmpty(aVar) then Exit(False);
+            aOutValue := TValue.From<TDateTime>(VarToDateTime(aVar));
+            Exit(True);
+          end
+          else if aDestType = TypeInfo(Currency) then
+          begin
+            aOutValue := TValue.From<Currency>(VarAsType(aVar, varCurrency));
+            Exit(True);
+          end
+          else
+          begin
+            aOutValue := TValue.From<Double>(VarAsType(aVar, varDouble));
+            Exit(True);
+          end;
+        end;
+
+      tkEnumeration:
+        begin
+          // Boolean stays permissive (Variant can be many things)
+          if aDestType = TypeInfo(Boolean) then
+          begin
+            aOutValue := TValue.From<Boolean>(VarAsType(aVar, varBoolean));
+            Exit(True);
+          end;
+
+          // Strict: string is only allowed as *enum name*
+          if VarIsStr(aVar) then
+          begin
+            var ord := GetEnumValue(aDestType, VarToStr(aVar));
+            if ord < 0 then Exit(False);
+            aOutValue := TValue.FromOrdinal(aDestType, ord);
+            Exit(True);
+          end;
+
+          aOutValue := TValue.FromOrdinal(aDestType, VarAsType(aVar, varInt64));
+          Exit(True);
+        end;
+
+      tkSet:
+        begin
+          // Strict: don't accept strings as numeric masks
+          if VarIsStr(aVar) then Exit(False);
+          // Delegate to your existing implementation’s set logic by just calling it
+          Exit(TryVariantToTValue(aVar, aDestType, aOutValue));
+        end;
+    else
+      // For all other kinds, reuse the permissive converter
+      Exit(TryVariantToTValue(aVar, aDestType, aOutValue));
+    end;
+  except
+    on E: EVariantError do Exit(False);
+    on E: EConvertError do Exit(False);
+    on E: EInvalidCast do Exit(False);
+  end;
+end;
+
 {----------------------------------------------------------------------------------------------------------------------}
 class function TReflection.TryVariantToTValue(const aVar: Variant; const aDestRttiType: TRttiType; out aOutValue: TValue): Boolean;
 begin
@@ -1085,6 +1180,28 @@ begin
 
     aCallArgs[i] := tv;
   end;
+  Result := True;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TReflection.ConvertArgsForStrict(const aParams: TArray<TRttiParameter>; const aInArgs: TArray<Variant>; out aCallArgs: TArray<TValue>): Boolean;
+var
+  i: Integer;
+  tv: TValue;
+begin
+  Result := False;
+  if Length(aParams) <> Length(aInArgs) then Exit;
+
+  SetLength(aCallArgs, Length(aParams));
+
+  for i := 0 to High(aParams) do
+  begin
+    if (pfVar in aParams[i].Flags) or (pfOut in aParams[i].Flags) then Exit;
+
+    if not TryVariantToTValueStrict(aInArgs[i], aParams[i].ParamType.Handle, tv) then Exit;
+    aCallArgs[i] := tv;
+  end;
+
   Result := True;
 end;
 

@@ -815,46 +815,43 @@ begin
   LInstance := TValue.From<TObject>(aSelf);
 
   { Indexed property (ask explicitly) }
-//  if IsGet or IsPut or IsPutRef then
-//  begin
     // Indexed property: if it exists, we can treat METHOD calls as GET/PUT based on arg count.
     // This is important because OleVariant often calls V.Prop(i) as DISPATCH_METHOD.
-    if lCache.TryGetIndexedProperty(aName, lIdxProp) then
+  if lCache.TryGetIndexedProperty(aName, lIdxProp) then
+  begin
+    // If flags indicate PUT/PUTREF, treat last arg as value.
+    // Otherwise treat as GET (OleVariant often calls V.Prop(i) as DISPATCH_METHOD).
+    if IsPut or IsPutRef then
     begin
-      // If flags indicate PUT/PUTREF, treat last arg as value.
-      // Otherwise treat as GET (OleVariant often calls V.Prop(i) as DISPATCH_METHOD).
-      if IsPut or IsPutRef then
-      begin
-        if Length(aArgs) < 1 then Exit(False);
+      if Length(aArgs) < 1 then Exit(False);
 
-        lIndexCount := Length(aArgs) - 1;
-        SetLength(IndexArgs, lIndexCount);
+      lIndexCount := Length(aArgs) - 1;
+      SetLength(IndexArgs, lIndexCount);
 
-        for i := 0 to lIndexCount - 1 do
-          IndexArgs[i] := TValue.FromVariant(aArgs[i]);
+      for i := 0 to lIndexCount - 1 do
+        IndexArgs[i] := TValue.FromVariant(aArgs[i]);
 
-        if not TReflection.TryVariantToTValue(aArgs[lIndexCount], lIdxProp.PropertyType.Handle, lReturnValue) then
-          lReturnValue := TValue.FromVariant(aArgs[lIndexCount]);
+      if not TReflection.TryVariantToTValue(aArgs[lIndexCount], lIdxProp.PropertyType.Handle, lReturnValue) then
+        lReturnValue := TValue.FromVariant(aArgs[lIndexCount]);
 
-        lIdxProp.SetValue(aSelf, IndexArgs, lReturnValue);
+      lIdxProp.SetValue(aSelf, IndexArgs, lReturnValue);
 
-        aReturnValue := TValue.Empty;
-        Exit(True);
-      end
-      else
-      begin
-        // Default to GET for METHOD-style invocation
-        lIndexCount := Length(aArgs);
-        SetLength(IndexArgs, lIndexCount);
+      aReturnValue := TValue.Empty;
+      Exit(True);
+    end
+    else
+    begin
+      // Default to GET for METHOD-style invocation
+      lIndexCount := Length(aArgs);
+      SetLength(IndexArgs, lIndexCount);
 
-        for i := 0 to lIndexCount - 1 do
-          IndexArgs[i] := TValue.FromVariant(aArgs[i]);
+      for i := 0 to lIndexCount - 1 do
+        IndexArgs[i] := TValue.FromVariant(aArgs[i]);
 
-        aReturnValue := lIdxProp.GetValue(aSelf, IndexArgs);
-        Exit(True);
-      end;
+      aReturnValue := lIdxProp.GetValue(aSelf, IndexArgs);
+      Exit(True);
     end;
-//  end;
+  end;
 
   { Non-indexed property }
   if IsGet or IsPut or IsPutRef then
@@ -882,21 +879,35 @@ begin
     end;
   end;
 
-  { methods: instance, first compatible overload wins }
-  if not IsMethod then exit;
+  { methods: instance, strict-first overload resolution }
+  if not IsMethod then Exit;
 
-  lMethodFound := lCache.TryGetMethod(aName, lMethod);
+  lMethod := nil;
+  lMethodFound := False;
 
-  if lMethodFound then
+  { Pass 1: STRICT matching (no string->numeric coercion) }
+  for lMethod in LType.GetMethods do
   begin
-    lParams      := lMethod.GetParameters;
-    lMethodFound := TReflection.ConvertArgsFor(lParams, aArgs, lCallArgs);
+    if not SameText(lMethod.Name, aName) then
+      Continue;
 
-    // If cached signature doesn't match args, fall back to full scan
-    if not lMethodFound then
-      lMethod := nil;
+    if lMethod.IsConstructor or lMethod.IsDestructor then
+      Continue;
+
+    if (lMethod.Parent is TRttiInstanceType) and
+       (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then
+      Continue;
+
+    lParams := lMethod.GetParameters;
+
+    if TReflection.ConvertArgsForStrict(lParams, aArgs, lCallArgs) then
+    begin
+      lMethodFound := True;
+      Break;
+    end;
   end;
 
+  { Pass 2: PERMISSIVE matching (string->numeric allowed, etc.) }
   if not lMethodFound then
   begin
     for lMethod in LType.GetMethods do
@@ -904,22 +915,24 @@ begin
       if not SameText(lMethod.Name, aName) then
         Continue;
 
-      if lMethod.IsConstructor or lMethod.IsDestructor then Continue;
+      if lMethod.IsConstructor or lMethod.IsDestructor then
+        Continue;
 
       if (lMethod.Parent is TRttiInstanceType) and
-         (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then Continue;
+         (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then
+        Continue;
 
       lParams := lMethod.GetParameters;
 
       if TReflection.ConvertArgsFor(lParams, aArgs, lCallArgs) then
       begin
-        lMethodFound := true;
-        break;
+        lMethodFound := True;
+        Break;
       end;
     end;
   end;
 
-  if not lMethodFound then Exit;
+  if (not lMethodFound) or (lMethod = nil) then exit;
 
   if not lMethod.IsClassMethod then
     aReturnValue := lMethod.Invoke(aSelf, lCallArgs)

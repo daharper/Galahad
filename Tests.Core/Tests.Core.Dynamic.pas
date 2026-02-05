@@ -33,6 +33,7 @@ type
   // Instrumented dynamic object
   TTestDynamic = class(TDynamicObject)
   private
+    FCurrent: ICustomer;
     FCount: Integer;
     FItems: array[0..2] of string;
 
@@ -42,6 +43,10 @@ type
     LastMissingName: string;
     LastMissingArgs: TArray<Variant>;
     MissingCount: Integer;
+
+     // Overload selection
+    function Over(const A: Integer): string; overload;
+    function Over(const A: string): string; overload;
 
     function Add(A, B: Integer): Integer;
     function Echo(const S: string): string;
@@ -53,6 +58,9 @@ type
     function MakeCustomer(AId: Integer; const AName: string): ICustomer;
 
     property Count: Integer read FCount write FCount;
+
+    // Interface property (to test PUTREF end-to-end)
+    property CurrentCustomer: ICustomer read FCurrent write FCurrent;
 
     // Indexed property
     property Item[aIndex: Integer]: string read GetItem write SetItem;
@@ -90,6 +98,11 @@ type
     [Test] procedure Dynamic_SupportedTypes_TBytes;
     [Test] procedure Dynamic_SupportedTypes_TArrayGuid;
     [Test] procedure Dynamic_SupportedTypes_InterfaceReturn;
+    [Test] procedure Dynamic_CaseInsensitive_Names;
+    [Test] procedure Dynamic_OverloadSelection_IntVsString;
+    [Test] procedure Dynamic_NullEmpty_Behavior;
+    [Test] procedure Dynamic_PropertyPutRef_EndToEnd_InterfaceProperty;
+    [Test] procedure Dynamic_ByRefArrayArgument_Regression;
   end;
 
 implementation
@@ -110,6 +123,97 @@ end;
 procedure TDynamicTests.TearDown;
 begin
   CoUninitialize;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_CaseInsensitive_Names;
+var
+  D: IDispatch;
+  V: OleVariant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  // property set/get with odd casing
+  V.cOuNt := 9;
+  Assert.AreEqual(9, Integer(V.COUNT));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_OverloadSelection_IntVsString;
+var
+  D: IDispatch;
+  V: OleVariant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  Assert.AreEqual('int:5', string(V.Over(5)));
+
+  Assert.AreEqual('str:5', string(V.Over('5')));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_NullEmpty_Behavior;
+var
+  D: IDispatch;
+  V: OleVariant;
+  R: Variant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  // SumArray expects TArray<Integer>; Null should not match => MethodMissing (policy)
+  R := V.SumArray(Null);
+  Assert.IsTrue(VarIsStr(R));
+  Assert.IsTrue(string(R).StartsWith('[missing-test]'));
+
+  // Missing call with Empty/Unassigned should not AV
+  R := V.NoSuchMethod(Unassigned);
+  Assert.IsTrue(VarIsStr(R));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_PropertyPutRef_EndToEnd_InterfaceProperty;
+var
+  D: IDispatch;
+  V: OleVariant;
+  R: Variant;
+  C: ICustomer;
+  U: OleVariant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  R := V.MakeCustomer(1, 'Fred');
+  C := IInterface(VarAsType(R, varUnknown)) as ICustomer;
+
+  // Force correct VARIANT type for property-putref:
+  U := IUnknown(C);      // U becomes an OleVariant with varUnknown
+  V.CurrentCustomer := U;
+
+  R := V.CurrentCustomer;
+  C := IInterface(VarAsType(R, varUnknown)) as ICustomer;
+
+  Assert.AreEqual(1, C.Id);
+  Assert.AreEqual('Fred', C.Name);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_ByRefArrayArgument_Regression;
+var
+  D: IDispatch;
+  V: OleVariant;
+  A: Variant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  // Use a variable (not a literal) so Automation is more likely to pass BYREF
+  A := VarArrayCreate([0, 3], varInteger);
+  A[0] := 1; A[1] := 2; A[2] := 3; A[3] := 4;
+
+  Assert.AreEqual(10, Integer(V.SumArray(A)));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -436,6 +540,18 @@ begin
   LastMissingName := aName;
   LastMissingArgs := Copy(aArgs);
   Result := Format('[missing-test] %s(%d)', [aName, Length(aArgs)]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TTestDynamic.Over(const A: string): string;
+begin
+  Result := 'str:' + A;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TTestDynamic.Over(const A: Integer): string;
+begin
+  Result := 'int:' + A.ToString;
 end;
 
 { TTestExtended }
