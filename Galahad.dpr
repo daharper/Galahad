@@ -32,7 +32,9 @@ uses
   Mocks.Repositories in 'Mocks\Mocks.Repositories.pas',
   Mocks.Specifications in 'Mocks\Mocks.Specifications.pas',
   Base.Reflection in 'Base\Base.Reflection.pas',
-  Tests.Core.Reflection in 'Tests.Core\Tests.Core.Reflection.pas';
+  Tests.Core.Reflection in 'Tests.Core\Tests.Core.Reflection.pas',
+  Base.Dynamic in 'Base\Base.Dynamic.pas',
+  Tests.Core.Dynamic in 'Tests.Core\Tests.Core.Dynamic.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
