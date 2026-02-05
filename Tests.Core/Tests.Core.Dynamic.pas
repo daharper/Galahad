@@ -50,6 +50,7 @@ type
 
     function Add(A, B: Integer): Integer;
     function Echo(const S: string): string;
+    function EchoStrings(const A: TArray<string>): TArray<string>;
 
     // Arrays / supported types
     function SumArray(const A: TArray<Integer>): Integer;
@@ -103,6 +104,7 @@ type
     [Test] procedure Dynamic_NullEmpty_Behavior;
     [Test] procedure Dynamic_PropertyPutRef_EndToEnd_InterfaceProperty;
     [Test] procedure Dynamic_ByRefArrayArgument_Regression;
+    [Test] procedure Dynamic_SupportedTypes_TArrayString;
   end;
 
 implementation
@@ -123,6 +125,25 @@ end;
 procedure TDynamicTests.TearDown;
 begin
   CoUninitialize;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDynamicTests.Dynamic_SupportedTypes_TArrayString;
+var
+  D: IDispatch;
+  V: OleVariant;
+  A, R: Variant;
+begin
+  D := TTestDynamic.Create;
+  V := D;
+
+  A := VarArrayOf(['a', 'b', 'c']);
+  R := V.EchoStrings(A);
+
+  Assert.IsTrue((VarType(R) and varArray) <> 0, 'Expected Variant array return');
+  Assert.AreEqual('a', string(R[0]));
+  Assert.AreEqual('b', string(R[1]));
+  Assert.AreEqual('c', string(R[2]));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -490,6 +511,12 @@ end;
 function TTestDynamic.Echo(const S: string): string;
 begin
   Result := S;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TTestDynamic.EchoStrings(const A: TArray<string>): TArray<string>;
+begin
+  Result := A;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
