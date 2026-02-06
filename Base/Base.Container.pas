@@ -188,6 +188,8 @@ type
     /// </remarks>
     procedure Clear;
 
+    function TryResolve<T: IInterface>(out aService: T; const aName: string = ''): Boolean;
+    function Resolve<T: IInterface>(const aName: string = ''): T;
   end;
 
 implementation
@@ -503,6 +505,82 @@ procedure TContainer.Clear;
 begin
   fSingletons.Clear;
   fRegistry.Clear;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.TryResolve<T>(out aService: T; const aName: string): Boolean;
+var
+  lReg: TRegistration;
+  lValue: TSingletonValue;
+begin
+  Result   := false;
+  aService := Default(T);
+
+  var key := TServiceKey.Create(TypeInfo(T), aName);
+
+  // todo - use a locator
+  if not fRegistry.TryGet(key, lReg) then exit;
+
+  // if instance registration, it must already be in singleton cache.
+  if lReg.Kind = Instance then
+  begin
+    if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+    begin
+      aService := T(lValue.Intf);
+      exit(true);
+    end;
+
+    exit(false);
+  end;
+
+  // factory registration
+  if lReg.Kind = Factory then
+  begin
+    // singleton: return cached if present
+    if lReg.Lifetime = Singleton then
+    begin
+      if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+      begin
+        aService := T(lValue.Intf);
+        exit(true);
+      end;
+
+      // create and cache
+      Ensure.IsAssigned(lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
+
+      var created := lReg.FactoryIntf();
+
+      // factory may legally return nil; treat as failure
+      if not Assigned(created) then exit(false);
+
+      fSingletons.PutInterface(key, created);
+      aService := T(Created);
+
+      exit(true);
+    end;
+
+    // Transient: always create
+    Ensure.IsTrue(Assigned(lReg.FactoryIntf), 'TryResolve<T>: missing interface factory');
+
+    var created := lReg.FactoryIntf();
+
+    if not Assigned(created) then exit(false);
+
+    aService := T(Created);
+    exit(true);
+  end;
+
+  // todo - TypeMap/Activator not supported yet
+  Exit(false);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.Resolve<T>(const aName: string): T;
+const
+  ERR = 'Service not registered: %s (Name="%s")';
+begin
+  if not TryResolve<T>(Result, aName) then
+    raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

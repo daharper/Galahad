@@ -5,24 +5,10 @@ interface
 uses
   DUnitX.TestFramework,
   System.SysUtils,
-  Base.Container;
+  Base.Container,
+  Mocks.Container;
 
 type
-  ITestSvc = interface
-    ['{B56A390B-29D1-4C96-9C07-5FD80DFE7C9E}']
-    function Ping: Integer;
-  end;
-
-  TTestSvc = class(TInterfacedObject, ITestSvc)
-  public
-    function Ping: Integer;
-  end;
-
-  TObjectSvc = class
-  public
-    Value: Integer;
-  end;
-
   [TestFixture]
   TRegistrationFixture = class
   public
@@ -50,7 +36,7 @@ implementation
 uses
   Base.Integrity;
 
-{ Tests }
+{ TRegistrationFixture }
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TRegistrationFixture.Add_InterfaceInstance_RegistersDefaultName;
@@ -219,7 +205,6 @@ begin
   var container := scope.Owns(TContainer.Create);
 
   container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'A');
-
   container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'B');
 
   Assert.IsTrue(container.IsRegistered<TObjectSvc>('A'));
@@ -241,14 +226,6 @@ begin
   container.Clear;
 
   Assert.IsFalse(container.IsRegistered<ITestSvc>('X'));
-end;
-
-{ TTestSvc }
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TTestSvc.Ping: Integer;
-begin
-  Result := 42;
 end;
 
 initialization
