@@ -38,7 +38,8 @@ uses
   Base.Container in 'Base\Base.Container.pas',
   Tests.Container.Registration in 'Tests.Container\Tests.Container.Registration.pas',
   Mocks.Container in 'Mocks\Mocks.Container.pas',
-  Tests.Container.ResolveRegistered in 'Tests.Container\Tests.Container.ResolveRegistered.pas';
+  Tests.Container.ResolveRegistered in 'Tests.Container\Tests.Container.ResolveRegistered.pas',
+  Tests.Container.ModuleRegistration in 'Tests.Container\Tests.Container.ModuleRegistration.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

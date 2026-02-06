@@ -3,10 +3,7 @@ unit Tests.Container.Registration;
 interface
 
 uses
-  DUnitX.TestFramework,
-  System.SysUtils,
-  Base.Container,
-  Mocks.Container;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -34,7 +31,10 @@ type
 implementation
 
 uses
-  Base.Integrity;
+  System.SysUtils,
+  Base.Integrity,
+  Base.Container,
+  Mocks.Container;
 
 { TRegistrationFixture }
 

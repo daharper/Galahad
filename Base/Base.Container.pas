@@ -120,7 +120,16 @@ type
     destructor Destroy; override;
   end;
 
-type
+  TContainer = class; // forward delcaration
+
+  IContainerModule = interface
+    ['{3D71D3B6-7F2A-4E3E-9E29-0D40E9A0E2C1}']
+    /// <summary>
+    /// Registers services into the provided container.
+    /// </summary>
+    procedure RegisterServices(const C: TContainer);
+  end;
+
   TContainer = class
   private
     fRegistry: TServiceRegistry;
@@ -130,6 +139,24 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
+    /// <summary>
+    /// Applies a single module (grouped registrations) to this container.
+    /// </summary>
+    /// <remarks>
+    /// Modules are invoked immediately; the container does not retain module references.
+    /// Raises EArgumentException if the module is nil.
+    /// </remarks>
+    procedure AddModule(const aModule: IContainerModule); overload;
+
+    /// <summary>
+    /// Applies multiple modules (grouped registrations) to this container in order.
+    /// </summary>
+    /// <remarks>
+    /// Each module is invoked immediately; the container does not retain module references.
+    /// Raises EArgumentException if any module is nil.
+    /// </remarks>
+    procedure AddModule(const aModules: array of IContainerModule); overload;
 
     /// <summary>
     ///  Registers an interface instance as a singleton service.
@@ -793,6 +820,23 @@ begin
   Reg.OwnsInstance := False;
 
   fRegistry.Add(Reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule(const aModule: IContainerModule);
+begin
+  Ensure.IsAssigned(aModule, 'AddModule: module is nil');
+  aModule.RegisterServices(Self);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule(const aModules: array of IContainerModule);
+begin
+  for var i := 0 to High(aModules) do
+  begin
+    Ensure.IsAssigned(aModules[i], Format('AddModule: module[%d] is nil', [i]));
+    aModules[i].RegisterServices(Self);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

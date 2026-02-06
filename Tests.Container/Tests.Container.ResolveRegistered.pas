@@ -3,10 +3,7 @@ unit Tests.Container.ResolveRegistered;
 interface
 
 uses
-  DUnitX.TestFramework,
-  System.SysUtils,
-  Base.Container,
-  Mocks.Container;
+  DUnitX.TestFramework;
 
 type
   [TestFixture]
@@ -29,7 +26,10 @@ type
 implementation
 
 uses
-  Base.Integrity;
+  System.SysUtils,
+  Base.Integrity,
+  Base.Container,
+  Mocks.Container;
 
 { TResolveRegisteredFixture }
 
@@ -198,13 +198,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  Assert.WillRaise(
-    procedure
-    var O: TObjectSvc;
-    begin
-      O := container.ResolveClass<TObjectSvc>;
-    end,
-    EArgumentException);
+  Assert.WillRaise(procedure begin container.ResolveClass<TObjectSvc>; end, EArgumentException);
 end;
 
 initialization
