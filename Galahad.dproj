@@ -167,6 +167,7 @@
         <DCCReference Include="Mocks\Mocks.Container.pas"/>
         <DCCReference Include="Tests.Container\Tests.Container.ResolveRegistered.pas"/>
         <DCCReference Include="Tests.Container\Tests.Container.ModuleRegistration.pas"/>
+        <DCCReference Include="Tests.Container\Tests.Container.Resolve.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

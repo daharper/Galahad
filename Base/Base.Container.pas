@@ -1,8 +1,86 @@
 {***************************************************************************************************
   Project:     Galahad
-  Author:      David Harper
   Unit:        Base.Container
-  Purpose:     Provides a dependency injection container.
+  Purpose:     Provides a lightweight, explicit, and Delphi-native Dependency Injection container.
+  Author:      David Harper
+  License:     MIT
+
+  Overview
+  --------
+  Base.Container implements a pragmatic IoC / DI container designed specifically for Delphi.
+  It favors explicit registration, predictable behavior, and compatibility with Delphi’s
+  object model, RTTI, and memory management semantics.
+
+  The container intentionally avoids "magic" behaviors such as automatic type scanning,
+  attribute-based registration, or open-generic resolution. All services must be explicitly
+  registered by the user. One of the obvious reasons in Delphi is aggressive Linker trimming.
+
+  Design Principles
+  -----------------
+  - Explicit over implicit:
+      All services are registered directly via the container API or grouped via modules.
+      There is exactly one way to register services; no hidden conventions.
+
+  - Interface-first, class-supported:
+      Interface-based services are the primary abstraction.
+      Class-based services are supported where appropriate, with clear ownership rules.
+
+  - Delphi-native semantics:
+      Constructor selection, RTTI usage, and fallback behavior follow standard Delphi rules.
+      If no suitable constructor can be satisfied, the container falls back to parameterless
+      Create where available.
+
+  - Deterministic lifetimes:
+      Services are registered with an explicit lifetime:
+        - Singleton   : one instance per container
+        - Transient   : a new instance per resolve
+
+  - Safe memory management:
+      - Interface services rely on reference counting.
+      - Class services support container ownership or caller ownership, as specified.
+      - The container disposes of owned singleton instances on Clear or destruction.
+
+  - Testable by design:
+      The container is built incrementally and validated via unit tests at each layer
+      (registration, factories, type maps, resolution, constructor injection).
+
+  Supported Registration Forms
+  ----------------------------
+  - Instance registration:
+      Add<T: IInterface>(Instance)
+      AddClass<T: class>(Instance, TakeOwnership)
+
+  - Factory registration:
+      Add<T: IInterface>(Lifetime, Factory)
+      AddClass<T: class>(Lifetime, Factory)
+
+  - Type mapping:
+      AddType<TService: IInterface, TImpl: class>(Lifetime)
+      AddClassType<T: class>(Lifetime)
+
+  Resolution
+  ----------
+  - Resolve<T> / TryResolve<T> for interfaces
+  - ResolveClass<T> / TryResolveClass<T> for classes
+
+  Resolution supports constructor injection for:
+  - Interfaces
+  - Classes registered with the container
+  - Other resolvable services
+
+  Primitive values (e.g. string, integer) are intentionally NOT injected.
+
+  Intended Usage
+  --------------
+  Base.Container is suitable for:
+  - Application composition roots
+  - Modular applications with explicit service registration
+  - Test environments requiring deterministic resolution
+  - Long-lived containers with predictable cleanup semantics
+
+  TContainer can be used for local purposes, but it's recommended to use the default container for
+  applications, which is exposed via the global "Container" function.
+
 ***************************************************************************************************}
 
 unit Base.Container;
@@ -14,6 +92,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.TypInfo,
+  System.Rtti,
   Base.Core,
   Base.Integrity;
 
@@ -94,8 +173,7 @@ type
   end;
 
   /// <summary>
-  ///  Thread-safe cache of singleton instances (interface + object).
-  ///  Stores instances by service key (type + name).
+  ///  Represents a singleton value.
   /// </summary>
   TSingletonValue = record
     IsObject: Boolean;
@@ -104,6 +182,10 @@ type
     Obj: TObject;
   end;
 
+  /// <summary>
+  ///  Thread-safe cache of singleton instances (interface + object).
+  ///  Stores instances by service key (type + name).
+  /// </summary>
   TSingletonRegistry = class
   private
     fLock: TObject;
@@ -122,6 +204,9 @@ type
 
   TContainer = class; // forward delcaration
 
+  /// <summary>
+  ///  Modules are the preferred grouping for service registration.
+  /// </summary>
   IContainerModule = interface
     ['{3D71D3B6-7F2A-4E3E-9E29-0D40E9A0E2C1}']
     /// <summary>
@@ -130,16 +215,25 @@ type
     procedure RegisterServices(const C: TContainer);
   end;
 
+  /// <summary>
+  ///  The key component in the dependency injection architecture. The container exposes
+  ///  APIs for registering and resolving services.
+  /// </summary>
   TContainer = class
   private
     fRegistry: TServiceRegistry;
     fSingletons: TSingletonRegistry;
 
-    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
-  public
-    constructor Create;
-    destructor Destroy; override;
+    function TryResolveByTypeInfo(aServiceType: PTypeInfo; out aIntf: IInterface; const aName: string = ''): Boolean;
+    function TryResolveClassByTypeInfo(aServiceType: PTypeInfo; out aObj: TObject; const aName: string = ''): Boolean;
 
+    function BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
+    function TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
+
+    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
+
+    class var fContext: TRttiContext;
+  public
     /// <summary>
     /// Applies a single module (grouped registrations) to this container.
     /// </summary>
@@ -295,12 +389,42 @@ type
     ///  Use TryResolveClass for non-throwing behavior.
     /// </remarks>
     function ResolveClass<T: class>(const aName: string = ''): T;
+
+    function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+
+    constructor Create;
+    destructor Destroy; override;
+
+    class constructor Create;
+    class destructor Destroy;
   end;
+
+  /// <summary>
+  ///  Manages a universal container for application/testing usage.
+  /// </summary>
+  DefaultContainer = class
+  private
+    class var fInstance: TContainer;
+
+    class constructor Create;
+    class destructor Destroy;
+  end;
+
+  /// <summary>
+  ///  Provides access to the default container.
+  /// </summary>
+  function Container: TContainer;
 
 implementation
 
 uses
  System.StrUtils;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Container: TContainer;
+begin
+  Result := DefaultContainer.fInstance;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function NameOrDefault(const aName: string): string;
@@ -615,68 +739,16 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TContainer.TryResolve<T>(out aService: T; const aName: string): Boolean;
 var
-  lReg: TRegistration;
-  lValue: TSingletonValue;
+  intf: IInterface;
 begin
-  Result   := false;
-  aService := Default(T);
+  intf := nil;
 
-  var key := TServiceKey.Create(TypeInfo(T), aName);
+  Result := TryResolveByTypeInfo(TypeInfo(T), intf, aName);
 
-  // todo - use a locator
-  if not fRegistry.TryGet(key, lReg) then exit;
-
-  // if instance registration, it must already be in singleton cache.
-  if lReg.Kind = Instance then
-  begin
-    if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
-    begin
-      aService := T(lValue.Intf);
-      exit(true);
-    end;
-
-    exit(false);
-  end;
-
-  // factory registration
-  if lReg.Kind = Factory then
-  begin
-    // singleton: return cached if present
-    if lReg.Lifetime = Singleton then
-    begin
-      if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
-      begin
-        aService := T(lValue.Intf);
-        exit(true);
-      end;
-
-      // create and cache
-      Ensure.IsAssigned(@lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
-
-      var created := lReg.FactoryIntf();
-
-      // factory may legally return nil; treat as failure
-      if not Assigned(created) then exit(false);
-
-      fSingletons.PutInterface(key, created);
-      aService := T(Created);
-
-      exit(true);
-    end;
-
-    // Transient: always create
-    Ensure.IsAssigned(@lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
-
-    var created := lReg.FactoryIntf();
-
-    if not Assigned(created) then exit(false);
-
-    aService := T(Created);
-    exit(true);
-  end;
-
-  // todo - TypeMap/Activator not supported yet
-  Exit(false);
+  if Result then
+    aService := T(Intf)
+  else
+    aService := Default(T);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -691,83 +763,16 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TContainer.TryResolveClass<T>(out aInstance: T; const aName: string): Boolean;
 var
-  lReg: TRegistration;
-  lValue: TSingletonValue;
+  obj: TObject;
 begin
-  aInstance := default(T);
+  obj := nil;
 
-  var key := TServiceKey.Create(TypeInfo(T), aName);
+  Result := TryResolveClassByTypeInfo(TypeInfo(T), obj, aName);
 
-  if not fRegistry.TryGet(key, lReg) then exit(False);
-
-  // Instance registration => should already be in singleton cache
-  if lReg.Kind = Instance then
-  begin
-    if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
-    begin
-      if lValue.Obj is T then
-      begin
-        aInstance := T(lValue.Obj);
-        exit(true);
-      end;
-    end;
-
-    exit(false);
-  end;
-
-  // Factory registration
-  if lReg.Kind = Factory then
-  begin
-    Ensure.IsAssigned(@lReg.FactoryObj, 'TryResolveClass<T>: missing object factory');
-
-    if lReg.Lifetime = Singleton then
-    begin
-      // return cached singleton if present
-      if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
-      begin
-        if lValue.Obj is T then
-        begin
-          aInstance := T(lValue.Obj);
-          exit(true);
-        end;
-
-        exit(false);
-      end;
-
-      // create, cache, container owns
-      var obj := lReg.FactoryObj();
-
-      if not Assigned(obj) then exit(false);
-
-      if not (obj is T) then
-      begin
-        obj.Free; // created but wrong type
-        exit(false);
-      end;
-
-      fSingletons.PutObject(key, obj, true);
-      aInstance := T(obj);
-
-      exit(true);
-    end;
-
-    // transient: create and return; caller owns
-    var obj := lReg.FactoryObj();
-
-    if not Assigned(obj) then exit(false);
-
-    if not (obj is T) then
-    begin
-      obj.Free;
-      exit(false);
-    end;
-
-    aInstance := T(obj);
-    exit(true);
-  end;
-
-  // TypeMap/Activator not supported yet
-  exit(false);
+  if Result then
+    aInstance := T(obj)
+  else
+    aInstance := nil;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -840,6 +845,292 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TContainer.BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
+var
+  lCtor: TRttiMethod;
+  lArgs: TArray<TValue>;
+begin
+  aObj := nil;
+  Result := False;
+
+  if aImplClass = nil then Exit;
+
+  var rttiType := fContext.GetType(aImplClass);
+  var instanceType := rttiType.AsInstance;
+
+  if instanceType = nil then exit(false);
+
+  if not FindBestConstructor(aImplClass, lCtor, lArgs) then exit;
+
+  var created := lCtor.Invoke(instanceType.MetaclassType, lArgs);
+
+//  var classValue := TValue.From<TClass>(aImplClass);
+//  var created := lCtor.Invoke(classValue, lArgs);
+
+  aObj := created.AsObject;
+
+  Result := Assigned(aObj);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+var
+  lType: TRttiType;
+  lCandidateArgs: TArray<TValue>;
+  lBestCount: Integer;
+  lValue: TValue;
+begin
+  aCtor := nil;
+  SetLength(aArgs, 0);
+  lBestCount := -1;
+
+  lType := fContext.GetType(aImplClass);
+
+  var instanceType := lType.AsInstance;
+  if instanceType = nil then exit(false);
+
+  for var m in instanceType.GetMethods do
+  begin
+    if not m.IsConstructor then continue;
+    if m.Visibility <> mvPublic then continue;
+
+    var params := m.GetParameters;
+    SetLength(lCandidateArgs, Length(params));
+
+    var ok := True;
+
+    for var i := 0 to High(params) do
+    begin
+      if not TryResolveParam(params[i].ParamType, lValue) then
+      begin
+        ok := false;
+        break;
+      end;
+
+      lCandidateArgs[i] := lValue;
+    end;
+
+    if ok and (Length(params) > lBestCount) then
+    begin
+      lBestCount := Length(params);
+      aCtor := m;
+      aArgs := Copy(lCandidateArgs);
+    end;
+  end;
+
+  Result := Assigned(aCtor);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
+var
+  lObj: TObject;
+  lIntf: IInterface;
+begin
+  aValue := TValue.Empty;
+  Result := False;
+
+  if aParamType = nil then Exit;
+
+  var info : PTypeInfo := aParamType.Handle;
+  if info = nil then Exit;
+
+  case info^.Kind of
+    tkInterface:
+      begin
+        // Resolve by PTypeInfo: add a non-generic internal resolver
+        if not Self.TryResolveByTypeInfo(info, lIntf, '') then exit(false);
+
+        TValue.Make(@lIntf, info, aValue);
+        exit(true);
+      end;
+
+    tkClass:
+      begin
+        if not Self.TryResolveClassByTypeInfo(info, lObj, '') then exit(false);
+
+        TValue.Make(@lIntf, info, aValue);
+        exit(true);
+      end;
+  else
+    exit(false); // no primitives/value-types injected in v1
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.TryResolveByTypeInfo(aServiceType: PTypeInfo; out aIntf: IInterface; const aName: string): Boolean;
+var
+  lReg: TRegistration;
+  lValue: TSingletonValue;
+  lObj: TObject;
+begin
+  aIntf := nil;
+
+  if (aServiceType = nil) or (aServiceType^.Kind <> tkInterface) then exit(false);
+
+  var key := TServiceKey.Create(aServiceType, aName);
+
+  if not fRegistry.TryGet(key, lReg) then exit(False);
+
+  // cached singleton?
+  if (lReg.Lifetime = Singleton) then
+  begin
+    if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+    begin
+      aIntf := lValue.Intf;
+      exit(true);
+    end;
+  end;
+
+  // instance/factory/typemap
+  case lReg.Kind of
+    Instance:
+      begin
+        // Interface instances should have been placed in singleton registry by Add<T>(instance)
+        if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+        begin
+          aIntf := lValue.Intf;
+          Exit(true);
+        end;
+
+        exit(false);
+      end;
+
+    Factory:
+      begin
+        Ensure.IsAssigned(lReg.FactoryIntf, 'TryResolveByTypeInfo: FactoryIntf is nil');
+
+        aIntf := lReg.FactoryIntf();
+
+        if not Assigned(aIntf) then exit(false);
+
+        if lReg.Lifetime = Singleton then
+          fSingletons.PutInterface(key, aIntf);
+
+        exit(true);
+      end;
+
+    TypeMap:
+      begin
+        if lReg.ImplClass = nil then exit(false);
+
+        // Build the object and cast to requested interface
+        if not BuildObject(lReg.ImplClass, lObj) then exit(False);
+
+        var guid := GetTypeData(aServiceType)^.Guid;
+
+        if not Supports(lObj, guid, aIntf) then
+        begin
+          lObj.Free; // we created it; avoid leak
+          exit(false);
+        end;
+
+        // If singleton, cache by interface (preferred) — avoids object ownership issues
+        if lReg.Lifetime = Singleton then
+          fSingletons.PutInterface(key, aIntf);
+
+        // IMPORTANT: do not free Obj; interface ref now owns it via refcounting
+        exit(True);
+      end;
+  else
+    exit(false);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.TryResolveClassByTypeInfo(aServiceType: PTypeInfo; out aObj: TObject; const aName: string): Boolean;
+var
+  lReg: TRegistration;
+  lValue: TSingletonValue;
+  lCreated: TObject;
+begin
+  aObj := nil;
+
+  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then exit(false);
+
+  var key := TServiceKey.Create(aServiceType, aName);
+
+  if not fRegistry.TryGet(key, lReg) then exit(False);
+
+  // cached singleton?
+  if (lReg.Lifetime = Singleton) then
+  begin
+    if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+    begin
+      aObj := lValue.Obj;
+      exit(true);
+    end;
+  end;
+
+  case lReg.Kind of
+    Instance:
+      begin
+        if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+        begin
+          aObj := lValue.Obj;
+          exit(true);
+        end;
+
+        exit(false);
+      end;
+
+    Factory:
+      begin
+        Ensure.IsAssigned(@lReg.FactoryObj, 'TryResolveClassByTypeInfo: FactoryObj is nil');
+
+        lCreated := lReg.FactoryObj();
+
+        if not Assigned(lCreated) then exit(false);
+
+        // For singleton factory: cache and container owns by default
+        if lReg.Lifetime = Singleton then
+        begin
+          fSingletons.PutObject(key, lCreated, True);
+          aObj := lCreated;
+          exit(true);
+        end;
+
+        // Transient: caller owns
+        aObj := lCreated;
+        exit(true);
+      end;
+
+    TypeMap:
+      begin
+        if lReg.ImplClass = nil then exit(false);
+
+        // Build the implementation
+        if not BuildObject(lReg.ImplClass, lCreated) then exit(false);
+
+        // Ensure assignable to requested service class
+        if not lCreated.InheritsFrom(GetTypeData(aServiceType)^.ClassType) then
+        begin
+          lCreated.Free;
+          exit(false);
+        end;
+
+        if lReg.Lifetime = Singleton then
+        begin
+          fSingletons.PutObject(key, lCreated, True);
+          aObj := lCreated;
+          exit(true);
+        end;
+
+        aObj := lCreated;
+        exit(true);
+      end;
+  else
+    exit(false);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class constructor TContainer.Create;
+begin
+  fContext := TRttiContext.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 constructor TContainer.Create;
 begin
   inherited Create;
@@ -857,6 +1148,26 @@ begin
   fRegistry.Free;
 
   inherited;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class destructor TContainer.Destroy;
+begin
+  fContext.Free;
+end;
+
+{ DefaultContainer }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class constructor DefaultContainer.Create;
+begin
+  fInstance := TContainer.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class destructor DefaultContainer.Destroy;
+begin
+  FreeAndNil(fInstance);
 end;
 
 end.

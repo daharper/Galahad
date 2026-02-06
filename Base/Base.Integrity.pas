@@ -180,7 +180,7 @@ type
     function Release<T: class>(aObj: T): T;
 
     function Owns<T: class>(aObj: T): T; overload;
-    function Owns<T: class>(const Factory: TFunc<T>): T; overload;
+    //function Owns<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
     procedure Defer(const aAction: System.SysUtils.TProc); overload;
@@ -1024,12 +1024,6 @@ begin
   Add(aObj);
 
   Result := AObj;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TScope.Owns<T>(const Factory: TFunc<T>): T;
-begin
-  Result := Owns(factory());
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
