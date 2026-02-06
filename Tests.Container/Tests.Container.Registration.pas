@@ -15,20 +15,20 @@ type
     [Test] procedure Add_InterfaceInstance_RegistersDefaultName;
     [Test] procedure Add_InterfaceInstance_NamedSeparatesRegistrations;
     [Test] procedure Add_InterfaceInstance_DuplicateRaises;
-
     [Test] procedure AddClass_ObjectInstance_RegistersDefaultName;
     [Test] procedure AddClass_ObjectInstance_OptOutOwnership_DoesNotCrash;
     [Test] procedure AddClass_ObjectInstance_DuplicateRaises;
-
     [Test] procedure Add_InterfaceFactory_Singleton_DuplicateRaises;
     [Test] procedure Add_InterfaceFactory_Transient_DuplicateRaises;
     [Test] procedure Add_InterfaceFactory_NamedSeparatesRegistrations;
-
     [Test] procedure AddClass_ObjectFactory_Singleton_DuplicateRaises;
     [Test] procedure AddClass_ObjectFactory_Transient_DuplicateRaises;
     [Test] procedure AddClass_ObjectFactory_NamedSeparatesRegistrations;
-
     [Test] procedure Clear_RemovesRegistrations;
+    [Test] procedure AddClassType_Registers;
+    [Test] procedure AddType_DuplicateRaises;
+    [Test] procedure AddType_Registers;
+    [Test] procedure AddType_NamedSeparates;
   end;
 
 implementation
@@ -37,6 +37,53 @@ uses
   Base.Integrity;
 
 { TRegistrationFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRegistrationFixture.AddType_Registers;
+var scope: TScope;
+begin
+  var container := scope.Owns(TContainer.Create);
+
+  container.AddType<IRepo, TRepo>(Singleton);
+
+  Assert.IsTrue(container.IsRegistered<IRepo>);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRegistrationFixture.AddType_DuplicateRaises;
+var scope: TScope;
+begin
+  var container := scope.Owns(TContainer.Create);
+
+  container.AddType<IRepo, TRepo>(Singleton);
+
+  Assert.WillRaise(procedure begin container.AddType<IRepo, TRepo>(Singleton); end, EArgumentException);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRegistrationFixture.AddType_NamedSeparates;
+var scope: TScope;
+begin
+  var container := scope.Owns(TContainer.Create);
+
+  container.AddType<IRepo, TRepo>(Singleton, 'A');
+  container.AddType<IRepo, TRepo>(Singleton, 'B');
+
+  Assert.IsTrue(container.IsRegistered<IRepo>('A'));
+  Assert.IsTrue(container.IsRegistered<IRepo>('B'));
+  Assert.IsFalse(container.IsRegistered<IRepo>);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRegistrationFixture.AddClassType_Registers;
+var scope: TScope;
+begin
+  var container := scope.Owns(TContainer.Create);
+
+  container.AddClassType<TPlainClass>(Transient);
+
+  Assert.IsTrue(container.IsRegistered<TPlainClass>);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TRegistrationFixture.Add_InterfaceInstance_RegistersDefaultName;

@@ -3,7 +3,7 @@ unit Mocks.Container;
 interface
 
 type
-   ITestSvc = interface
+  ITestSvc = interface
     ['{B56A390B-29D1-4C96-9C07-5FD80DFE7C9E}']
     function Ping: Integer;
   end;
@@ -22,6 +22,16 @@ type
   public
     class var FreedCount: Integer;
     destructor Destroy; override;
+  end;
+
+  IRepo = interface
+    ['{9C3C2B35-0B5A-4C5F-A2D2-96B2F7E59C3A}']
+  end;
+
+  TRepo = class(TInterfacedObject, IRepo)
+  end;
+
+  TPlainClass = class
   end;
 
 implementation
