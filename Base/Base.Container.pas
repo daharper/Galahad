@@ -190,6 +190,9 @@ type
 
     function TryResolve<T: IInterface>(out aService: T; const aName: string = ''): Boolean;
     function Resolve<T: IInterface>(const aName: string = ''): T;
+
+    function TryResolveClass<T: class>(out aInstance: T; const aName: string = ''): Boolean;
+    function ResolveClass<T: class>(const aName: string = ''): T;
   end;
 
 implementation
@@ -546,7 +549,7 @@ begin
       end;
 
       // create and cache
-      Ensure.IsAssigned(lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
+      Ensure.IsAssigned(@lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
 
       var created := lReg.FactoryIntf();
 
@@ -560,7 +563,7 @@ begin
     end;
 
     // Transient: always create
-    Ensure.IsTrue(Assigned(lReg.FactoryIntf), 'TryResolve<T>: missing interface factory');
+    Ensure.IsAssigned(@lReg.FactoryIntf, 'TryResolve<T>: missing interface factory');
 
     var created := lReg.FactoryIntf();
 
@@ -580,6 +583,97 @@ const
   ERR = 'Service not registered: %s (Name="%s")';
 begin
   if not TryResolve<T>(Result, aName) then
+    raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.TryResolveClass<T>(out aInstance: T; const aName: string): Boolean;
+var
+  lReg: TRegistration;
+  lValue: TSingletonValue;
+begin
+  aInstance := default(T);
+
+  var key := TServiceKey.Create(TypeInfo(T), aName);
+
+  if not fRegistry.TryGet(key, lReg) then exit(False);
+
+  // Instance registration => should already be in singleton cache
+  if lReg.Kind = Instance then
+  begin
+    if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+    begin
+      if lValue.Obj is T then
+      begin
+        aInstance := T(lValue.Obj);
+        exit(true);
+      end;
+    end;
+
+    exit(false);
+  end;
+
+  // Factory registration
+  if lReg.Kind = Factory then
+  begin
+    Ensure.IsAssigned(@lReg.FactoryObj, 'TryResolveClass<T>: missing object factory');
+
+    if lReg.Lifetime = Singleton then
+    begin
+      // return cached singleton if present
+      if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+      begin
+        if lValue.Obj is T then
+        begin
+          aInstance := T(lValue.Obj);
+          exit(true);
+        end;
+
+        exit(false);
+      end;
+
+      // create, cache, container owns
+      var obj := lReg.FactoryObj();
+
+      if not Assigned(obj) then exit(false);
+
+      if not (obj is T) then
+      begin
+        obj.Free; // created but wrong type
+        exit(false);
+      end;
+
+      fSingletons.PutObject(key, obj, true);
+      aInstance := T(obj);
+
+      exit(true);
+    end;
+
+    // transient: create and return; caller owns
+    var obj := lReg.FactoryObj();
+
+    if not Assigned(obj) then exit(false);
+
+    if not (obj is T) then
+    begin
+      obj.Free;
+      exit(false);
+    end;
+
+    aInstance := T(obj);
+    exit(true);
+  end;
+
+  // TypeMap/Activator not supported yet
+  exit(false);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.ResolveClass<T>(const aName: string): T;
+const
+  ERR = 'Service not registered: %s (Name="%s")';
+begin
+  if not TryResolveClass<T>(Result, aName) then
     raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
 end;
 

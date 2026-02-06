@@ -18,6 +18,12 @@ type
     Value: Integer;
   end;
 
+  TTracked = class
+  public
+    class var FreedCount: Integer;
+    destructor Destroy; override;
+  end;
+
 implementation
 
 { TTestSvc }
@@ -26,6 +32,14 @@ implementation
 function TTestSvc.Ping: Integer;
 begin
   Result := 42;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TTracked.Destroy;
+begin
+  Inc(FreedCount);
+
+  inherited;
 end;
 
 end.
