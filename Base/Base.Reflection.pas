@@ -69,6 +69,9 @@
   TArray<Byte> / TBytes          varByte SAFEARRAY
   TArray<TGUID>                  1D Variant array of GUID strings
   TArray<IInterface>             1D Variant array (varUnknown elements)
+  TArray<string>                 1D Variant array of UnicodeString
+
+  TArray works for all supported scalars.
 
   Records
   -------
@@ -122,7 +125,6 @@ type
   ///
   ///  The conversion rules enforced here mirror COM/Automation constraints,
   ///  ensuring binary compatibility and predictable lifetime semantics.
-  ///
   /// </summary>
   TReflection = record
   public
@@ -296,6 +298,11 @@ type
     /// </summary>
     class function TryGetInterfaceGuid<T>(out aGuid: TGUID): Boolean; static;
 
+    /// <summary>
+    ///  Returns the string representation of a TVarRec.
+    /// </summary>
+    class function VarRecToString(const aValue: TVarRec): string; static;
+
     // -------------------------------------------------------------------------
     // Variant / TValue interop
     // -------------------------------------------------------------------------
@@ -372,6 +379,25 @@ end;
 class function TReflection.TypeNameOf<T>: string;
 begin
   Result := GetTypeName(TypeInfoOf<T>);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TReflection.VarRecToString(const aValue: TVarRec): string;
+begin
+  case aValue.VType of
+    vtAnsiString: Result := string(AnsiString(aValue.VAnsiString));
+    vtUnicodeString: Result := string(aValue.VUnicodeString);
+    vtWideString: Result := WideString(aValue.VWideString);
+    vtPChar: Result := string(aValue.VPChar);
+    vtChar: Result := string(aValue.VChar);
+    vtWideChar: Result := aValue.VWideChar;
+    vtInteger: Result := aValue.VInteger.ToString;
+    vtInt64: Result := aValue.VInt64^ .ToString;
+    vtBoolean: Result := BoolToStr(aValue.VBoolean, True);
+    vtExtended: Result := FloatToStr(aValue.VExtended^);
+  else
+    Result := '<unsupported>';
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -79,7 +79,7 @@ type
   end;
 
   [TestFixture]
-  TDynamicTests = class
+  TDynamicFixture = class
   public
     [Setup]
     procedure Setup;
@@ -115,20 +115,20 @@ uses
 { TDynamicTests }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Setup;
+procedure TDynamicFixture.Setup;
 begin
   // Ensure COM is initialized for OleVariant/IDispatch usage in tests
   OleCheck(CoInitializeEx(nil, COINIT_APARTMENTTHREADED));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.TearDown;
+procedure TDynamicFixture.TearDown;
 begin
   CoUninitialize;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_SupportedTypes_TArrayString;
+procedure TDynamicFixture.Dynamic_SupportedTypes_TArrayString;
 var
   D: IDispatch;
   V: OleVariant;
@@ -147,7 +147,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_CaseInsensitive_Names;
+procedure TDynamicFixture.Dynamic_CaseInsensitive_Names;
 var
   D: IDispatch;
   V: OleVariant;
@@ -161,7 +161,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_OverloadSelection_IntVsString;
+procedure TDynamicFixture.Dynamic_OverloadSelection_IntVsString;
 var
   D: IDispatch;
   V: OleVariant;
@@ -175,7 +175,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_NullEmpty_Behavior;
+procedure TDynamicFixture.Dynamic_NullEmpty_Behavior;
 var
   D: IDispatch;
   V: OleVariant;
@@ -195,7 +195,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_PropertyPutRef_EndToEnd_InterfaceProperty;
+procedure TDynamicFixture.Dynamic_PropertyPutRef_EndToEnd_InterfaceProperty;
 var
   D: IDispatch;
   V: OleVariant;
@@ -221,7 +221,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_ByRefArrayArgument_Regression;
+procedure TDynamicFixture.Dynamic_ByRefArrayArgument_Regression;
 var
   D: IDispatch;
   V: OleVariant;
@@ -238,7 +238,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_StaticMethod_Dispatches;
+procedure TDynamicFixture.Dynamic_StaticMethod_Dispatches;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -254,7 +254,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_PropertyGetPut_Dispatches;
+procedure TDynamicFixture.Dynamic_PropertyGetPut_Dispatches;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -271,7 +271,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_IndexedProperty_GetPut_Dispatches;
+procedure TDynamicFixture.Dynamic_IndexedProperty_GetPut_Dispatches;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -290,7 +290,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_MethodMissing_WhenMemberNotFound;
+procedure TDynamicFixture.Dynamic_MethodMissing_WhenMemberNotFound;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -313,7 +313,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Extended_Always_MethodMissing;
+procedure TDynamicFixture.Extended_Always_MethodMissing;
 var
   O: TTestExtended;
   V: OleVariant;
@@ -332,7 +332,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Decorator_Delegates_To_Source;
+procedure TDynamicFixture.Decorator_Delegates_To_Source;
 var
   Src: TTestDynamic;
   Dec: TDynamicDecorator<TTestDynamic>;
@@ -348,7 +348,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.EffectivePropertyFlags_PropertyPutRef_For_Interface_LastArg;
+procedure TDynamicFixture.EffectivePropertyFlags_PropertyPutRef_For_Interface_LastArg;
 var
   DP: TDispParams;
   Named: Integer;
@@ -371,7 +371,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.EffectivePropertyFlags_PropertyPut_For_NonInterface_LastArg;
+procedure TDynamicFixture.EffectivePropertyFlags_PropertyPut_For_NonInterface_LastArg;
 var
   DP: TDispParams;
   Named: Integer;
@@ -392,7 +392,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_SupportedTypes_TArrayInteger;
+procedure TDynamicFixture.Dynamic_SupportedTypes_TArrayInteger;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -407,7 +407,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_SupportedTypes_TBytes;
+procedure TDynamicFixture.Dynamic_SupportedTypes_TBytes;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -427,7 +427,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_SupportedTypes_TArrayGuid;
+procedure TDynamicFixture.Dynamic_SupportedTypes_TArrayGuid;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -451,7 +451,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TDynamicTests.Dynamic_SupportedTypes_InterfaceReturn;
+procedure TDynamicFixture.Dynamic_SupportedTypes_InterfaceReturn;
 var
   O: TTestDynamic;
   V: OleVariant;
@@ -593,7 +593,7 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TDynamicTests);
+  TDUnitX.RegisterTestFixture(TDynamicFixture);
 
 end.
 

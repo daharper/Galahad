@@ -919,8 +919,9 @@ begin
   LInstance := TValue.From<TObject>(aSelf);
 
   { Indexed property (ask explicitly) }
-    // Indexed property: if it exists, we can treat METHOD calls as GET/PUT based on arg count.
-    // This is important because OleVariant often calls V.Prop(i) as DISPATCH_METHOD.
+
+  // Indexed property: if it exists, we can treat METHOD calls as GET/PUT based on arg count.
+  // This is important because OleVariant often calls V.Prop(i) as DISPATCH_METHOD.
   if lCache.TryGetIndexedProperty(aName, lIdxProp) then
   begin
     // If flags indicate PUT/PUTREF, treat last arg as value.

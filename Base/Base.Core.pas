@@ -84,28 +84,7 @@ type
 
   {------------------------ general functions ----------------------- }
 
-  function VarRecToString(const aValue: TVarRec): string;
-
 implementation
-
-{----------------------------------------------------------------------------------------------------------------------}
-function VarRecToString(const aValue: TVarRec): string;
-begin
-  case aValue.VType of
-    vtAnsiString: Result := string(AnsiString(aValue.VAnsiString));
-    vtUnicodeString: Result := string(aValue.VUnicodeString);
-    vtWideString: Result := WideString(aValue.VWideString);
-    vtPChar: Result := string(aValue.VPChar);
-    vtChar: Result := string(aValue.VChar);
-    vtWideChar: Result := aValue.VWideChar;
-    vtInteger: Result := aValue.VInteger.ToString;
-    vtInt64: Result := aValue.VInt64^ .ToString;
-    vtBoolean: Result := BoolToStr(aValue.VBoolean, True);
-    vtExtended: Result := FloatToStr(aValue.VExtended^);
-  else
-    Result := '<unsupported>';
-  end;
-end;
 
 { TLx }
 

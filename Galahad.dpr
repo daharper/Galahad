@@ -34,7 +34,9 @@ uses
   Base.Reflection in 'Base\Base.Reflection.pas',
   Tests.Core.Reflection in 'Tests.Core\Tests.Core.Reflection.pas',
   Base.Dynamic in 'Base\Base.Dynamic.pas',
-  Tests.Core.Dynamic in 'Tests.Core\Tests.Core.Dynamic.pas';
+  Tests.Core.Dynamic in 'Tests.Core\Tests.Core.Dynamic.pas',
+  Base.Container in 'Base\Base.Container.pas',
+  Tests.Container.Registration in 'Tests.Container\Tests.Container.Registration.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
