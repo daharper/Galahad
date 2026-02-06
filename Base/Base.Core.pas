@@ -32,6 +32,7 @@ type
   TConstProc<T1,T2,T3> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3);
   TConstProc<T1,T2,T3,T4> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4);
 
+  TConstFunc<T> = reference to function: T;
   TConstFunc<T,R> = reference to function (const Arg1: T): R;
   TConstFunc<T1,T2,R> = reference to function (const Arg1: T1; const Arg2: T2): R;
   TConstFunc<T1,T2,T3,R> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3): R;

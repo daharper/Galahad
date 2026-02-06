@@ -127,8 +127,6 @@ begin
   var container := scope.Owns(TContainer.Create);
 
   var obj1 := TObjectSvc.Create;
-
-  // todo - compiler not inferring TObjectSvc: TObject.Create is called which seems to yield TObject for T?
   var obj2 := scope.Owns(TObjectSvc(TObjectSvc.Create));
 
   container.AddClass<TObjectSvc>(obj1);
@@ -190,14 +188,12 @@ begin
 
   container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
 
-  Assert.IsTrue(true);
-
-//  Assert.WillRaise(
-//    procedure
-//    begin
-//      container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
-//    end,
-//    EArgumentException);
+  Assert.WillRaise(
+    procedure
+    begin
+      container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+    end,
+    EArgumentException);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

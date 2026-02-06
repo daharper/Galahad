@@ -157,7 +157,7 @@ type
     /// The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     /// Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure Add<T: IInterface>(aLifetime: TServiceLifetime; const aFactory: TFunc<T>; const aName: string = ''); overload;
+    procedure Add<T: IInterface>(aLifetime: TServiceLifetime; const aFactory:TConstFunc<T>; const aName: string = ''); overload;
 
     /// <summary>
     /// Registers a class factory for the given lifetime.
@@ -173,7 +173,7 @@ type
     /// The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     /// Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure AddClass<T: class>(aLifetime: TServiceLifetime; const aFactory: TFunc<T>; const aName: string = ''); overload;
+    procedure AddClass<T: class>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string = ''); overload;
 
     /// <summary>
     /// Returns True if a service with the given type (and optional name) is registered.
@@ -436,12 +436,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.Add<T>(aLifetime: TServiceLifetime; const aFactory: TFunc<T>; const aName: string);
+procedure TContainer.Add<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
 var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(aFactory, 'Add<T: IInterface>: factory is nil');
+  Ensure.IsAssigned(@aFactory, 'Add<T: IInterface>: factory is nil');
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
@@ -466,12 +466,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddClass<T>(aLifetime: TServiceLifetime; const aFactory: TFunc<T>; const aName: string);
+procedure TContainer.AddClass<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
 var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(aFactory, 'AddClass<T: class>: factory is nil');
+  Ensure.IsAssigned(@aFactory, 'AddClass<T: class>: factory is nil');
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
