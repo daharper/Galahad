@@ -3,26 +3,11 @@ unit Tests.Core.Messaging;
 interface
 
 uses
-  System.SysUtils,
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Base.Messaging,
+  Mocks.Messaging;
 
 type
-  TSubscriberAMock = class
-  private
-    fValue: integer;
-  public
-    property Value: integer read fValue;
-    procedure OnValue(const aValue: integer);
-  end;
-
-  TSubscriberBMock = class
-  private
-    fValue: integer;
-  public
-    property Value: integer read fValue;
-    procedure OnValue(const aValue: integer);
-  end;
-
   [TestFixture]
   TMulticastFixture = class
   private
@@ -39,11 +24,29 @@ type
     [Test] procedure Unsubscribe_StopsAllValues;
   end;
 
+  [TestFixture]
+  TEventBusFixture = class
+  private
+    fBus: TEventBus<TTestEventBase>;
+    fSub: TEventSubscriberMock;
+  public
+    [Setup]
+    procedure Setup;
+
+    [Teardown]
+    procedure Teardown;
+
+    [Test] procedure Publish_Delivers_To_ExactType_Subscribers;
+    [Test] procedure Unsubscribe_Stops_Delivery;
+    [Test] procedure Publish_Is_ExactType_NoBaseFanout;
+    [Test] procedure Publish_Frees_Event;
+  end;
+
 implementation
 
 uses
-  Base.Core,
-  Base.Messaging;
+  System.SysUtils,
+  Base.Core;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMulticastFixture.Publish_CallsAllSubscribers;
@@ -109,21 +112,91 @@ begin
   fSubB.Free;
 end;
 
-{ TSubscriberMock }
+{ TEventBusFixture }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSubscriberAMock.OnValue(const aValue: integer);
+procedure TEventBusFixture.Setup;
 begin
-  fValue := Abs(aValue);
+  fBus := TEventBus<TTestEventBase>.Create;
+  fSub := TEventSubscriberMock.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSubscriberBMock.OnValue(const aValue: integer);
+procedure TEventBusFixture.Teardown;
 begin
-  fValue := Abs(aValue) * -1;
+  fSub.Free;
+  fBus.Free;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TEventBusFixture.Publish_Delivers_To_ExactType_Subscribers;
+begin
+  fBus.Subscribe<TEventA>(fSub.OnEventA);
+
+  var E := TEventA.Create(7);
+  try
+    Assert.WillNotRaise(procedure begin fBus.PublishOwned<TEventA>(E); end);
+  finally
+    E.Free;
+  end;
+
+  Assert.AreEqual(1, fSub.CallsA);
+  Assert.AreEqual(7, fSub.LastA);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TEventBusFixture.Unsubscribe_Stops_Delivery;
+begin
+  fBus.Subscribe<TEventA>(fSub.OnEventA);
+  fBus.Unsubscribe<TEventA>(fSub.OnEventA);
+
+  var E := TEventA.Create(1);
+  try
+    fBus.Publish<TEventA>(E);
+  finally
+    E.Free;
+  end;
+
+  Assert.AreEqual(0, fSub.CallsA);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TEventBusFixture.Publish_Is_ExactType_NoBaseFanout;
+begin
+  // Subscribe to base AND to EventA; publishing EventA should hit ONLY EventA subscribers
+  // because bus dispatch is exact-type.
+  fBus.Subscribe<TTestEventBase>(fSub.OnBase);
+  fBus.Subscribe<TEventA>(fSub.OnEventA);
+
+  var EA := TEventA.Create(5);
+  try
+    fBus.Publish<TEventA>(EA);
+  finally
+    EA.Free;
+  end;
+
+  Assert.AreEqual(1, fSub.CallsA);
+  Assert.AreEqual(0, fSub.CallsBase, 'Base subscribers must NOT receive derived events under exact-type dispatch');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TEventBusFixture.Publish_Frees_Event;
+begin
+ TEventWithDtor.DestroyedCount := 0;
+
+  fBus.Subscribe<TEventWithDtor>(fSub.OnWithDtor);
+
+  var E := TEventWithDtor.Create;
+
+  fBus.Publish<TEventWithDtor>(E);
+  Assert.IsNull(E, 'Publish should FreeAndNil the event');
+
+  Assert.AreEqual(1, fSub.CallsDtor, 'Subscriber should be called once');
+  Assert.AreEqual(1, TEventWithDtor.DestroyedCount, 'Event destructor should have been called exactly once');
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TMulticastFixture);
+  TDUnitX.RegisterTestFixture(TEventBusFixture);
 
 end.
