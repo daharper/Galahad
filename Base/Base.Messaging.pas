@@ -35,6 +35,9 @@
   over implicit behavior or reflection-based discovery. It is intended to be
   used as foundational infrastructure across application, domain, and UI layers.
 
+  This first version is deliberately simple, but rightly ordered, so things like
+  async messaging and subscription filters can be added later.
+
 ***************************************************************************************************}
 
 unit Base.Messaging;
