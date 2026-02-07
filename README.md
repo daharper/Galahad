@@ -12,7 +12,8 @@ I'm currently:
 
 - Pulling code from a personal project
 - Clarifying policies
-- Refactoring as required
+- Refactoring
+- Writing tests
 - Incrementally updating this repository
 
 Once the dust settles, I'll provide documentation.
