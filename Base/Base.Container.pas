@@ -1,9 +1,9 @@
 {***************************************************************************************************
   Project:     Galahad
   Unit:        Base.Container
-  Purpose:     Provides a lightweight, explicit, and Delphi-native Dependency Injection container.
   Author:      David Harper
   License:     MIT
+  Purpose:     Provides a lightweight, explicit, and Delphi-native Dependency Injection container.
 
   Overview
   --------

@@ -1,3 +1,39 @@
+{***************************************************************************************************
+  Project:     Galahad
+  Unit:        Base.Collections
+  Author:      David Harper
+  License:     MIT
+  Purpose:     Provides collection-related types and utility helpers.
+
+  Overview
+  --------
+  Base.Collections defines a small set of collection-oriented abstractions and helpers intended
+  to simplify common operations on Delphi collections. It is designed to complement the standard
+  RTL collections without replacing them.
+
+  The unit focuses on clarity, correctness, and convenience when working with lists, dictionaries,
+  sets, and related structures.
+
+  Design Principles
+  -----------------
+  - Non-intrusive:
+      Extends and assists existing RTL collections rather than introducing alternative container
+      hierarchies.
+
+  - Expressive helpers:
+      Common collection patterns are expressed explicitly to reduce boilerplate and improve
+      readability.
+
+  - Side-effect conscious:
+      Helper functions make mutation explicit and avoid hidden ownership or lifetime changes.
+
+  Intended Usage
+  --------------
+  Base.Collections is intended to be used wherever collections are manipulated, especially in
+  situations where repeated patterns would otherwise lead to verbose or error-prone code.
+
+***************************************************************************************************}
+
 unit Base.Collections;
 
 interface

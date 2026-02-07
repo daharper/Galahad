@@ -1,3 +1,38 @@
+{***************************************************************************************************
+  Project:     Galahad
+  Unit:        Base.Messaging
+  Author:      David Harper
+  License:     MIT
+  Purpose:     Provides lightweight messaging primitives (publish/subscribe) for decoupled
+               notifications within a process.
+
+  Overview
+  --------
+  Base.Messaging contains foundational types for in-process messaging and event distribution.
+
+  TMulticast<T>
+    A thread-safe multicast publisher for values of type T. Subscribers are stored as method
+    pointers (procedures of object). Publishing uses a snapshot of subscribers to avoid holding
+    locks while invoking callbacks and to provide stable iteration under concurrent subscribe/
+    unsubscribe operations.
+
+    Semantics:
+    - Subscribe / Unsubscribe are idempotent (duplicate subscriptions are ignored).
+    - Publish is resilient: subscriber exceptions are caught and optionally collected.
+    - PublishRaising aggregates failure: if any subscriber raises, an exception is raised after
+      publishing completes.
+
+    Thread-Safe via a reader/writer lock and snapshot/versioning to minimize contention:
+    - Writes (subscribe/unsubscribe) update a version counter.
+    - Reads (publish) operate over an immutable snapshot of the subscriber list.
+
+    Suitable for decoupled notifications such as:
+    - domain/application events within a process
+    - instrumentation hooks and diagnostics
+    - UI or service-layer observation points
+
+***************************************************************************************************}
+
 unit Base.Messaging;
 
 interface
@@ -44,8 +79,32 @@ type
     procedure Subscribe(const aSubscriber: TSubscriber<T>);
     procedure Unsubscribe(const aSubscriber: TSubscriber<T>);
 
+    /// <summary>
+    ///  Publishes a value to all current subscribers.
+    ///
+    ///  All subscribers are invoked using a stable snapshot taken at publish time.
+    ///  Exceptions raised by subscribers are caught and do not stop delivery to
+    ///  subsequent subscribers.
+    ///
+    ///  If <paramref name="aErrors"/> is provided, details of any subscriber
+    ///  exceptions are collected into the list.
+    ///
+    ///  Returns True if all subscribers completed successfully; False if one or
+    ///  more subscribers raised an exception.
+    /// </summary>
     function Publish(const aValue: T; aErrors: TList<TSubscriberError> = nil): boolean;
 
+    /// <summary>
+    ///  Publishes a value to all current subscribers and raises on failure.
+    ///
+    ///  All subscribers are invoked using a stable snapshot taken at publish time.
+    ///  If one or more subscribers raise an exception, publishing continues for
+    ///  all subscribers and an <see cref="EMulticastInvokeException"/> is raised
+    ///  after completion.
+    ///
+    ///  The raised exception reports the total number of failures and includes
+    ///  diagnostic details for the first encountered error.
+    /// </summary>
     procedure PublishRaising(const aValue: T);
 
     constructor Create;

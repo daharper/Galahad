@@ -1,7 +1,8 @@
 {***************************************************************************************************
   Project:     Galahad
-  Author:      David Harper
   Unit:        Base.Dynamic
+  Author:      David Harper
+  License:     MIT
   Purpose:     Provides dynamic and extended objects exposed via IDispatch (OleVariant),
                enabling runtime dispatch, method interception, and "method_missing" behaviour.
 

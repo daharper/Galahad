@@ -1,7 +1,8 @@
 {***************************************************************************************************
   Project:     Galahad
-  Author:      David Harper
   Unit:        Base.Reflection
+  Author:      David Harper
+  License:     MIT
   Purpose:     Provides RTTI and Variant/TValue conversion helpers for building safe,
                deterministic automation and dynamic-dispatch boundaries.
 

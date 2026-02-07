@@ -1,3 +1,60 @@
+{***************************************************************************************************
+  Project:     Galahad
+  Unit:        Base.Stream
+  Author:      David Harper
+  License:     MIT
+  Purpose:     Provides an eager, declarative stream abstraction for processing collections.
+
+  Overview
+  --------
+  Base.Stream defines a Stream abstraction that enables clear, declarative, pipeline-style
+  processing of collections in Delphi. Streams are intended to express data flow explicitly
+  through a sequence of transformation steps, culminating in a terminal operation.
+
+  Streams follow a strict lifecycle:
+    Ingest => Transform => Terminate
+
+  Once a terminal operation has been executed, the stream is considered consumed and may not
+  be reused.
+
+  Design Principles
+  -----------------
+  - Eager execution:
+      All stream operations are evaluated eagerly. There is no lazy evaluation, deferred execution,
+      or hidden enumeration.
+
+  - Explicit ownership:
+      A Stream may own internal collection containers, but it never owns the items within them.
+      Item disposal is opt-in and must be explicitly requested via discard callbacks.
+
+  - Single-use semantics:
+      Streams are consumed exactly once. Attempting to use a stream after a terminal operation
+      results in an exception, making lifecycle errors visible immediately.
+
+  - Declarative clarity:
+      Stream operations emphasize readability and intent over micro-optimizations or cleverness.
+
+  - Predictable behavior:
+      No hidden allocations, no implicit threading, and no background execution.
+
+  Non-goals
+  ---------
+  - No lazy or reactive streams
+  - No parallel execution
+  - No implicit ownership or automatic disposal of items
+  - No attempt to replace RTL collections or LINQ-style providers
+
+  Intended Usage
+  --------------
+  Base.Stream is well-suited for:
+  - Clear transformation pipelines
+  - Boundary-layer processing (e.g. I/O, mapping, validation)
+  - Situations where correctness and readability are more important than raw performance
+
+  Streams are not intended for hot paths or performance-critical inner loops.
+
+***************************************************************************************************}
+
 unit Base.Stream;
 
 interface
