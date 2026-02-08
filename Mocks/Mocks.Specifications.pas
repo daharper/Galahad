@@ -130,7 +130,6 @@ function TDepartmentIsSqlAdapter.TryBuildWhere(
 ): Boolean;
 var
   deptSpec: TDepartmentIs;
-  col: string;
   p: string;
 begin
   aSql := '';
@@ -141,14 +140,9 @@ begin
 
   deptSpec := TDepartmentIs(aSpec);
 
-  // column name + optional alias
-  if aCtx.Alias <> '' then
-    col := aCtx.Alias + '.Department'
-  else
-    col := 'Department';
-
   p := aCtx.AddParam(deptSpec.Department);
-  aSql := col + ' = ' + p;
+
+  aSql := aCtx.Column('Department') + ' = ' + p;
   Result := True;
 end;
 

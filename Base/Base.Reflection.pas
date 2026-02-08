@@ -1,101 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Reflection
   Author:      David Harper
   License:     MIT
-  Purpose:     Provides RTTI and Variant/TValue conversion helpers for building safe,
-               deterministic automation and dynamic-dispatch boundaries.
-
-  Design contract:
-  - Objects cross the boundary as interfaces (IUnknown / IDispatch).
-  - Values cross the boundary as Variant-compatible value types.
-  - Conversions are explicit, lossless, and predictable.
-  - Unsupported conversions fail cleanly (return False), never partially succeed.
-
-  This unit intentionally restricts the set of supported types in order to:
-  - maintain binary compatibility with COM / Automation
-  - avoid ambiguous overload resolution
-  - prevent lifetime and ownership bugs
-  - enable round-trip safety (TValue -> Variant -> TValue)
-
-  Primary responsibilities:
-  - Type inspection helpers (kind, managed-ness, reference semantics)
-  - Interface safety checks and casting helpers
-  - Deterministic TValue <-> Variant conversions
-  - Argument marshaling for RTTI method invocation
-
-  Non-goals:
-  - Arbitrary object serialization
-  - Automatic record marshaling (except special-cased TGUID)
-  - Deep graph copying or persistence
-
-  All conversion APIs are designed to be:
-  - symmetric where possible
-  - explicit in failure
-  - suitable for use in dynamic / scripting / automation scenarios
-
-  Supported TValue <-> Variant conversions
-
-  Scalars
-  -------
-  Delphi Type                    Variant Representation
-  -----------------------------  -----------------------------------------
-  Integer / Int64                varInt64
-  Boolean                        varBoolean
-  Enum                           varInt64 (ordinal)
-  Set                            varInt64 (bitmask)
-  Char / WideChar                UnicodeString (length = 1)
-  ShortString                    UnicodeString
-  AnsiString                     UnicodeString
-  WideString                     UnicodeString
-  UnicodeString                  UnicodeString
-  Double / Extended              varDouble
-  Currency                       varCurrency
-  TDateTime                      varDate
-  Variant                        Variant (passthrough)
-
-  Interfaces / Objects
-  --------------------
-  Delphi Type                    Variant Representation
-  -----------------------------  -----------------------------------------
-  Interface                      varUnknown / varDispatch
-  nil interface                  Null / Empty
-  TObject                        NOT supported (must cross as interface)
-
-  Arrays
-  ------
-  Delphi Type                    Variant Representation
-  -----------------------------  -----------------------------------------
-  TArray<Integer>                1D Variant array (varVariant)
-  TArray<Byte> / TBytes          varByte SAFEARRAY
-  TArray<TGUID>                  1D Variant array of GUID strings
-  TArray<IInterface>             1D Variant array (varUnknown elements)
-  TArray<string>                 1D Variant array of UnicodeString
-
-  TArray works for all supported scalars.
-
-  Records
-  -------
-  Delphi Type                    Variant Representation
-  -----------------------------  -----------------------------------------
-  TGUID                          String "{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}{"
-
-  Unsupported
-  -----------
-  - Arbitrary records
-  - Classes (except via interface)
-  - Multidimensional arrays
-  - Open arrays
-  - Sets larger than 64 bits
-
-  Policy notes:
-  - All array conversions are 1D only.
-  - All numeric conversions are explicit and range-safe.
-  - String-to-numeric coercion is allowed where unambiguous.
-
-  Support for marshaling other types should materialize in later versions.
-
-***************************************************************************************************}
+  History:     2026-08-02  Initial version 0.1
+  Purpose:     Provides RTTI and Variant/TValue conversion helpers for building safe, deterministic automation.
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Reflection;
 

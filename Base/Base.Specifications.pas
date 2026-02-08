@@ -1,65 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Specifications
   Author:      David Harper
   License:     MIT
-  Purpose:     Implements the Specification pattern with composable predicates and adapter-driven
-               SQL WHERE-clause generation.
-
-  Overview
-  --------
-  Base.Specifications provides an implementation of the Specification pattern for expressing
-  business rules and query predicates as reusable, composable objects. Specifications may be
-  evaluated in-memory and may also be translated into SQL WHERE clauses.
-
-  Composition
-  -----------
-  Specifications can be combined into larger expressions using boolean logic:
-  • And / AndAlso    : conjunction
-  • Or / OrElse      : disjunction
-  • Not              : negation
-
-  Composition is designed to be explicit and readable, supporting complex predicates while
-  keeping each individual specification focused and testable.
-
-  SQL Generation (Adapter-driven)
-  -------------------------------
-  SQL translation is performed via a lightweight SQL builder that walks the specification tree
-  and delegates translation of leaf (or domain-specific) specifications to registered adapters.
-
-  • Adapters encapsulate knowledge of how to convert a specific specification type into SQL
-    fragments (typically predicate expressions and parameters).
-  • The SQL builder is responsible for:
-      - traversing composite specifications (And/Or/Not),
-      - invoking the appropriate adapter for translatable nodes,
-      - composing the returned fragments into a single WHERE clause,
-      - preserving correct boolean grouping and operator precedence.
-
-  This design keeps SQL concerns out of specifications themselves, supports multiple persistence
-  backends, and allows translation capabilities to be extended incrementally by registering new adapters.
-
-  Design Principles
-  -----------------
-  • Reuse and testability:
-      Specifications encapsulate a single rule and can be unit-tested independently.
-
-  • Explicit composition:
-      Boolean composition builds larger predicates from small, understandable parts.
-
-  • Separation of concerns:
-      Specifications describe intent; adapters define translation rules; the builder composes.
-
-  • Predictable translation:
-      Unsupported specification nodes should fail clearly rather than silently producing incorrect SQL.
-
-  Intended Usage
-  --------------
-  Base.Specifications is suitable for:
-  • Repository filtering APIs (e.g. Find(Spec), Count(Spec))
-  • Composable business rules used in both in-memory and persistence contexts
-  • SQL WHERE generation where translation rules are provided via registered adapters
-
-***************************************************************************************************}
+  History:     2026-08-02  Initial version 0.1
+  Purpose:     Implements the Specification pattern with composable predicates and adapter-driven SQL WHERE generation.
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Specifications;
 
@@ -168,6 +114,7 @@ type
     ['{F6D0C2A6-7C4B-4F83-A8B0-3B33F2A8B7C1}']
     function AddParam(const aValue: Variant): string;
     function Alias: string;
+    function Column(const aName: string): string;
   end;
 
   ISpecSqlAdapter<T> = interface
@@ -188,6 +135,7 @@ type
 
     function AddParam(const aValue: Variant): string;
     function Alias: string;
+    function Column(const aName: string): string;
 
     function DetachParams: TArray<TSqlParam>;
   end;
@@ -337,13 +285,21 @@ begin
 
   Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
 
-  FPredicate := aPredicate;
+  fPredicate := aPredicate;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TPredicateSpecification<T>.IsSatisfiedBy(const aCandidate: T): Boolean;
 begin
-  Result := FPredicate(aCandidate);
+  Result := fPredicate(aCandidate);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqlBuildContext.Column(const aName: string): string;
+begin
+  if Length(fAlias) = 0 then exit(aName);
+
+  Result := fAlias + '.' + aName;
 end;
 
 { TSqlBuildContext }

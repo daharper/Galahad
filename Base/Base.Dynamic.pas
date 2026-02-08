@@ -1,41 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Dynamic
   Author:      David Harper
   License:     MIT
-  Purpose:     Provides dynamic and extended objects exposed via IDispatch (OleVariant),
-               enabling runtime dispatch, method interception, and "method_missing" behaviour.
-
-  Design contract:
-  - Objects cross the automation boundary as interfaces (varUnknown / varDispatch).
-  - Values cross the boundary as Variant-compatible value types.
-  - Supported value types are intentionally restricted to ensure deterministic,
-    lossless conversion between Variant and TValue.
-
-  Dynamic dispatch model:
-  - TDynamicObject:
-      * Attempts RTTI-based static dispatch first (methods, properties, indexed properties).
-      * Falls back to MethodMissing if no match is found.
-  - TExtendedObject:
-      * Does NOT attempt RTTI-based dispatch.
-      * Always routes dynamic invocations directly to MethodMissing.
-  - TDynamicDecorator:
-      * Allows decorator-style dynamic dispatch:
-          1) decorator instance
-          2) wrapped source object
-          3) MethodMissing fallback
-
-  Typical usage:
-  - Use normal Delphi interfaces for strongly-typed, compile-time dispatch.
-  - Use OleVariant / IDispatch only when dynamic behaviour or interception is required.
-
-  Notes:
-  - This unit relies on COM Automation semantics; callers are expected to initialize COM
-    (CoInitializeEx / CoUninitialize) at application or thread boundaries.
-  - Overload resolution is deterministic:
-      * strict matching first
-      * permissive (coercing) matching as fallback
-***************************************************************************************************}
+  History:     2026-08-02  Initial version 0.1
+  Purpose:     Provides dynamic and extended objects exposed via IDispatch (OleVariant), enabling runtime dispatch.
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Dynamic;
 

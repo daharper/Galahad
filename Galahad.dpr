@@ -41,7 +41,8 @@ uses
   Tests.Container.ResolveRegistered in 'Tests.Container\Tests.Container.ResolveRegistered.pas',
   Tests.Container.ModuleRegistration in 'Tests.Container\Tests.Container.ModuleRegistration.pas',
   Tests.Container.Resolve in 'Tests.Container\Tests.Container.Resolve.pas',
-  Mocks.Messaging in 'Mocks\Mocks.Messaging.pas';
+  Mocks.Messaging in 'Mocks\Mocks.Messaging.pas',
+  Base.Xml in 'Base\Base.Xml.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

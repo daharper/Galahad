@@ -1,46 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Core
   Author:      David Harper
   License:     MIT
+  History:     2026-08-02  Initial version 0.1
   Purpose:     Defines fundamental types, helpers, and aliases shared across all Base units.
-
-  Overview
-  --------
-  Base.Core contains a minimal set of low-level definitions that are broadly useful throughout
-  the Base layer. These types and helpers are intentionally generic and free of higher-level
-  dependencies, making the unit safe to include almost anywhere.
-
-  The contents of this unit are expected to be stable and slowly evolving. Most Base units depend
-  on Base.Core, but Base.Core itself depends on nothing within the Base namespace.
-
-  Design Principles
-  -----------------
-  - Minimal surface area:
-      Only concepts that are truly fundamental belong here. Higher-level abstractions are defined
-      in more specialized units.
-
-  - Dependency-safe:
-      Base.Core must not introduce circular dependencies or require complex initialization.
-
-  - Expressive intent:
-      Types and aliases in this unit exist to make intent explicit (e.g. semantic function types,
-      ownership conventions), not to add indirection.
-
-  Typical Contents
-  ----------------
-  Base.Core may include:
-  - Semantic type aliases (e.g. function and factory types)
-  - Small utility records or helpers with no external dependencies
-  - Shared enumerations used across multiple Base units
-  - Common constants or lightweight helpers
-
-  Intended Usage
-  --------------
-  Base.Core is intended to be used ubiquitously as a foundation for other Base units.
-  It establishes shared vocabulary and conventions without imposing behavior.
-
-***************************************************************************************************}
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Core;
 

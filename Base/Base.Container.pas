@@ -1,50 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Container
   Author:      David Harper
   License:     MIT
+  History:     2026-08-02  Initial version
   Purpose:     Provides a lightweight, explicit, and Delphi-native Dependency Injection container.
-
-  Overview
-  --------
-  Base.Container implements a pragmatic IoC / DI container designed specifically for Delphi.
-  It favors explicit registration, predictable behavior, and compatibility with Delphi’s
-  object model, RTTI, and memory management semantics.
-
-  The container intentionally avoids "magic" behaviors such as automatic type scanning,
-  attribute-based registration, or open-generic resolution. Preferring services to be explicitly
-  registered by the user due to Delphi's aggressive Linker trimming.
-
-  Ownership
-  ---------
-  Although constructor arguments with unregistered class types are supported, this is discouraged
-  because it introduces ownership ambiguity. Auto-registered classes are always transient.
-
-  Ownership rules for class-based services:
-
-  - Singleton class registrations: the container may own and dispose the singleton instance (depending on registration).
-  - Transient class instances (registered or implicit): the container creates them to satisfy a request but does
-    not track or dispose them afterwards. Ownership is effectively transferred to the receiver.
-
-  Because Delphi does not enforce ownership, mixing singleton and transient class injection can easily lead
-  to double frees or leaks if consumers guess wrong about who should free a dependency.
-
-  To avoid confusion and make lifetime predictable:
-
-  - Register services against interfaces (use Add<ICustomerRepository, TCustomerRepository>)
-  - Use interfaces for constructor argument types (e.g. ICustomerRepository)
-
-  With interface-based services, lifetime is managed automatically through reference counting:
-  request, use, forget — no manual memory management.
-
-  In general, prefer the core methods for safe memory - such as Add, AddFactory, and AddSingleton.
-
-  Modules allow you to group requirements, register them with AddModule.
-
-  TContainer can be used for local purposes, but it's recommended to use the default container for
-  application-wide needs, which is exposed via the global "Container" function.
-
-***************************************************************************************************}
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Container;
 

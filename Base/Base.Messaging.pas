@@ -1,44 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Messaging
   Author:      David Harper
   License:     MIT
-  Purpose:     Provides lightweight messaging primitives (publish/subscribe) for decoupled
-               notifications within a process.
-
-  Overview
-  --------
-  This unit provides lightweight, thread-safe primitives for publish/subscribe
-  communication within a single process.
-
-  Key components include:
-
-  - TMulticast<T>
-      A low-level multicast dispatcher that allows multiple subscribers to be
-      notified of published values. Subscribers are invoked using a stable
-      snapshot to ensure safe iteration under concurrent modification.
-
-  - TEventBus<TBase>
-      A higher-level event bus built on top of multicast channels. Events are
-      routed by concrete type, with explicit support for grouped publishing
-      without polymorphic fan-out.
-
-      The event bus enforces clear ownership semantics:
-        * Publish(...)      – the bus owns and frees the event.
-        * PublishOwned(...) – the caller retains ownership.
-
-      Subscriber exceptions are never raised directly; instead, they are reported
-      through the central error notification mechanism, allowing applications to
-      decide how errors are handled (log, alert, ignore, etc.).
-
-  Messaging in this unit is designed for correctness, clarity, and explicitness
-  over implicit behavior or reflection-based discovery. It is intended to be
-  used as foundational infrastructure across application, domain, and UI layers.
-
-  This first version is deliberately simple, but rightly ordered, so things like
-  async messaging and subscription filters can be added later.
-
-***************************************************************************************************}
+  History:     2026-08-02  Initial version 0.1
+  Purpose:     Provides lightweight messaging primitives (publish/subscribe) for decoupled notifications in a process.
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Messaging;
 

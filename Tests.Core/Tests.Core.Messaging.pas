@@ -182,7 +182,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TEventBusFixture.Publish_Frees_Event;
 begin
- TEventWithDtor.DestroyedCount := 0;
+  TEventWithDtor.DestroyedCount := 0;
 
   fBus.Subscribe<TEventWithDtor>(fSub.OnWithDtor);
 

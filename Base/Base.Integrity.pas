@@ -1,48 +1,11 @@
-{***************************************************************************************************
+{-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
   Unit:        Base.Integrity
   Author:      David Harper
   License:     MIT
+  History:     2026-08-02  Initial version 0.1
   Purpose:     Provides foundational types for enforcing code integrity, correctness, and safety.
-
-  Overview
-  --------
-  Base.Integrity defines a small set of core abstractions used throughout the codebase to improve
-  correctness, robustness, and clarity of intent. These types address common failure modes such as
-  unchecked assumptions, silent errors, resource leaks, and ambiguous return values.
-
-  The unit is deliberately framework-agnostic and has no dependencies on application-specific
-  concepts. It is suitable for use across all layers of an application.
-
-  Design Principles
-  -----------------
-  - Explicit correctness:
-      Prefer explicit signaling of absence, failure, or scope over implicit conventions
-      (e.g. nil, magic values, or undocumented side effects).
-
-  - Centralized error handling:
-      Errors may be observed, logged, or intercepted consistently via a single notification
-      mechanism without coupling business logic to logging or UI concerns.
-
-  - Fail fast, fail clearly:
-      Invalid states and violated assumptions should surface immediately and descriptively.
-
-  - Delphi-native:
-      Integrates cleanly with Delphi’s exception model, reference counting, and lifetime semantics
-      without introducing foreign paradigms.
-
-  Intended Usage
-  --------------
-  Base.Integrity is intended to be used pervasively:
-  - as guard logic at API boundaries,
-  - to express intent in return values,
-  - to enforce ownership and cleanup guarantees,
-  - and to centralize error observation without obscuring control flow.
-
-  These abstractions are small by design but form a critical foundation for building reliable,
-  maintainable systems.
-
-***************************************************************************************************}
+-----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Integrity;
 
