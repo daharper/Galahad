@@ -306,7 +306,7 @@ type
     ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure AddClass<T: class>(aInstance: T; const aName: string = ''; aTakeOwnership: Boolean = True); overload;
+    procedure AddClass<T: class>(aInstance: T; const aName: string = ''; aTakeOwnership: Boolean = True);
 
     /// <summary>
     ///  Registers a class factory for the given lifetime.
