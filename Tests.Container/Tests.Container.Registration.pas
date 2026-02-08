@@ -173,12 +173,12 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
 
   Assert.WillRaise(
     procedure
     begin
-      container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
+      container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
     end,
     EArgumentException);
 end;
@@ -189,12 +189,12 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
+  container.AddFactory<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
 
   Assert.WillRaise(
     procedure
     begin
-      container.Add<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
+      container.AddFactory<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
     end,
     EArgumentException);
 end;
@@ -205,8 +205,8 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'A');
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'B');
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'A');
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'B');
 
   Assert.IsTrue(container.IsRegistered<ITestSvc>('A'));
   Assert.IsTrue(container.IsRegistered<ITestSvc>('B'));
@@ -219,12 +219,12 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+  container.AddClassFactory<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
 
   Assert.WillRaise(
     procedure
     begin
-      container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+      container.AddClassFactory<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
     end,
     EArgumentException);
 end;
@@ -235,12 +235,12 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+  container.AddClassFactory<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
 
   Assert.WillRaise(
     procedure
     begin
-      container.AddClass<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+      container.AddClassFactory<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
     end,
     EArgumentException);
 end;
@@ -251,8 +251,8 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'A');
-  container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'B');
+  container.AddClassFactory<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'A');
+  container.AddClassFactory<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end, 'B');
 
   Assert.IsTrue(container.IsRegistered<TObjectSvc>('A'));
   Assert.IsTrue(container.IsRegistered<TObjectSvc>('B'));

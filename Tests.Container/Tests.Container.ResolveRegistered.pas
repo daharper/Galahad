@@ -53,7 +53,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
+  container.AddFactory<ITestSvc>(Transient, function: ITestSvc begin Result := TTestSvc.Create; end);
 
   var transient1 := container.Resolve<ITestSvc>;
   var transient2 := container.Resolve<ITestSvc>;
@@ -67,7 +67,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end);
 
   var singleton1 := container.Resolve<ITestSvc>;
   var singleton2 := container.Resolve<ITestSvc>;
@@ -81,8 +81,8 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'A');
-  container.Add<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'B');
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'A');
+  container.AddFactory<ITestSvc>(Singleton, function: ITestSvc begin Result := TTestSvc.Create; end, 'B');
 
   var singletonA := container.Resolve<ITestSvc>('A');
   var singletonB := container.Resolve<ITestSvc>('B');
@@ -138,7 +138,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+  container.AddClassFactory<TObjectSvc>(Transient, function: TObjectSvc begin Result := TObjectSvc.Create; end);
 
   var instanceA := scope.Owns(container.ResolveClass<TObjectSvc>());
   var instanceB := scope.Owns(container.ResolveClass<TObjectSvc>());
@@ -152,7 +152,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
+  container.AddClassFactory<TObjectSvc>(Singleton, function: TObjectSvc begin Result := TObjectSvc.Create; end);
 
   var refA := container.ResolveClass<TObjectSvc>;
   var refB := container.ResolveClass<TObjectSvc>;

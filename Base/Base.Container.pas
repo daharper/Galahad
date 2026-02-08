@@ -37,12 +37,12 @@
   With interface-based services, lifetime is managed automatically through reference counting:
   request, use, forget — no manual memory management.
 
-  Prefer the core methods (such as Add, AddSingleton - see below) for safe memory management.
+  In general, prefer the core methods for safe memory - such as Add, AddFactory, and AddSingleton.
 
   Modules allow you to group requirements, register them with AddModule.
 
   TContainer can be used for local purposes, but it's recommended to use the default container for
-  applications, which is exposed via the global "Container" function.
+  application-wide needs, which is exposed via the global "Container" function.
 
 ***************************************************************************************************}
 
@@ -197,6 +197,8 @@ type
     function BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
     function TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
     function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+
+    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
 {$ENDIF}
 
   public
@@ -207,6 +209,8 @@ type
     function BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
     function TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
     function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+
+    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
 {$ENDIF}
 
     {------------------------------------------------ core methods ----------------------------------------------------}
@@ -231,7 +235,7 @@ type
     ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure Add<T: IInterface>(aLifetime: TServiceLifetime; const aFactory:TConstFunc<T>; const aName: string = ''); overload;
+    procedure AddFactory<T: IInterface>(aLifetime: TServiceLifetime; const aFactory:TConstFunc<T>; const aName: string = ''); overload;
 
     /// <summary>
     ///  Registers a type mapping from an interface service type to a concrete implementation class.
@@ -318,7 +322,7 @@ type
     ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure AddClass<T: class>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string = ''); overload;
+    procedure AddClassFactory<T: class>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string = '');
 
     /// <summary>
     ///  Registers a type mapping for a concrete class service type to itself.
@@ -371,8 +375,6 @@ type
     ///  Releases cached interface singletons and frees any owned object singletons.
     /// </remarks>
     procedure Clear;
-
-    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
 
     constructor Create;
     destructor Destroy; override;
@@ -649,7 +651,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.Add<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
+procedure TContainer.AddFactory<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
 var
   lKey: TServiceKey;
   lReg: TRegistration;
@@ -679,7 +681,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddClass<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
+procedure TContainer.AddClassFactory<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
 var
   lKey: TServiceKey;
   lReg: TRegistration;

@@ -131,11 +131,7 @@ begin
 
   container.AddClassType<TBestDep>(Transient);
 
-  container.Add<IBestSvc>(Transient,
-    function: IBestSvc
-    begin
-      Result := TBestSvc.Create as IBestSvc;
-    end);
+  container.AddFactory<IBestSvc>(Transient, function: IBestSvc begin Result := TBestSvc.Create as IBestSvc; end);
 
   Assert.IsTrue(container.FindBestConstructor(TMultiCtorBest, ctor, args));
   Assert.IsNotNull(ctor);
@@ -282,11 +278,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<IService>(Transient,
-    function: IService
-    begin
-      Result := TService0.Create as IService;
-    end);
+  container.AddFactory<IService>(Transient, function: IService begin Result := TService0.Create as IService; end);
 
   var serviceA: IService := container.Resolve<IService>;
   var serviceB: IService := container.Resolve<IService>;
@@ -347,7 +339,7 @@ var
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<IBasicService0>(Transient,
+  container.AddFactory<IBasicService0>(Transient,
     function: IBasicService0
     begin
       Result := TBasicService0.Create as IBasicService0;
@@ -378,7 +370,7 @@ var
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddClass<TBasicDep0>(Transient,
+  container.AddClassFactory<TBasicDep0>(Transient,
     function: TBasicDep0
     begin
       Result := TBasicDep0.Create;
@@ -430,7 +422,7 @@ begin
 
   container.AddClassType<TBasicDep0>(Transient);
 
-  container.Add<IBasicService0>(Transient,
+  container.AddFactory<IBasicService0>(Transient,
     function: IBasicService0
     begin
       Result := TBasicService0.Create as IBasicService0;
@@ -454,7 +446,7 @@ var
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<IBasicService0>(Transient,
+  container.AddFactory<IBasicService0>(Transient,
     function: IBasicService0
     begin
       Result := TBasicService0.Create as IBasicService0;
