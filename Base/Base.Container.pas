@@ -38,69 +38,6 @@
   With interface-based services, lifetime is managed automatically through reference counting:
   request, use, forget — no manual memory management.
 
-  Design Principles
-  -----------------
-  - Explicit over implicit:
-      All services are registered directly via the container API or grouped via modules.
-      There is exactly one way to register services; no hidden conventions.
-
-  - Interface-first, class-supported:
-      Interface-based services are the primary abstraction.
-      Class-based services are supported where appropriate, with clear ownership rules. Prefer interfaces.
-
-  - Delphi-native semantics:
-      Constructor selection, RTTI usage, and fallback behavior follow standard Delphi rules.
-      If no suitable constructor can be satisfied, the container falls back to parameterless
-      Create where available.
-
-  - Deterministic lifetimes:
-      Services are registered with an explicit lifetime:
-        - Singleton   : one instance per container
-        - Transient   : a new instance per resolve
-
-  - Safe memory management:
-      - Interface services rely on reference counting.
-      - Class services support container ownership or caller ownership, as specified.
-      - The container disposes of owned singleton instances on Clear or destruction.
-
-  - Testable by design:
-      The container is built incrementally and validated via unit tests at each layer
-      (registration, factories, type maps, resolution, constructor injection).
-
-  Supported Registration Forms
-  ----------------------------
-  - Instance registration:
-      Add<T: IInterface>(Instance)
-      AddClass<T: class>(Instance, TakeOwnership)
-
-  - Factory registration:
-      Add<T: IInterface>(Lifetime, Factory)
-      AddClass<T: class>(Lifetime, Factory)
-
-  - Type mapping:
-      AddType<TService: IInterface, TImpl: class>(Lifetime)
-      AddClassType<T: class>(Lifetime)
-
-  Resolution
-  ----------
-  - Resolve<T> / TryResolve<T> for interfaces
-  - ResolveClass<T> / TryResolveClass<T> for classes
-
-  Resolution supports constructor injection for:
-  - Interfaces
-  - Classes registered with the container
-  - Other resolvable services
-
-  Primitive values (e.g. string, integer) are intentionally NOT injected.
-
-  Intended Usage
-  --------------
-  Base.Container is suitable for:
-  - Application composition roots
-  - Modular applications with explicit service registration
-  - Test environments requiring deterministic resolution
-  - Long-lived containers with predictable cleanup semantics
-
   TContainer can be used for local purposes, but it's recommended to use the default container for
   applications, which is exposed via the global "Container" function.
 
