@@ -15,6 +15,29 @@
   attribute-based registration, or open-generic resolution. All services must be explicitly
   registered by the user. One of the obvious reasons in Delphi is aggressive Linker trimming.
 
+  Ownership
+  ---------
+  Although constructor arguments with unregistered class types are supported, this is discouraged
+  because it introduces ownership ambiguity. Auto-registered classes are always transient.
+
+  Ownership rules for class-based services:
+
+  - Singleton class registrations: the container may own and dispose the singleton instance (depending on registration).
+  - Transient class instances (registered or implicit): the container creates them to satisfy a request but does not track
+    or dispose them afterwards. Ownership is effectively transferred to the receiver (the caller for root resolves, or the
+    constructed object for constructor-injected parameters).
+
+  Because Delphi does not enforce ownership, mixing singleton and transient class injection can easily lead to double frees
+  or leaks if consumers guess wrong about who should Free a dependency.
+
+  To avoid confusion and make lifetime predictable:
+
+  - Register services against interfaces (use Add<T: ICustomerRepository> overloads)
+  - Use interfaces for constructor argument types (e.g. ICustomerRepository)
+
+  With interface-based services, lifetime is managed automatically through reference counting:
+  request, use, forget — no manual memory management.
+
   Design Principles
   -----------------
   - Explicit over implicit:
@@ -23,7 +46,7 @@
 
   - Interface-first, class-supported:
       Interface-based services are the primary abstraction.
-      Class-based services are supported where appropriate, with clear ownership rules.
+      Class-based services are supported where appropriate, with clear ownership rules. Prefer interfaces.
 
   - Delphi-native semantics:
       Constructor selection, RTTI usage, and fallback behavior follow standard Delphi rules.
@@ -224,16 +247,30 @@ type
     fRegistry: TServiceRegistry;
     fSingletons: TSingletonRegistry;
 
+    class var fContext: TRttiContext;
+
+    procedure EnsureAutoRegisteredClass(const aServiceType: PTypeInfo);
+
+{$IFNDEF TESTINSIGHT}
     function TryResolveByTypeInfo(aServiceType: PTypeInfo; out aIntf: IInterface; const aName: string = ''): Boolean;
     function TryResolveClassByTypeInfo(aServiceType: PTypeInfo; out aObj: TObject; const aName: string = ''): Boolean;
-
     function BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
     function TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
+    function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+{$ENDIF}
+
+  public
+
+{$IFDEF TESTINSIGHT}
+    function TryResolveByTypeInfo(aServiceType: PTypeInfo; out aIntf: IInterface; const aName: string = ''): Boolean;
+    function TryResolveClassByTypeInfo(aServiceType: PTypeInfo; out aObj: TObject; const aName: string = ''): Boolean;
+    function BuildObject(const aImplClass: TClass; out aObj: TObject): Boolean;
+    function TryResolveParam(const aParamType: TRttiType; out aValue: TValue): Boolean;
+    function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+{$ENDIF}
 
     class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
 
-    class var fContext: TRttiContext;
-  public
     /// <summary>
     /// Applies a single module (grouped registrations) to this container.
     /// </summary>
@@ -328,7 +365,8 @@ type
     ///  The mapping is keyed by (TypeInfo(T), aName). An empty name means the default registration.
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
-    procedure AddClassType<T: class>(aLifetime: TServiceLifetime; const aName: string = '');
+    procedure AddClassType<T: class>(aLifetime: TServiceLifetime; const aName: string = '');  overload;
+    procedure AddClassType<TBase: class; TImpl:TBase>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
 
     /// <summary>
     ///  Returns True if a service with the given type (and optional name) is registered.
@@ -389,8 +427,6 @@ type
     ///  Use TryResolveClass for non-throwing behavior.
     /// </remarks>
     function ResolveClass<T: class>(const aName: string = ''): T;
-
-    function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
 
     constructor Create;
     destructor Destroy; override;
@@ -864,9 +900,6 @@ begin
 
   var created := lCtor.Invoke(instanceType.MetaclassType, lArgs);
 
-//  var classValue := TValue.From<TClass>(aImplClass);
-//  var created := lCtor.Invoke(classValue, lArgs);
-
   aObj := created.AsObject;
 
   Result := Assigned(aObj);
@@ -879,6 +912,14 @@ var
   lCandidateArgs: TArray<TValue>;
   lBestCount: Integer;
   lValue: TValue;
+
+  procedure DisposeCandidateArgs(const Args: TArray<TValue>);
+  begin
+    for var j := 0 to High(Args) do
+      if Args[j].IsObject and (Args[j].AsObject <> nil) then
+        Args[j].AsObject.Free;
+  end;
+
 begin
   aCtor := nil;
   SetLength(aArgs, 0);
@@ -887,7 +928,7 @@ begin
   lType := fContext.GetType(aImplClass);
 
   var instanceType := lType.AsInstance;
-  if instanceType = nil then exit(false);
+  if instanceType = nil then Exit(False);
 
   for var m in instanceType.GetMethods do
   begin
@@ -899,22 +940,46 @@ begin
 
     var ok := True;
 
+    // zero out candidate args so we can safely dispose partial fills
+    for var k := 0 to High(lCandidateArgs) do
+      lCandidateArgs[k] := TValue.Empty;
+
     for var i := 0 to High(params) do
     begin
       if not TryResolveParam(params[i].ParamType, lValue) then
       begin
-        ok := false;
-        break;
+        ok := False;
+        Break;
       end;
 
       lCandidateArgs[i] := lValue;
     end;
 
-    if ok and (Length(params) > lBestCount) then
+    if not ok then
     begin
+      // Candidate rejected: dispose any transient objects already created.
+      DisposeCandidateArgs(lCandidateArgs);
+      Continue;
+    end;
+
+    if Length(params) > lBestCount then
+    begin
+      // We are replacing the previous best: dispose the previous best args
+      DisposeCandidateArgs(aArgs);
+
       lBestCount := Length(params);
       aCtor := m;
       aArgs := Copy(lCandidateArgs);
+
+      // IMPORTANT: do NOT dispose lCandidateArgs now; it was copied into aArgs
+      // (Copy keeps the same object references, so we must transfer ownership)
+      // We can clear lCandidateArgs to avoid accidental disposal later:
+      SetLength(lCandidateArgs, 0);
+    end
+    else
+    begin
+      // Candidate is valid but not best: dispose its created args
+      DisposeCandidateArgs(lCandidateArgs);
     end;
   end;
 
@@ -947,9 +1012,15 @@ begin
 
     tkClass:
       begin
-        if not Self.TryResolveClassByTypeInfo(info, lObj, '') then exit(false);
+        if not Self.TryResolveClassByTypeInfo(info, lObj, '') then
+        begin
+          // If not registered, auto-register and retry once
+          EnsureAutoRegisteredClass(info);
 
-        TValue.Make(@lIntf, info, aValue);
+          if not Self.TryResolveClassByTypeInfo(info, lObj, '') then exit(False);
+        end;
+
+        TValue.Make(@lObj, info, aValue);
         exit(true);
       end;
   else
@@ -1021,7 +1092,7 @@ begin
 
         if not Supports(lObj, guid, aIntf) then
         begin
-          lObj.Free; // we created it; avoid leak
+          lObj.Free;
           exit(false);
         end;
 
@@ -1122,6 +1193,60 @@ begin
   else
     exit(false);
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.EnsureAutoRegisteredClass(const aServiceType: PTypeInfo);
+begin
+  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then  exit;
+  if fRegistry.Contains(TServiceKey.Create(aServiceType, '')) then exit;
+
+  // PTypeInfo for tkClass contains ClassType
+  var td := GetTypeData(aServiceType);
+  Ensure.IsAssigned(td, 'Auto-register: missing type data');
+
+  // Create a "self type-map" registration (T -> T)
+  var key := TServiceKey.Create(aServiceType, '');
+
+  var reg: TRegistration;
+
+  FillChar(reg, SizeOf(Reg), 0);
+
+  reg.Key := key;
+  reg.Kind := TypeMap;
+  reg.Lifetime := Transient;
+  reg.ImplClass := td.ClassType;
+  reg.FactoryIntf := nil;
+  reg.FactoryObj := nil;
+  reg.OwnsInstance := False;
+  reg.ServiceTypeName := TypeNameOf(aServiceType);
+
+  Ensure.IsAssigned(reg.ImplClass, 'Auto-register: ClassType is nil');
+
+  fRegistry.Add(reg);
+end;
+
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddClassType<TBase, TImpl>(aLifetime: TServiceLifetime; const aName: string);
+const
+  ERR = 'AddClassType<%s,%s>: %s does not inherit from %s';
+var
+  reg: TRegistration;
+begin
+  var key := TServiceKey.Create(TypeInfo(TBase), aName);
+
+  FillChar(Reg, SizeOf(Reg), 0);
+  Reg.Key := Key;
+  Reg.Kind := TypeMap;
+  Reg.Lifetime := aLifetime;
+  Reg.ImplClass := TImpl;
+  Reg.FactoryIntf := nil;
+  Reg.FactoryObj := nil;
+  Reg.OwnsInstance := False;
+  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TBase));
+
+  fRegistry.Add(reg);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
