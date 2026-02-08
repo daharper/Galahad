@@ -12,8 +12,8 @@
   object model, RTTI, and memory management semantics.
 
   The container intentionally avoids "magic" behaviors such as automatic type scanning,
-  attribute-based registration, or open-generic resolution. All services must be explicitly
-  registered by the user. One of the obvious reasons in Delphi is aggressive Linker trimming.
+  attribute-based registration, or open-generic resolution. Preferring services to be explicitly
+  registered by the user due to Delphi's aggressive Linker trimming.
 
   Ownership
   ---------
@@ -23,20 +23,23 @@
   Ownership rules for class-based services:
 
   - Singleton class registrations: the container may own and dispose the singleton instance (depending on registration).
-  - Transient class instances (registered or implicit): the container creates them to satisfy a request but does not track
-    or dispose them afterwards. Ownership is effectively transferred to the receiver (the caller for root resolves, or the
-    constructed object for constructor-injected parameters).
+  - Transient class instances (registered or implicit): the container creates them to satisfy a request but does
+    not track or dispose them afterwards. Ownership is effectively transferred to the receiver.
 
-  Because Delphi does not enforce ownership, mixing singleton and transient class injection can easily lead to double frees
-  or leaks if consumers guess wrong about who should Free a dependency.
+  Because Delphi does not enforce ownership, mixing singleton and transient class injection can easily lead
+  to double frees or leaks if consumers guess wrong about who should free a dependency.
 
   To avoid confusion and make lifetime predictable:
 
-  - Register services against interfaces (use Add<T: ICustomerRepository> overloads)
+  - Register services against interfaces (use Add<ICustomerRepository, TCustomerRepository>)
   - Use interfaces for constructor argument types (e.g. ICustomerRepository)
 
   With interface-based services, lifetime is managed automatically through reference counting:
   request, use, forget — no manual memory management.
+
+  Prefer the core methods (such as Add, AddSingleton - see below) for safe memory management.
+
+  Modules allow you to group requirements, register them with AddModule.
 
   TContainer can be used for local purposes, but it's recommended to use the default container for
   applications, which is exposed via the global "Container" function.
@@ -206,7 +209,44 @@ type
     function FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
 {$ENDIF}
 
-    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
+    {------------------------------------------------ core methods ----------------------------------------------------}
+
+    /// <summary>
+    ///  Registers an interface instance as a singleton service.
+    ///  The container holds a reference to the interface and will release it when the container is destroyed or cleared.
+    /// </summary>
+    /// <remarks>
+    ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
+    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
+    /// </remarks>
+    procedure AddSingleton<T: IInterface>(const aInstance: T; const aName: string = '');
+
+    /// <summary>
+    ///  Registers an interface factory for the given lifetime.
+    /// </summary>
+    /// <remarks>
+    ///  For Singleton, the factory will be invoked at most once per key and the resulting interface is cached.
+    ///  For Transient, the factory is invoked on each resolution.
+    ///
+    ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
+    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
+    /// </remarks>
+    procedure Add<T: IInterface>(aLifetime: TServiceLifetime; const aFactory:TConstFunc<T>; const aName: string = ''); overload;
+
+    /// <summary>
+    ///  Registers a type mapping from an interface service type to a concrete implementation class.
+    /// </summary>
+    /// <remarks>
+    ///  This does not construct anything at registration time; it only records that requests for TService
+    ///  should be satisfied by TImpl, subject to the specified lifetime and name.
+    ///
+    ///  Construction and constructor-injection are implemented later (typically using RTTI) once the
+    ///  ServiceLocator is available to find missing dependencies.
+    ///
+    ///  The mapping is keyed by (TypeInfo(TService), aName). An empty name means the default registration.
+    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
+    /// </remarks>
+    procedure Add<TService: IInterface; TImpl: class>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
 
     /// <summary>
     /// Applies a single module (grouped registrations) to this container.
@@ -227,14 +267,29 @@ type
     procedure AddModule(const aModules: array of IContainerModule); overload;
 
     /// <summary>
-    ///  Registers an interface instance as a singleton service.
-    ///  The container holds a reference to the interface and will release it when the container is destroyed or cleared.
+    ///  Resolves an interface service by type and optional name, raising on failure.
     /// </summary>
     /// <remarks>
-    ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
-    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
+    ///  Raises EArgumentException if the service is not registered or cannot be resolved.
+    ///  Use TryResolve for non-throwing behavior.
     /// </remarks>
-    procedure Add<T: IInterface>(const aInstance: T; const aName: string = ''); overload;
+    function Resolve<T: IInterface>(const aName: string = ''): T;
+
+    /// <summary>
+    ///  Attempts to resolve an interface service by type and optional name.
+    /// </summary>
+    /// <remarks>
+    /// Resolution uses registrations only (instance/factory/type-map as supported by the container version).
+    ///
+    ///  For interface singletons, the container returns a cached instance when available; otherwise it may invoke
+    ///  the registered factory (for Singleton) and cache the result. For Transient registrations, the factory is
+    ///  invoked on each call and the returned interface is not cached.
+    ///
+    /// Returns False if the service is not registered or cannot be constructed under current container capabilities.
+    /// </remarks>
+    function TryResolve<T: IInterface>(out aService: T; const aName: string = ''): Boolean;
+
+    {------------------------------------------ special purpose methods -----------------------------------------------}
 
     /// <summary>
     ///  Registers a class instance as a singleton service.
@@ -248,18 +303,6 @@ type
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
     procedure AddClass<T: class>(aInstance: T; const aName: string = ''; aTakeOwnership: Boolean = True); overload;
-
-    /// <summary>
-    ///  Registers an interface factory for the given lifetime.
-    /// </summary>
-    /// <remarks>
-    ///  For Singleton, the factory will be invoked at most once per key and the resulting interface is cached.
-    ///  For Transient, the factory is invoked on each resolution.
-    ///
-    ///  The service is keyed by (TypeInfo(T), aName). An empty name means the default registration.
-    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
-    /// </remarks>
-    procedure Add<T: IInterface>(aLifetime: TServiceLifetime; const aFactory:TConstFunc<T>; const aName: string = ''); overload;
 
     /// <summary>
     ///  Registers a class factory for the given lifetime.
@@ -277,21 +320,6 @@ type
     /// </remarks>
     procedure AddClass<T: class>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string = ''); overload;
 
-     /// <summary>
-    ///  Registers a type mapping from an interface service type to a concrete implementation class.
-    /// </summary>
-    /// <remarks>
-    ///  This does not construct anything at registration time; it only records that requests for TService
-    ///  should be satisfied by TImpl, subject to the specified lifetime and name.
-    ///
-    ///  Construction and constructor-injection are implemented later (typically using RTTI) once the
-    ///  ServiceLocator is available to find missing dependencies.
-    ///
-    ///  The mapping is keyed by (TypeInfo(TService), aName). An empty name means the default registration.
-    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
-    /// </remarks>
-    procedure AddType<TService: IInterface; TImpl: class>(aLifetime: TServiceLifetime; const aName: string = '');
-
     /// <summary>
     ///  Registers a type mapping for a concrete class service type to itself.
     /// </summary>
@@ -304,42 +332,6 @@ type
     /// </remarks>
     procedure AddClassType<T: class>(aLifetime: TServiceLifetime; const aName: string = '');  overload;
     procedure AddClassType<TBase: class; TImpl:TBase>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
-
-    /// <summary>
-    ///  Returns True if a service with the given type (and optional name) is registered.
-    /// </summary>
-    function IsRegistered<T>(const aName: string = ''): Boolean;
-
-    /// <summary>
-    ///  Clears all registrations and cached singleton instances.
-    /// </summary>
-    /// <remarks>
-    ///  Releases cached interface singletons and frees any owned object singletons.
-    /// </remarks>
-    procedure Clear;
-
-    /// <summary>
-    ///  Attempts to resolve an interface service by type and optional name.
-    /// </summary>
-    /// <remarks>
-    /// Resolution uses registrations only (instance/factory/type-map as supported by the container version).
-    ///
-    ///  For interface singletons, the container returns a cached instance when available; otherwise it may invoke
-    ///  the registered factory (for Singleton) and cache the result. For Transient registrations, the factory is
-    ///  invoked on each call and the returned interface is not cached.
-    ///
-    /// Returns False if the service is not registered or cannot be constructed under current container capabilities.
-    /// </remarks>
-    function TryResolve<T: IInterface>(out aService: T; const aName: string = ''): Boolean;
-
-    /// <summary>
-    ///  Resolves an interface service by type and optional name, raising on failure.
-    /// </summary>
-    /// <remarks>
-    ///  Raises EArgumentException if the service is not registered or cannot be resolved.
-    ///  Use TryResolve for non-throwing behavior.
-    /// </remarks>
-    function Resolve<T: IInterface>(const aName: string = ''): T;
 
     /// <summary>
     /// Attempts to resolve a class instance by type and optional name.
@@ -364,6 +356,23 @@ type
     ///  Use TryResolveClass for non-throwing behavior.
     /// </remarks>
     function ResolveClass<T: class>(const aName: string = ''): T;
+
+    {---------------------------------------------- general methods ---------------------------------------------------}
+
+    /// <summary>
+    ///  Returns True if a service with the given type (and optional name) is registered.
+    /// </summary>
+    function IsRegistered<T>(const aName: string = ''): Boolean;
+
+    /// <summary>
+    ///  Clears all registrations and cached singleton instances.
+    /// </summary>
+    /// <remarks>
+    ///  Releases cached interface singletons and frees any owned object singletons.
+    /// </remarks>
+    procedure Clear;
+
+    class function TypeNameOf(aTypeInfo: PTypeInfo): string; static;
 
     constructor Create;
     destructor Destroy; override;
@@ -594,7 +603,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.Add<T>(const aInstance: T; const aName: string);
+procedure TContainer.AddSingleton<T>(const aInstance: T; const aName: string);
 var
   lKey: TServiceKey;
   lReg: TRegistration;
@@ -758,7 +767,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddType<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
+procedure TContainer.Add<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
 var
   Reg: TRegistration;
 begin

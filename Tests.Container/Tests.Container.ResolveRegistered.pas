@@ -40,7 +40,7 @@ begin
   var container := scope.Owns(TContainer.Create);
 
   var inService := TTestSvc.Create;
-  container.Add<ITestSvc>(inService);
+  container.AddSingleton<ITestSvc>(inService);
 
   var outService := container.Resolve<ITestSvc>;
 

@@ -103,7 +103,7 @@ begin
     var container := scope.Owns(TContainer.Create);
 
     container.AddClassType<TRegisteredDep, TRegisteredDepImpl>(Transient);
-    container.AddType<IRegisteredSvc, TRegisteredSvc>(Transient);
+    container.Add<IRegisteredSvc, TRegisteredSvc>(Transient);
     container.AddClassType<TMixedCtor>(Transient);
 
     var obj := container.ResolveClass<TMixedCtor>;
@@ -196,7 +196,7 @@ var
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<IDep>(TDep.Create);
+  container.AddSingleton<IDep>(TDep.Create);
 
   Assert.IsTrue(container.FindBestConstructor(TMultiCtor, ctor, args), 'Expected to find a constructor');
   Assert.IsNotNull(Ctor, 'Ctor should be assigned');
@@ -220,7 +220,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IService, TService0>(Transient);
+  container.Add<IService, TService0>(Transient);
 
   var service: IService := container.Resolve<IService>;
 
@@ -235,7 +235,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IService, TService0>(Singleton);
+  container.Add<IService, TService0>(Singleton);
 
   var serviceA: IService := container.Resolve<IService>;
   var serviceB: IService := container.Resolve<IService>;
@@ -253,9 +253,9 @@ begin
   var container := scope.Owns(TContainer.Create);
 
   var dep: IDep := TDep.Create;
-  container.Add<IDep>(dep);
+  container.AddSingleton<IDep>(dep);
 
-  container.AddType<IService, TService1>(Transient);
+  container.Add<IService, TService1>(Transient);
 
   var service: IService := container.Resolve<IService>;
 
@@ -269,7 +269,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IService, TBadService>(Transient);
+  container.Add<IService, TBadService>(Transient);
 
   var service: IService := container.Resolve<IService>;
 

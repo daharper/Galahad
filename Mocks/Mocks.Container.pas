@@ -52,7 +52,9 @@ type
   // Has a private ctor that would otherwise match; should be ignored.
   TPrivateCtor = class
   private
+  {$HINTS OFF}
     constructor Create(aDep: TBestDep); overload;
+  {$HINTS ON}
   public
     constructor Create; overload;
   end;
@@ -263,14 +265,14 @@ end;
 procedure TTestModuleA.RegisterServices(const C: TContainer);
 begin
   // Register one named mapping
-  C.AddType<ITestSvc, TTestSvc>(Singleton, 'A');
+  C.Add<ITestSvc, TTestSvc>(Singleton, 'A');
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TTestModuleB.RegisterServices(const C: TContainer);
 begin
   // Register a different named mapping
-  C.AddType<ITestSvc, TTestSvc>(Singleton, 'B');
+  C.Add<ITestSvc, TTestSvc>(Singleton, 'B');
 end;
 
 { TDep }

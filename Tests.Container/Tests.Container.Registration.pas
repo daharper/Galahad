@@ -44,7 +44,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IRepo, TRepo>(Singleton);
+  container.Add<IRepo, TRepo>(Singleton);
 
   Assert.IsTrue(container.IsRegistered<IRepo>);
 end;
@@ -55,9 +55,9 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IRepo, TRepo>(Singleton);
+  container.Add<IRepo, TRepo>(Singleton);
 
-  Assert.WillRaise(procedure begin container.AddType<IRepo, TRepo>(Singleton); end, EArgumentException);
+  Assert.WillRaise(procedure begin container.Add<IRepo, TRepo>(Singleton); end, EArgumentException);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -66,8 +66,8 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.AddType<IRepo, TRepo>(Singleton, 'A');
-  container.AddType<IRepo, TRepo>(Singleton, 'B');
+  container.Add<IRepo, TRepo>(Singleton, 'A');
+  container.Add<IRepo, TRepo>(Singleton, 'B');
 
   Assert.IsTrue(container.IsRegistered<IRepo>('A'));
   Assert.IsTrue(container.IsRegistered<IRepo>('B'));
@@ -91,7 +91,7 @@ var scope: TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(TTestSvc.Create);
+  container.AddSingleton<ITestSvc>(TTestSvc.Create);
 
   Assert.IsTrue(container.IsRegistered<ITestSvc>(''));
 end;
@@ -102,8 +102,8 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  container.Add<ITestSvc>(TTestSvc.Create, 'A');
-  container.Add<ITestSvc>(TTestSvc.Create, 'B');
+  container.AddSingleton<ITestSvc>(TTestSvc.Create, 'A');
+  container.AddSingleton<ITestSvc>(TTestSvc.Create, 'B');
 
   Assert.IsTrue(container.IsRegistered<ITestSvc>('A'));
   Assert.IsTrue(container.IsRegistered<ITestSvc>('B'));
@@ -117,9 +117,9 @@ begin
   var container := scope.Owns(TContainer.Create);
   var service : ITestSvc := TTestSvc.Create;
 
-  container.Add<ITestSvc>(service);
+  container.AddSingleton<ITestSvc>(service);
 
-  Assert.WillRaise(procedure begin container.Add<ITestSvc>(service); end, EArgumentException);
+  Assert.WillRaise(procedure begin container.AddSingleton<ITestSvc>(service); end, EArgumentException);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -266,7 +266,7 @@ begin
   var container := scope.Owns(TContainer.Create);
 
   var service: ITestSvc := TTestSvc.Create;
-  container.Add<ITestSvc>(service, 'X');
+  container.AddSingleton<ITestSvc>(service, 'X');
 
   Assert.IsTrue(container.IsRegistered<ITestSvc>('X'));
 
