@@ -919,9 +919,6 @@ begin
       aCtor := m;
       aArgs := Copy(lCandidateArgs);
 
-      // IMPORTANT: do NOT dispose lCandidateArgs now; it was copied into aArgs
-      // (Copy keeps the same object references, so we must transfer ownership)
-      // We can clear lCandidateArgs to avoid accidental disposal later:
       SetLength(lCandidateArgs, 0);
     end
     else
