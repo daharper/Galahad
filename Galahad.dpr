@@ -46,7 +46,8 @@ uses
   Base.Conversions in 'Base\Base.Conversions.pas',
   Tests.Core.Conversions in 'Tests.Core\Tests.Core.Conversions.pas',
   Base.Formatting in 'Base\Base.Formatting.pas',
-  Tests.Core.Formatting in 'Tests.Core\Tests.Core.Formatting.pas';
+  Tests.Core.Formatting in 'Tests.Core\Tests.Core.Formatting.pas',
+  Tests.Core.Xml in 'Tests.Core\Tests.Core.Xml.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

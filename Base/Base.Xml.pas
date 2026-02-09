@@ -45,7 +45,7 @@ type
     xQuote
   );
 
-  TBvItem = class
+  TBvAttribute = class
   private
     fName: string;
     fValue: string;
@@ -53,7 +53,6 @@ type
     procedure SetName(const aValue: string);
     procedure SetValue(const aValue: string);
 
-    constructor Create(const aName: string; const aValue: string = ''); virtual;
   public
     property Name: string read fName write SetName;
     property Value: string read fValue write SetValue;
@@ -70,7 +69,7 @@ type
     function AsInt64: integer;
     function AsGuid: TGuid;
 
-    function AsXml: string; virtual;
+    function AsXml: string;
 
     procedure Assign(const aValue: integer); overload;
     procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = false); overload;
@@ -84,22 +83,117 @@ type
     procedure Assign(const aValue: char); overload;
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
+
+    constructor Create(const aName: string; const aValue: string = '');
   end;
 
-  TBvAttribute = class(TBvItem)
-  public
-    function AsXml: string; override;
-
-    constructor Create(const aName: string; const aValue: string = '');  override;
-  end;
-
-  TBvElement = class(TBvItem)
+  TBvElement = class
   private
     fElems: TList<TBvElement>;
     fAttrs: TList<TBvAttribute>;
     fParent: TBvElement;
+    fName: string;
+    fValue: string;
+
+    procedure Initialize;
+
+    procedure SetName(const aValue: string);
+    procedure SetValue(const aValue: string);
+
   public
     property Parent: TBvElement read fParent write fParent;
+    property Name: string read fName write SetName;
+    property Value: string read fValue write SetValue;
+
+    function Count: integer;
+    function HasValue: boolean;
+    function HasElems: boolean;
+    function HasAttrs: boolean;
+
+    function AsInteger: integer;
+    function AsBoolean: boolean;
+    function AsString: string;
+    function AsSingle: single;
+    function AsDouble: double;
+    function AsDateTime: TDateTime;
+    function AsChar: Char;
+    function AsInt64: integer;
+    function AsGuid: TGuid;
+
+    /// <summary>
+    ///  Updates the attribute if it exists, adds an attribute if it doesn't.
+    /// </summary>
+    /// <returns>The current element.</returns>
+    function AddOrSetAttr(const aName: string; const aValue: string = ''): TBvElement; overload;
+
+    /// <summary>
+    ///  Adds the attribute if it doesn't exist, otherwise frees the existing element and replaces it.
+    /// </summary>
+    /// <returns>The current element.</returns>
+    function AddOrSetAttr(const aOther: TBvAttribute): TBvElement; overload;
+
+    /// <summary>
+    ///  Gets the attribute with the specified name, add it if it doesn't.
+    /// </summary>
+    function Attr(const aName: string; const aValue: string = ''): TBvAttribute;
+
+    /// <summary>
+    ///  Returns true if an attribute with the specified name exists.
+    /// </summary>
+    function HasAttr(const aName: string): boolean;
+
+    /// <summary>
+    ///  Returns the index of the attribute with the specified name, otherwise -1.
+    /// </summary>
+    function AttrIndexOf(const aName: string): integer;
+
+    /// <summary>
+    ///  Sets the value of the element with the specified name, if it doesn't exist then a new element is created
+    /// </summary>
+    /// <returns>The added or updated element.</returns>
+    function AddOrSetElem(const aName: string; const aValue: string = ''): TBvElement; overload;
+
+    /// <summary>
+    ///  Adds the element if it doesn't exist, otherwise frees the existing element and replaces it.
+    /// </summary>
+    /// <returns>The added or updated element.</returns>
+    function AddOrSetElem(const aOther: TBvElement): TBvElement; overload;
+
+    /// <summary>
+    ///  Gets the element with the specified name, adds it if it doesn't exist.
+    /// </summary>
+    function Elem(const aName: string; const aValue: string = ''): TBvElement;
+
+    /// <summary>
+    ///  Returns true if an element with the specified name exists.
+    /// </summary>
+    function HasElem(const aName: string): boolean;
+
+    /// <summary>
+    ///  Returns the index of the element with the specified name, otherwise -1.
+    /// </summary>
+    function ElemIndexOf(const aName: string): integer;
+
+    procedure Assign(const aValue: integer); overload;
+    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = false); overload;
+    procedure Assign(const aValue: string); overload;
+    procedure Assign(const aValue: single); overload;
+    procedure Assign(const aValue: single; const aFS: TFormatSettings); overload;
+    procedure Assign(const aValue: double); overload;
+    procedure Assign(const aValue: double; const aFS: TFormatSettings); overload;
+    procedure Assign(const aValue: TDateTime); overload;
+    procedure Assign(const aValue: TDateTime; const aFS: TFormatSettings); overload;
+    procedure Assign(const aValue: char); overload;
+    procedure Assign(const aValue: Int64); overload;
+    procedure Assign(const aValue: TGuid); overload;
+
+    constructor Create; overload;
+    constructor Create(const aName: string; const aValue: string = ''); overload;
+
+    { takes ownership of aOther's properties and frees aOther }
+    constructor Create(aOther: TBvElement); overload;
+
+    destructor Destroy; override;
   end;
 
   TBvParserState = (
@@ -284,7 +378,7 @@ end;
 { TBvAttribute }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.SetName(const aValue: string);
+procedure TBvAttribute.SetName(const aValue: string);
 var
   lName: string;
 begin
@@ -296,25 +390,25 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.SetValue(const aValue: string);
+procedure TBvAttribute.SetValue(const aValue: string);
 begin
   fValue := RemoveEntities(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.HasValue: boolean;
+function TBvAttribute.HasValue: boolean;
 begin
-  Result := string.IsNullOrWhiteSpace(fValue);
+  Result := Length(fValue) > 0;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsBoolean: boolean;
+function TBvAttribute.AsBoolean: boolean;
 begin
   Result := StrToBool(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsChar: Char;
+function TBvAttribute.AsChar: Char;
 begin
   if Length(fValue) < 1 then
     Result := #0
@@ -323,136 +417,46 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsDateTime: TDateTime;
+function TBvAttribute.AsDateTime: TDateTime;
 begin
   Result := TConvert.ToDateTimeDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsDouble: double;
+function TBvAttribute.AsDouble: double;
 begin
   Result := TConvert.ToDoubleDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsGuid: TGuid;
+function TBvAttribute.AsGuid: TGuid;
 begin
   Result := TConvert.ToGuidDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsSingle: single;
+function TBvAttribute.AsSingle: single;
 begin
   Result := TConvert.ToSingleDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsInt64: integer;
+function TBvAttribute.AsInt64: integer;
 begin
   Result := TConvert.ToIntDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsInteger: integer;
+function TBvAttribute.AsInteger: integer;
 begin
   Result := TConvert.ToIntDef(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsString: string;
+function TBvAttribute.AsString: string;
 begin
   Result := fValue;
 end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TBvItem.AsXml: string;
-begin
-  Result := '';
-{$IFDEF DEBUG}
-  Ensure.IsFalse(true, 'Please implement in descendant');
-{$ENDIF}
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TBvItem.Create(const aName, aValue: string);
-begin
-  SetName(aName);
-  SetValue(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: boolean; const aUseBoolStrs: boolean = false);
-begin
- fValue := BoolToStr(aValue, aUseBoolStrs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: integer);
-begin
- fValue := IntToStr(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: char);
-begin
-  fvalue := aValue;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: single);
-begin
-  fValue := FloatToStrF(aValue, ffGeneral, 7, 0);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: single; const aFS: TFormatSettings);
-begin
-   fValue := FloatToStrF(aValue, ffGeneral, 7, 0, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: double);
-begin
-   fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: double; const aFS: TFormatSettings);
-begin
-  fValue := FloatToStrF(aValue, ffGeneral, 15, 0, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: TDateTime);
-begin
-  fValue := DateTimeToStr(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: TDateTime; const aFS: TFormatSettings);
-begin
-  fValue := DateTimeToStr(aValue, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: string);
-begin
-  fValue := aValue;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: Int64);
-begin
-  fValue := IntToStr(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvItem.Assign(const aValue: TGuid);
-begin
-  fValue := GUIDToString(aValue);
-end;
-
-{ TBvAttribute }
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsXml: string;
@@ -470,9 +474,430 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: boolean; const aUseBoolStrs: boolean = false);
+begin
+ fValue := BoolToStr(aValue, aUseBoolStrs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: integer);
+begin
+ fValue := IntToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: char);
+begin
+  fvalue := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: single);
+begin
+  fValue := FloatToStrF(aValue, ffGeneral, 7, 0);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: single; const aFS: TFormatSettings);
+begin
+   fValue := FloatToStrF(aValue, ffGeneral, 7, 0, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: double);
+begin
+   fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: double; const aFS: TFormatSettings);
+begin
+  fValue := FloatToStrF(aValue, ffGeneral, 15, 0, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: TDateTime);
+begin
+  fValue := DateTimeToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: TDateTime; const aFS: TFormatSettings);
+begin
+  fValue := DateTimeToStr(aValue, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: string);
+begin
+  fValue := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: Int64);
+begin
+  fValue := IntToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: TGuid);
+begin
+  fValue := GUIDToString(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 constructor TBvAttribute.Create(const aName, aValue: string);
 begin
-  inherited Create(aName, aValue);
+  SetName(aName);
+  SetValue(aValue);
+end;
+
+{ TBvElement }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.SetName(const aValue: string);
+var
+  lName: string;
+begin
+  lName := Trim(aValue);
+
+  Ensure.IsTrue(IsValidName(lName), 'invalid attribute name: ' + aValue);
+
+  fName := lName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.SetValue(const aValue: string);
+begin
+  fValue := RemoveEntities(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.HasAttrs: boolean;
+begin
+  Result := fAttrs.Count > 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.HasElems: boolean;
+begin
+  Result := fElems.Count > 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.HasValue: boolean;
+begin
+  Result := string.IsNullOrWhiteSpace(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsBoolean: boolean;
+begin
+  Result := StrToBool(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsChar: Char;
+begin
+  if Length(fValue) < 1 then
+    Result := #0
+  else
+    Result := fValue.Chars[0];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsDateTime: TDateTime;
+begin
+  Result := TConvert.ToDateTimeDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsDouble: double;
+begin
+  Result := TConvert.ToDoubleDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsGuid: TGuid;
+begin
+  Result := TConvert.ToGuidDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsSingle: single;
+begin
+  Result := TConvert.ToSingleDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsInt64: integer;
+begin
+  Result := TConvert.ToIntDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsInteger: integer;
+begin
+  Result := TConvert.ToIntDef(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsString: string;
+begin
+  Result := fValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: boolean; const aUseBoolStrs: boolean = false);
+begin
+ fValue := BoolToStr(aValue, aUseBoolStrs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: integer);
+begin
+ fValue := IntToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: char);
+begin
+  fvalue := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: single);
+begin
+  fValue := FloatToStrF(aValue, ffGeneral, 7, 0);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: single; const aFS: TFormatSettings);
+begin
+   fValue := FloatToStrF(aValue, ffGeneral, 7, 0, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: double);
+begin
+   fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: double; const aFS: TFormatSettings);
+begin
+  fValue := FloatToStrF(aValue, ffGeneral, 15, 0, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: TDateTime);
+begin
+  fValue := DateTimeToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: TDateTime; const aFS: TFormatSettings);
+begin
+  fValue := DateTimeToStr(aValue, aFs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: string);
+begin
+  fValue := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: Int64);
+begin
+  fValue := IntToStr(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Assign(const aValue: TGuid);
+begin
+  fValue := GUIDToString(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AttrIndexOf(const aName: string): integer;
+begin
+  for var i := 0 to Pred(fAttrs.Count) do
+    if (fAttrs[i].Name = aName) then exit(i);
+
+  Result := -1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.HasAttr(const aName: string): boolean;
+begin
+  Result := AttrIndexOf(aName) <> -1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Attr(const aName, aValue: string): TBvAttribute;
+begin
+  var i := AttrIndexOf(aName);
+
+  if i <> -1 then
+    Result := fAttrs[i]
+  else
+  begin
+    Result := TBvAttribute.Create(aName, aValue);
+    fAttrs.Add(Result);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AddOrSetAttr(const aName, aValue: string): TBvElement;
+begin
+  var i := AttrIndexOf(aName);
+
+  if i = -1 then
+    fAttrs.Add(TBvAttribute.Create(aName, aValue))
+  else
+    fAttrs[i].SetValue(aValue);
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AddOrSetAttr(const aOther: TBvAttribute): TBvElement;
+begin
+  var i := AttrIndexOf(aOther.Name);
+
+  if i = -1 then
+    fAttrs.Add(aOther)
+  else
+  begin
+    fAttrs[i].Free;
+    fAttrs[i] := aOther;
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.ElemIndexOf(const aName: string): integer;
+begin
+  for var i := 0 to Pred(fElems.Count) do
+    if fElems[i].Name = aName then exit(i);
+
+  Result := -1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.HasElem(const aName: string): boolean;
+begin
+  Result := ElemIndexOf(aName) <> -1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AddOrSetElem(const aName, aValue: string): TBvElement;
+begin
+  var i := ElemIndexOf(aName);
+
+  if i <> -1 then
+    fElems[i].SetValue(aValue)
+  else
+  begin
+    fElems.Add(TBvElement.Create(aName, aValue));
+    i := Pred(fElems.Count);
+  end;
+
+  Result := fElems[i];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AddOrSetElem(const aOther: TBvElement): TBvElement;
+begin
+  var i := ElemIndexOf(aOther.Name);
+
+  if i <> -1 then
+  begin
+    fElems[i].Free;
+    fElems[i] := aOther;
+  end
+  else
+  begin
+    fElems.Add(aOther);
+    i := Pred(fElems.Count);
+  end;
+
+  Result := fElems[i];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Elem(const aName, aValue: string): TBvElement;
+begin
+  var i := ElemIndexOf(aName);
+
+  if i <> -1 then exit(fElems[i]);
+
+  fElems.Add(TBvElement.Create(aName, aValue));
+
+  Result := fElems[Pred(fElems.Count)];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Initialize;
+begin
+  fElems := TList<TBvElement>.Create;
+  fAttrs := TList<TBvAttribute>.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TBvElement.Create;
+begin
+  Initialize;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TBvElement.Create(const aName, aValue: string);
+begin
+  Initialize;
+
+  SetName(aName);
+  SetValue(aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Count: integer;
+begin
+  Result := fElems.Count;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TBvElement.Create(aOther: TBvElement);
+begin
+  fName := aOther.Name;
+  fValue := aOther.Value;
+
+  fElems := TList<TBvElement>.Create(aOther.fElems);
+  fAttrs := TList<TBvAttribute>.Create(aOther.fAttrs);
+
+  aOther.fElems.Clear;
+  aOther.fAttrs.Clear;
+
+  aOther.Free;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TBvElement.Destroy;
+var
+  i: integer;
+begin
+  for i := 0 to Pred(fAttrs.Count) do
+    fAttrs[i].Free;
+
+  fAttrs.Free;
+
+  for i := 0 to Pred(fElems.Count) do
+    fElems[i].Free;
+
+  fElems.Free;
+
+  inherited;
 end;
 
 { TBvParserException }
