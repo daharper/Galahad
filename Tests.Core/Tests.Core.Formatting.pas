@@ -1,18 +1,5 @@
 unit Tests.Core.Formatting;
 
-{
-  DUnitX tests for Base.Formatting.pas (TFormat)
-
-  - Single fixture: FormattingFixture
-  - One test method per group:
-      IsoLocalTests, IsoUtcTests, NumberTests, DisplayTests, BoolAndQuoteTests
-
-  Assumptions:
-    - You have DUnitX in your test project
-    - Your production unit is named: Base.Formatting
-    - Public API is: Base.Formatting.TFormat
-}
-
 interface
 
 uses

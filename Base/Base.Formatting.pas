@@ -1,18 +1,13 @@
+{-----------------------------------------------------------------------------------------------------------------------
+  Project:     Galahad
+  Unit:        Base.Conversions
+  Author:      David Harper
+  License:     MIT
+  History:     2026-08-02  Initial version 0.1
+  Purpose:     Provides formatting utilities.
+-----------------------------------------------------------------------------------------------------------------------}
+
 unit Base.Formatting;
-
-{
-  Base.Formatting.pas
-  -------------------
-  Formatting utilities (Value -> String) for consistent output policies.
-
-  Design goals:
-    - Deterministic, unambiguous formatting for logs/diagnostics (Invariant, ISO 8601).
-    - Small set of "blessed" helpers to avoid ad-hoc FormatDateTime/FloatToStr spread.
-
-  Notes:
-    - This unit intentionally does NOT parse strings. (That belongs in TConvert.)
-    - "ISO" helpers default to local time semantics unless you explicitly choose UTC helpers.
-}
 
 interface
 
