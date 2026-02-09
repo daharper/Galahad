@@ -45,6 +45,35 @@ type
     xQuote
   );
 
+//  TBvAttribute = class
+//  private
+//    fName: string;
+//    fValue: string;
+//
+//    procedure SetName(const aValue: string);
+//    procedure SetValue(const aValue: string);
+//  public
+//    property Name: string read fName write SetName;
+//    property Value: string read fValue write SetValue;
+//
+//    function AsInt: integer;
+//    function AsBool: boolean;
+//    function AsStr: string;
+//    function AsFloat: single;
+//    function AsDouble: double;
+//
+//    function AsXml: string;
+//
+//    { sets the value }
+//    procedure From(aValue: integer); overload;
+//    procedure From(aValue: boolean); overload;
+//    procedure From(aValue: string); overload;
+//    procedure From(aValue: single); overload;
+//    procedure From(aValue: double); overload;
+//
+//    constructor Create(const aName: string; const aValue: string = '');
+//  end;
+
 implementation
 
 end.
