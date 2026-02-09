@@ -48,8 +48,8 @@ type
     class function ToIntOr(const S: string; const Default: Integer): Integer; static;
     class function ToInt64Or(const S: string; const Default: Int64): Int64; static;
 
-    class function ToIntDef(const S: string; const Default: Integer = 0): Integer; static;
-    class function ToInt64Def(const S: string; const Default: Int64 = 0): Int64; static;
+    class function ToIntDef(const S: string): Integer; static;
+    class function ToInt64Def(const S: string): Int64; static;
 
     class function ToInt(const S: string): Integer; static;
     class function ToInt64(const S: string): Int64; static;
@@ -59,26 +59,43 @@ type
     class function TryToBool(const S: string; out Value: Boolean): Boolean; static;
 
     class function ToBoolOr(const S: string; const Default: Boolean): Boolean; static;
-    class function ToBoolDef(const S: string; const Default: Boolean = False): Boolean; static;
+    class function ToBoolDef(const S: string): Boolean; static;
 
     class function ToBool(const S: string): Boolean; static;
 
     { Floating-point (explicit FS) }
-    class function TryToSingle(const S: string; out Value: Single; const FS: TFormatSettings): Boolean; static;
-    class function TryToDouble(const S: string; out Value: Double; const FS: TFormatSettings): Boolean; static;
-    class function TryToExtended(const S: string; out Value: Extended; const FS: TFormatSettings): Boolean; static;
+    class function TryToSingle(const S: string; out Value: Single; const FS: TFormatSettings): Boolean; overload; static;
+    class function TryToDouble(const S: string; out Value: Double; const FS: TFormatSettings): Boolean; overload; static;
+    class function TryToExtended(const S: string; out Value: Extended; const FS: TFormatSettings): Boolean; overload; static;
 
-    class function ToSingleOr(const S: string; const Default: Single; const FS: TFormatSettings): Single; static;
-    class function ToDoubleOr(const S: string; const Default: Double; const FS: TFormatSettings): Double; static;
-    class function ToExtendedOr(const S: string; const Default: Extended; const FS: TFormatSettings): Extended; static;
+    class function ToSingleOr(const S: string; const Default: Single; const FS: TFormatSettings): Single; overload; static;
+    class function ToDoubleOr(const S: string; const Default: Double; const FS: TFormatSettings): Double; overload; static;
+    class function ToExtendedOr(const S: string; const Default: Extended; const FS: TFormatSettings): Extended; overload; static;
 
-    class function ToSingleDef(const S: string; const FS: TFormatSettings; const Default: Single = 0): Single; static;
-    class function ToDoubleDef(const S: string; const FS: TFormatSettings; const Default: Double = 0): Double; static;
-    class function ToExtendedDef(const S: string; const FS: TFormatSettings; const Default: Extended = 0): Extended; static;
+    class function ToSingleDef(const S: string; const FS: TFormatSettings): Single; overload; static;
+    class function ToDoubleDef(const S: string; const FS: TFormatSettings): Double; overload; static;
+    class function ToExtendedDef(const S: string; const FS: TFormatSettings): Extended; overload; static;
 
-    class function ToSingle(const S: string; const FS: TFormatSettings): Single; static;
-    class function ToDouble(const S: string; const FS: TFormatSettings): Double; static;
-    class function ToExtended(const S: string; const FS: TFormatSettings): Extended; static;
+    class function ToSingle(const S: string; const FS: TFormatSettings): Single; overload; static;
+    class function ToDouble(const S: string; const FS: TFormatSettings): Double; overload; static;
+    class function ToExtended(const S: string; const FS: TFormatSettings): Extended; overload; static;
+
+    { Floats - default locale overloads (use System.SysUtils.FormatSettings) }
+    class function TryToSingle(const S: string; out Value: Single): Boolean; overload; static;
+    class function TryToDouble(const S: string; out Value: Double): Boolean; overload; static;
+    class function TryToExtended(const S: string; out Value: Extended): Boolean; overload; static;
+
+    class function ToSingleOr(const S: string; const Default: Single): Single; overload; static;
+    class function ToDoubleOr(const S: string; const Default: Double): Double; overload; static;
+    class function ToExtendedOr(const S: string; const Default: Extended): Extended; overload; static;
+
+    class function ToSingleDef(const S: string): Single; overload; static;
+    class function ToDoubleDef(const S: string): Double; overload; static;
+    class function ToExtendedDef(const S: string): Extended; overload; static;
+
+    class function ToSingle(const S: string): Single; overload; static;
+    class function ToDouble(const S: string): Double; overload; static;
+    class function ToExtended(const S: string): Extended; overload; static;
 
     { Floating-point (Invariant FS) }
     class function TryToSingleInv(const S: string; out Value: Single): Boolean; static;
@@ -89,36 +106,53 @@ type
     class function ToDoubleOrInv(const S: string; const Default: Double): Double; static;
     class function ToExtendedOrInv(const S: string; const Default: Extended): Extended; static;
 
-    class function ToSingleDefInv(const S: string; const Default: Single = 0): Single; static;
-    class function ToDoubleDefInv(const S: string; const Default: Double = 0): Double; static;
-    class function ToExtendedDefInv(const S: string; const Default: Extended = 0): Extended; static;
+    class function ToSingleDefInv(const S: string): Single; static;
+    class function ToDoubleDefInv(const S: string): Double; static;
+    class function ToExtendedDefInv(const S: string): Extended; static;
 
     class function ToSingleInv(const S: string): Single; static;
     class function ToDoubleInv(const S: string): Double; static;
     class function ToExtendedInv(const S: string): Extended; static;
 
     { Date / Time (explicit FS) }
-    class function TryToDateTime(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; static;
-    class function TryToDate(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; static;
-    class function TryToTime(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; static;
+    class function TryToDateTime(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; overload; static;
+    class function TryToDate(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; overload; static;
+    class function TryToTime(const S: string; out Value: TDateTime; const FS: TFormatSettings): Boolean; overload; static;
 
-    class function ToDateTimeOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; static;
-    class function ToDateOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; static;
-    class function ToTimeOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; static;
+    class function ToDateTimeOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToDateOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToTimeOr(const S: string; const Default: TDateTime; const FS: TFormatSettings): TDateTime; overload; static;
 
-    class function ToDateTimeDef(const S: string; const FS: TFormatSettings; const Default: TDateTime = 0): TDateTime; static;
-    class function ToDateDef(const S: string; const FS: TFormatSettings; const Default: TDateTime = 0): TDateTime; static;
-    class function ToTimeDef(const S: string; const FS: TFormatSettings; const Default: TDateTime = 0): TDateTime; static;
+    class function ToDateTimeDef(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToDateDef(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToTimeDef(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
 
-    class function ToDateTime(const S: string; const FS: TFormatSettings): TDateTime; static;
-    class function ToDate(const S: string; const FS: TFormatSettings): TDateTime; static;
-    class function ToTime(const S: string; const FS: TFormatSettings): TDateTime; static;
+    class function ToDateTime(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToDate(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
+    class function ToTime(const S: string; const FS: TFormatSettings): TDateTime; overload; static;
+
+    { Date/Time - default locale overloads (use System.SysUtils.FormatSettings) }
+    class function TryToDateTime(const S: string; out Value: TDateTime): Boolean; overload; static;
+    class function TryToDate(const S: string; out Value: TDateTime): Boolean; overload; static;
+    class function TryToTime(const S: string; out Value: TDateTime): Boolean; overload; static;
+
+    class function ToDateTimeOr(const S: string; const Default: TDateTime): TDateTime; overload; static;
+    class function ToDateOr(const S: string; const Default: TDateTime): TDateTime; overload; static;
+    class function ToTimeOr(const S: string; const Default: TDateTime): TDateTime; overload; static;
+
+    class function ToDateTimeDef(const S: string): TDateTime; overload; static;
+    class function ToDateDef(const S: string): TDateTime; overload; static;
+    class function ToTimeDef(const S: string): TDateTime; overload; static;
+
+    class function ToDateTime(const S: string): TDateTime; overload; static;
+    class function ToDate(const S: string): TDateTime; overload; static;
+    class function ToTime(const S: string): TDateTime; overload; static;
 
     { Date / Time (ISO 8601) }
     // Uses TryISO8601ToDate(S, Value, False) to preserve local-time semantics.
     class function TryToDateTimeISO8601(const S: string; out Value: TDateTime): Boolean; static;
     class function ToDateTimeOrISO8601(const S: string; const Default: TDateTime): TDateTime; static;
-    class function ToDateTimeDefISO8601(const S: string; const Default: TDateTime = 0): TDateTime; static;
+    class function ToDateTimeDefISO8601(const S: string): TDateTime; static;
     class function ToDateTimeISO8601(const S: string): TDateTime; static;
 
     { Char }
@@ -126,7 +160,7 @@ type
     class function TryToChar(const S: string; out Value: Char): Boolean; static;
 
     class function ToCharOr(const S: string; const Default: Char): Char; static;
-    class function ToCharDef(const S: string; const Default: Char = #0): Char; static;
+    class function ToCharDef(const S: string): Char; static;
     class function ToChar(const S: string): Char; static;
 
         { Unsigned integers }
@@ -136,8 +170,8 @@ type
     class function ToUInt32Or(const S: string; const Default: Cardinal): Cardinal; static;
     class function ToUInt64Or(const S: string; const Default: UInt64): UInt64; static;
 
-    class function ToUInt32Def(const S: string; const Default: Cardinal = 0): Cardinal; static;
-    class function ToUInt64Def(const S: string; const Default: UInt64 = 0): UInt64; static;
+    class function ToUInt32Def(const S: string): Cardinal; static;
+    class function ToUInt64Def(const S: string): UInt64; static;
 
     class function ToUInt32(const S: string): Cardinal; static;
     class function ToUInt64(const S: string): UInt64; static;
@@ -147,11 +181,11 @@ type
     class function TryToCurrencyInv(const S: string; out Value: Currency): Boolean; static;
 
     class function ToCurrencyOr(const S: string; const Default: Currency; const FS: TFormatSettings): Currency; static;
-    class function ToCurrencyDef(const S: string; const FS: TFormatSettings; const Default: Currency = 0): Currency; static;
+    class function ToCurrencyDef(const S: string; const FS: TFormatSettings): Currency; static;
     class function ToCurrency(const S: string; const FS: TFormatSettings): Currency; static;
 
     class function ToCurrencyOrInv(const S: string; const Default: Currency): Currency; static;
-    class function ToCurrencyDefInv(const S: string; const Default: Currency = 0): Currency; static;
+    class function ToCurrencyDefInv(const S: string): Currency; static;
     class function ToCurrencyInv(const S: string): Currency; static;
 
     { GUID }
@@ -325,15 +359,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToIntDef(const S: string; const Default: Integer): Integer;
+class function TConvert.ToIntDef(const S: string): Integer;
 begin
-  Result := ToIntOr(S, Default);
+  Result := ToIntOr(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToInt64Def(const S: string; const Default: Int64): Int64;
+class function TConvert.ToInt64Def(const S: string): Int64;
 begin
-  Result := ToInt64Or(S, Default);
+  Result := ToInt64Or(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -364,9 +398,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToBoolDef(const S: string; const Default: Boolean): Boolean;
+class function TConvert.ToBoolDef(const S: string): Boolean;
 begin
-  Result := ToBoolOr(S, Default);
+  Result := ToBoolOr(S, false);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -417,21 +451,21 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToSingleDef(const S: string; const FS: TFormatSettings; const Default: Single): Single;
+class function TConvert.ToSingleDef(const S: string; const FS: TFormatSettings): Single;
 begin
-  Result := ToSingleOr(S, Default, FS);
+  Result := ToSingleOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDoubleDef(const S: string; const FS: TFormatSettings; const Default: Double): Double;
+class function TConvert.ToDoubleDef(const S: string; const FS: TFormatSettings): Double;
 begin
-  Result := ToDoubleOr(S, Default, FS);
+  Result := ToDoubleOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToExtendedDef(const S: string; const FS: TFormatSettings; const Default: Extended): Extended;
+class function TConvert.ToExtendedDef(const S: string; const FS: TFormatSettings): Extended;
 begin
-  Result := ToExtendedOr(S, Default, FS);
+  Result := ToExtendedOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -491,21 +525,21 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToSingleDefInv(const S: string; const Default: Single): Single;
+class function TConvert.ToSingleDefInv(const S: string): Single;
 begin
-  Result := ToSingleOrInv(S, Default);
+  Result := ToSingleOrInv(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDoubleDefInv(const S: string; const Default: Double): Double;
+class function TConvert.ToDoubleDefInv(const S: string): Double;
 begin
-  Result := ToDoubleOrInv(S, Default);
+  Result := ToDoubleOrInv(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToExtendedDefInv(const S: string; const Default: Extended): Extended;
+class function TConvert.ToExtendedDefInv(const S: string): Extended;
 begin
-  Result := ToExtendedOrInv(S, Default);
+  Result := ToExtendedOrInv(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -604,21 +638,21 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDateTimeDef(const S: string; const FS: TFormatSettings; const Default: TDateTime): TDateTime;
+class function TConvert.ToDateTimeDef(const S: string; const FS: TFormatSettings): TDateTime;
 begin
-  Result := ToDateTimeOr(S, Default, FS);
+  Result := ToDateTimeOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDateDef(const S: string; const FS: TFormatSettings; const Default: TDateTime): TDateTime;
+class function TConvert.ToDateDef(const S: string; const FS: TFormatSettings): TDateTime;
 begin
-  Result := ToDateOr(S, Default, FS);
+  Result := ToDateOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToTimeDef(const S: string; const FS: TFormatSettings; const Default: TDateTime): TDateTime;
+class function TConvert.ToTimeDef(const S: string; const FS: TFormatSettings): TDateTime;
 begin
-  Result := ToTimeOr(S, Default, FS);
+  Result := ToTimeOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -655,9 +689,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDateTimeDefISO8601(const S: string; const Default: TDateTime): TDateTime;
+class function TConvert.ToDateTimeDefISO8601(const S: string): TDateTime;
 begin
-  Result := ToDateTimeOrISO8601(S, Default);
+  Result := ToDateTimeOrISO8601(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -686,9 +720,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToCharDef(const S: string; const Default: Char): Char;
+class function TConvert.ToCharDef(const S: string): Char;
 begin
-  Result := ToCharOr(S, Default);
+  Result := ToCharOr(S, #0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -772,15 +806,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToUInt64Def(const S: string; const Default: UInt64): UInt64;
+class function TConvert.ToUInt64Def(const S: string): UInt64;
 begin
-  Result := ToUInt64Or(S, Default);
+  Result := ToUInt64Or(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToUInt32Def(const S: string; const Default: Cardinal): Cardinal;
+class function TConvert.ToUInt32Def(const S: string): Cardinal;
 begin
-  Result := ToUInt32Or(S, Default);
+  Result := ToUInt32Or(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -817,9 +851,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToCurrencyDef(const S: string; const FS: TFormatSettings; const Default: Currency): Currency;
+class function TConvert.ToCurrencyDef(const S: string; const FS: TFormatSettings): Currency;
 begin
-  Result := ToCurrencyOr(S, Default, FS);
+  Result := ToCurrencyOr(S, 0, FS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -835,9 +869,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToCurrencyDefInv(const S: string; const Default: Currency): Currency;
+class function TConvert.ToCurrencyDefInv(const S: string): Currency;
 begin
-  Result := ToCurrencyOrInv(S, Default);
+  Result := ToCurrencyOrInv(S, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1256,6 +1290,7 @@ begin
       else
       begin
         Inc(FracDigits);
+
         if FracDigits > Decimals then
           Exit(False); // too many fractional digits
 
@@ -1297,11 +1332,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.TryToMoneyInv(
-  const S: string;
-  out Value: Currency;
-  const Decimals: Integer
-): Boolean;
+class function TConvert.TryToMoneyInv(const S: string; out Value: Currency; const Decimals: Integer): Boolean;
 begin
   Result := TryToMoney(S, Value, Decimals, InvariantFS);
 end;
@@ -1330,43 +1361,175 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToMoney(
-  const S: string;
-  const Decimals: Integer;
-  const FS: TFormatSettings
-): Currency;
+class function TConvert.ToMoney(const S: string; const Decimals: Integer; const FS: TFormatSettings): Currency;
 begin
-  if not TryToMoney(S, Result, Decimals, FS) then
-    RaiseStrict('Money', S);
+  if not TryToMoney(S, Result, Decimals, FS) then RaiseStrict('Money', S);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToMoneyOrInv(
-  const S: string;
-  const Default: Currency;
-  const Decimals: Integer
-): Currency;
+class function TConvert.ToMoneyOrInv(const S: string; const Default: Currency; const Decimals: Integer): Currency;
 begin
   Result := ToMoneyOr(S, Default, Decimals, InvariantFS);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToMoneyDefInv(
-  const S: string;
-  const Decimals: Integer;
-  const Default: Currency
-): Currency;
+class function TConvert.ToMoneyDefInv(const S: string; const Decimals: Integer; const Default: Currency): Currency;
 begin
   Result := ToMoneyOrInv(S, Default, Decimals);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToMoneyInv(
-  const S: string;
-  const Decimals: Integer
-): Currency;
+class function TConvert.ToMoneyInv(const S: string; const Decimals: Integer): Currency;
 begin
   Result := ToMoney(S, Decimals, InvariantFS);
+end;
+
+{ Floats - default locale overloads }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToSingle(const S: string; out Value: Single): Boolean;
+begin
+  Result := TryToSingle(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToDouble(const S: string; out Value: Double): Boolean;
+begin
+  Result := TryToDouble(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToExtended(const S: string; out Value: Extended): Boolean;
+begin
+  Result := TryToExtended(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToSingleOr(const S: string; const Default: Single): Single;
+begin
+  Result := ToSingleOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDoubleOr(const S: string; const Default: Double): Double;
+begin
+  Result := ToDoubleOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToExtendedOr(const S: string; const Default: Extended): Extended;
+begin
+  Result := ToExtendedOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToSingleDef(const S: string): Single;
+begin
+  Result := ToSingleOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDoubleDef(const S: string): Double;
+begin
+  Result := ToDoubleOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToExtendedDef(const S: string): Extended;
+begin
+  Result := ToExtendedOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToSingle(const S: string): Single;
+begin
+  Result := ToSingle(S, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDouble(const S: string): Double;
+begin
+  Result := ToDouble(S, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToExtended(const S: string): Extended;
+begin
+  Result := ToExtended(S, System.SysUtils.FormatSettings);
+end;
+
+{ Date/Time - default locale overloads }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToDateTime(const S: string; out Value: TDateTime): Boolean;
+begin
+  Result := TryToDateTime(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToDate(const S: string; out Value: TDateTime): Boolean;
+begin
+  Result := TryToDate(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToTime(const S: string; out Value: TDateTime): Boolean;
+begin
+  Result := TryToTime(S, Value, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateTimeOr(const S: string; const Default: TDateTime): TDateTime;
+begin
+  Result := ToDateTimeOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateOr(const S: string; const Default: TDateTime): TDateTime;
+begin
+  Result := ToDateOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToTimeOr(const S: string; const Default: TDateTime): TDateTime;
+begin
+  Result := ToTimeOr(S, Default, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateTimeDef(const S: string): TDateTime;
+begin
+  Result := ToDateTimeOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateDef(const S: string): TDateTime;
+begin
+  Result := ToDateOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToTimeDef(const S: string): TDateTime;
+begin
+  Result := ToTimeOr(S, 0, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateTime(const S: string): TDateTime;
+begin
+  Result := ToDateTime(S, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDate(const S: string): TDateTime;
+begin
+  Result := ToDate(S, System.SysUtils.FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToTime(const S: string): TDateTime;
+begin
+  Result := ToTime(S, System.SysUtils.FormatSettings);
 end;
 
 end.
