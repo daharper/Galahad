@@ -13,6 +13,7 @@ interface
 
 uses
   System.SysUtils,
+  System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   System.SyncObjs;
@@ -91,8 +92,6 @@ type
     class procedure LetOr<T>(out A, B, C, D: T; const Fallback: T; const Values: array of T); overload; static;
     class procedure LetOr<T>(out A, B, C, D, E: T; const Fallback: T; const Values: array of T); overload; static;
   end;
-
-  {------------------------ general functions ----------------------- }
 
 implementation
 

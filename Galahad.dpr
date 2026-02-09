@@ -42,7 +42,11 @@ uses
   Tests.Container.ModuleRegistration in 'Tests.Container\Tests.Container.ModuleRegistration.pas',
   Tests.Container.Resolve in 'Tests.Container\Tests.Container.Resolve.pas',
   Mocks.Messaging in 'Mocks\Mocks.Messaging.pas',
-  Base.Xml in 'Base\Base.Xml.pas';
+  Base.Xml in 'Base\Base.Xml.pas',
+  Base.Conversions in 'Base\Base.Conversions.pas',
+  Tests.Core.Conversions in 'Tests.Core\Tests.Core.Conversions.pas',
+  Base.Formatting in 'Base\Base.Formatting.pas',
+  Tests.Core.Formatting in 'Tests.Core\Tests.Core.Formatting.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}
