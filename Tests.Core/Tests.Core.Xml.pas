@@ -11,6 +11,8 @@ type
   TXmlFixture = class
   public
     [Test] procedure Test_Attribute;
+    [Test] procedure Test_Element_Value;
+    [Test] procedure Test_Element_Attributes;
   end;
 
 implementation
@@ -23,6 +25,88 @@ uses
 
 
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Element_Attributes;
+var scope: TScope;
+begin
+  var e := scope.Owns(TBvElement.Create('employee'));
+
+  Assert.IsFalse(e.HasAttrs);
+
+  var a := e.Attr('id');
+
+  Assert.IsTrue(e.HasAttrs);
+  Assert.IsTrue(e.HasAttr('id'));
+  Assert.AreEqual(0, e.AttrIndexOf('id'));
+  Assert.AreSame(a, e.Attr('id'));
+
+  Assert.AreSame(e, e.AddOrSetAttr('id', '1'));
+  Assert.IsTrue(a.HasValue);
+  Assert.AreEqual('1', a.Value);
+
+  Assert.AreSame(e, e.AddOrSetAttr('id', '2'));
+  Assert.AreEqual('2', a.Value);
+
+  var b := TBvAttribute.Create('id', '3');
+
+  e.AddOrSetAttr(b);
+
+  Assert.AreEqual('3', e.Attr('id').Value);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Element_Value;
+var scope: TScope;
+begin
+  var e := scope.Owns(TBvElement.Create('id'));
+
+  Assert.AreEqual('id', e.Name);
+  Assert.AreEqual('', e.Value);
+  Assert.IsFalse(e.HasValue);
+
+  Assert.WillRaise(procedure begin e.Name := 'type' end);
+
+  e.Value := '1';
+
+  Assert.AreEqual('1', e.Value);
+
+  var n : TDateTime := Now;
+
+  e.Assign(n);
+  Assert.AreEqual(n, e.AsDateTime);
+
+  var g := TGuid.NewGuid;
+
+  e.Assign(g);
+  Assert.AreEqual(g, e.AsGuid);
+
+  e.Assign(Double(12.34));
+  Assert.AreEqual<Double>(12.34, e.AsDouble);
+
+  e.Assign(Single(12.37));
+  Assert.AreEqual<Single>(12.37, e.AsSingle);
+
+  e.Assign(20);
+  Assert.AreEqual(20, e.AsInteger);
+
+  e.Assign(#32);
+  Assert.AreEqual(#32, e.AsChar);
+
+  e.Assign(Currency(12.20));
+  Assert.AreEqual(Currency(12.20), e.AsCurrency);
+
+  e.Assign(Int64.MaxValue);
+  Assert.AreEqual<Int64>(Int64.MaxValue, e.AsInt64);
+
+  e.Assign(true);
+  Assert.AreEqual('True', e.Value);
+  Assert.AreEqual(true, e.AsBoolean);
+
+  e.Assign(true, false);
+  Assert.AreEqual('-1', e.Value);
+  Assert.AreEqual(true, e.AsBoolean);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Attribute;
@@ -45,7 +129,8 @@ begin
 
   var n : TDateTime := Now;
 
-  a.Assign(n); Assert.AreEqual(n, a.AsDateTime);
+  a.Assign(n);
+  Assert.AreEqual(n, a.AsDateTime);
 
   var g := TGuid.NewGuid;
 

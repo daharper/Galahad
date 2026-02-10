@@ -374,6 +374,8 @@ begin
   end;
 end;
 
+{$region 'TBvAttribute'}
+
 { TBvAttribute }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -385,7 +387,7 @@ begin
 
   lName := Trim(aValue);
 
-  Ensure.IsTrue(IsValidName(lName), 'invalid attribute name: ' + aValue);
+  Ensure.IsTrue(IsValidName(lName), 'Invalid attribute name: ' + aValue);
 
   fName := lName;
 end;
@@ -546,6 +548,10 @@ begin
   SetValue(aValue);
 end;
 
+{$endregion}
+
+{$region 'TBvElement'}
+
 { TBvElement }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -553,9 +559,11 @@ procedure TBvElement.SetName(const aValue: string);
 var
   lName: string;
 begin
+  Ensure.IsTrue(Length(fName) = 0, 'Element names are immutable');
+
   lName := Trim(aValue);
 
-  Ensure.IsTrue(IsValidName(lName), 'invalid attribute name: ' + aValue);
+  Ensure.IsTrue(IsValidName(lName), 'Invalid element name: ' + aValue);
 
   fName := lName;
 end;
@@ -581,7 +589,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.HasValue: boolean;
 begin
-  Result := string.IsNullOrWhiteSpace(fValue);
+  Result := Length(fValue) > 0;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -886,6 +894,8 @@ begin
 
   inherited;
 end;
+
+{$endregion}
 
 { TBvParserException }
 
