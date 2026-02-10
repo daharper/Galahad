@@ -307,6 +307,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.TypInfo,
   System.NetEncoding,
   System.Rtti,

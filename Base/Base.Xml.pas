@@ -271,6 +271,7 @@ uses
   System.Rtti,
   System.StrUtils,
   System.Character,
+  System.DateUtils,
   Base.Integrity,
   Base.Conversions;
 
@@ -382,6 +383,8 @@ procedure TBvAttribute.SetName(const aValue: string);
 var
   lName: string;
 begin
+  Ensure.IsTrue(Length(fName) = 0, 'Attribute names are immutable');
+
   lName := Trim(aValue);
 
   Ensure.IsTrue(IsValidName(lName), 'invalid attribute name: ' + aValue);
@@ -419,7 +422,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsDateTime: TDateTime;
 begin
-  Result := TConvert.ToDateTimeDef(fValue);
+  Result := TConvert.ToDateTimeISO8601(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -518,7 +521,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: TDateTime);
 begin
-  fValue := DateTimeToStr(aValue);
+  fValue := DateToISO8601(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
