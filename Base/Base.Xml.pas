@@ -66,21 +66,18 @@ type
     function AsDouble: double;
     function AsDateTime: TDateTime;
     function AsChar: Char;
-    function AsInt64: integer;
+    function AsInt64: Int64;
     function AsGuid: TGuid;
     function AsCurrency: Currency;
 
     function AsXml: string;
 
     procedure Assign(const aValue: integer); overload;
-    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = false); overload;
+    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
     procedure Assign(const aValue: string); overload;
     procedure Assign(const aValue: single); overload;
-    procedure Assign(const aValue: single; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: double); overload;
-    procedure Assign(const aValue: double; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: TDateTime); overload;
-    procedure Assign(const aValue: TDateTime; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: char); overload;
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
@@ -180,14 +177,12 @@ type
     procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = false); overload;
     procedure Assign(const aValue: string); overload;
     procedure Assign(const aValue: single); overload;
-    procedure Assign(const aValue: single; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: double); overload;
-    procedure Assign(const aValue: double; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: TDateTime); overload;
-    procedure Assign(const aValue: TDateTime; const aFS: TFormatSettings); overload;
     procedure Assign(const aValue: char); overload;
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
+    procedure Assign(const aValue: Currency); overload;
 
     constructor Create; overload;
     constructor Create(const aName: string; const aValue: string = ''); overload;
@@ -424,7 +419,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsCurrency: Currency;
 begin
-  Result := TConvert.ToCurrencyOr(fValue, FormatSettings);
+  Result := TConvert.ToCurrencyOrInv(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -452,7 +447,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvAttribute.AsInt64: integer;
+function TBvAttribute.AsInt64: Int64;
 begin
   Result := TConvert.ToInt64Or(fValue);
 end;
@@ -485,7 +480,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvAttribute.Assign(const aValue: boolean; const aUseBoolStrs: boolean = false);
+procedure TBvAttribute.Assign(const aValue: boolean; const aUseBoolStrs: boolean);
 begin
  fValue := BoolToStr(aValue, aUseBoolStrs);
 end;
@@ -509,33 +504,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvAttribute.Assign(const aValue: single; const aFS: TFormatSettings);
-begin
-   fValue := FloatToStrF(aValue, ffGeneral, 7, 0, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: double);
 begin
    fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvAttribute.Assign(const aValue: double; const aFS: TFormatSettings);
-begin
-  fValue := FloatToStrF(aValue, ffGeneral, 15, 0, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: TDateTime);
 begin
   fValue := DateToISO8601(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvAttribute.Assign(const aValue: TDateTime; const aFS: TFormatSettings);
-begin
-  fValue := DateTimeToStr(aValue, aFs);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -609,7 +586,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsBoolean: boolean;
 begin
-  Result := StrToBool(fValue);
+  Result := TConvert.ToBoolOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -688,33 +665,16 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.Assign(const aValue: single; const aFS: TFormatSettings);
-begin
-   fValue := FloatToStrF(aValue, ffGeneral, 7, 0, aFs);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: double);
 begin
    fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
 end;
 
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.Assign(const aValue: double; const aFS: TFormatSettings);
-begin
-  fValue := FloatToStrF(aValue, ffGeneral, 15, 0, aFs);
-end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: TDateTime);
 begin
   fValue := DateTimeToStr(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.Assign(const aValue: TDateTime; const aFS: TFormatSettings);
-begin
-  fValue := DateTimeToStr(aValue, aFs);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -733,6 +693,11 @@ end;
 procedure TBvElement.Assign(const aValue: TGuid);
 begin
   fValue := GUIDToString(aValue);
+end;
+
+procedure TBvElement.Assign(const aValue: Currency);
+begin
+  //
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

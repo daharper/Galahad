@@ -67,23 +67,15 @@ begin
   a.Assign(Currency(12.20));
   Assert.AreEqual(Currency(12.20), a.AsCurrency);
 
-//  Assert.AreEqual(IntToStr(Int64.MaxValue), '9223372036854775807');
+  a.Assign(Int64.MaxValue);
+  Assert.AreEqual<Int64>(Int64.MaxValue, a.AsInt64);
 
-  var x := Int64.MaxValue;
-  var s : string;
-
-  s := IntToStr(x);
-
-  var y := a.AsInt64;
-
-  var z : Int64;
-
-  Assert.IsTrue(TryStrToInt64(s, z));
-
-  Assert.AreEqual(x, z);
-
-  a.Assign(true, true);
+  a.Assign(true);
   Assert.AreEqual('True', a.Value);
+  Assert.AreEqual(true, a.AsBoolean);
+
+  a.Assign(true, false);
+  Assert.AreEqual('-1', a.Value);
   Assert.AreEqual(true, a.AsBoolean);
 end;
 
