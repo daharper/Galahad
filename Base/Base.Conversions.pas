@@ -665,7 +665,7 @@ begin
   if input = '' then exit(false);
 
   // True values
-  if IndexText(input, ['true', 't', 'yes', 'y', '1']) <> -1 then
+  if IndexText(input, ['true', 't', 'yes', 'y', '1', '-1']) <> -1 then
   begin
     aValue := true;
     exit(true);

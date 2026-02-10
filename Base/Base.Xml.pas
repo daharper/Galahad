@@ -116,8 +116,20 @@ type
     function AsDouble: double;
     function AsDateTime: TDateTime;
     function AsChar: Char;
-    function AsInt64: integer;
+    function AsInt64: Int64;
     function AsGuid: TGuid;
+    function AsCurrency: Currency;
+
+    procedure Assign(const aValue: integer); overload;
+    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
+    procedure Assign(const aValue: string); overload;
+    procedure Assign(const aValue: single); overload;
+    procedure Assign(const aValue: double); overload;
+    procedure Assign(const aValue: TDateTime); overload;
+    procedure Assign(const aValue: char); overload;
+    procedure Assign(const aValue: Int64); overload;
+    procedure Assign(const aValue: TGuid); overload;
+    procedure Assign(const aValue: Currency); overload;
 
     /// <summary>
     ///  Updates the attribute if it exists, adds an attribute if it doesn't.
@@ -172,17 +184,6 @@ type
     ///  Returns the index of the element with the specified name, otherwise -1.
     /// </summary>
     function ElemIndexOf(const aName: string): integer;
-
-    procedure Assign(const aValue: integer); overload;
-    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = false); overload;
-    procedure Assign(const aValue: string); overload;
-    procedure Assign(const aValue: single); overload;
-    procedure Assign(const aValue: double); overload;
-    procedure Assign(const aValue: TDateTime); overload;
-    procedure Assign(const aValue: char); overload;
-    procedure Assign(const aValue: Int64); overload;
-    procedure Assign(const aValue: TGuid); overload;
-    procedure Assign(const aValue: Currency); overload;
 
     constructor Create; overload;
     constructor Create(const aName: string; const aValue: string = ''); overload;
@@ -404,7 +405,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsBoolean: boolean;
 begin
-  Result := StrToBool(fValue);
+  Result := TConvert.ToBoolOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -500,19 +501,19 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: single);
 begin
-  fValue := FloatToStrF(aValue, ffGeneral, 7, 0);
+  fValue := TConvert.SingleToStringInv(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: double);
 begin
-   fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
+  fValue := TConvert.DoubleToStringInv(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: TDateTime);
 begin
-  fValue := DateToISO8601(aValue);
+  fValue := TConvert.DateTimeToStringISO8601(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -535,7 +536,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: Currency);
 begin
-  fValue := CurrToStr(aValue, FormatSettings);
+  fValue := TConvert.CurrencyToStringInv(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -599,9 +600,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsCurrency: Currency;
+begin
+  Result := TConvert.ToCurrencyOrInv(fValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsDateTime: TDateTime;
 begin
-  Result := TConvert.ToDateTimeOr(fValue);
+  Result := TConvert.ToDateTimeISO8601(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -623,7 +630,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.AsInt64: integer;
+function TBvElement.AsInt64: Int64;
 begin
   Result := TConvert.ToInt64Or(fValue);
 end;
@@ -641,7 +648,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.Assign(const aValue: boolean; const aUseBoolStrs: boolean = false);
+procedure TBvElement.Assign(const aValue: boolean; const aUseBoolStrs: boolean);
 begin
  fValue := BoolToStr(aValue, aUseBoolStrs);
 end;
@@ -661,20 +668,19 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: single);
 begin
-  fValue := FloatToStrF(aValue, ffGeneral, 7, 0);
+  fValue := TConvert.SingleToStringInv(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: double);
 begin
-   fValue := FloatToStrF(aValue, ffGeneral, 15, 0);
+  fValue := TConvert.DoubleToStringInv(aValue);
 end;
-
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: TDateTime);
 begin
-  fValue := DateTimeToStr(aValue);
+  fValue := TConvert.DateTimeToStringISO8601(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -694,10 +700,10 @@ procedure TBvElement.Assign(const aValue: TGuid);
 begin
   fValue := GUIDToString(aValue);
 end;
-
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: Currency);
 begin
-  //
+  fValue := TConvert.CurrencyToStringInv(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

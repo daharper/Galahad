@@ -1,6 +1,6 @@
 {-----------------------------------------------------------------------------------------------------------------------
   Project:     Galahad
-  Unit:        Base.Conversions
+  Unit:        Base.Formatting
   Author:      David Harper
   License:     MIT
   History:     2026-08-02  Initial version 0.1
@@ -27,7 +27,6 @@ type
   /// </remarks>
   TFormat = record
   public
-    { Format settings }
     /// <summary>Invariant (culture-independent) format settings.</summary>
     class function InvariantFS: TFormatSettings; static;
 
@@ -46,7 +45,6 @@ type
     /// </summary>
     class function DateTimeISOMs(const aDateTime: TDateTime): string; static;
 
-    { ISO 8601 (UTC, with Z) }
     /// <summary>
     ///  Formats date-time as UTC ISO 8601: YYYY-MM-DDThh:nn:ssZ.
     ///  Converts using the local system time zone.
@@ -58,7 +56,6 @@ type
     /// </summary>
     class function DateTimeUTCISOMs(const aDateTime: TDateTime): string; static;
 
-    { Numbers (invariant, machine-friendly) }
     /// <summary>Invariant float formatting ('.' decimal separator, no thousands).</summary>
     class function FloatInv(const aValue: Double): string; static;
 
@@ -82,7 +79,6 @@ type
     /// <summary>Invariant integer formatting (no thousands separators).</summary>
     class function IntInv(const aValue: Int64): string; static;
 
-    { Display helpers (explicit FS) }
     /// <summary>Formats currency using explicit format settings.</summary>
     class function CurrencyDisp(const aValue: Currency; const aFs: TFormatSettings): string; static;
 
