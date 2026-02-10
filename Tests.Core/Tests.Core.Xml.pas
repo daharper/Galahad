@@ -53,6 +53,20 @@ begin
   e.AddOrSetAttr(b);
 
   Assert.AreEqual('3', e.Attr('id').Value);
+
+  Assert.AreSame(e.FirstAttr, e.LastAttr);
+
+  e.AddOrSetAttr('name', 'Fred').AddOrSetAttr('role', 'Developer');
+
+  Assert.AreEqual(3, e.AttrCount);
+  Assert.AreEqual('id', e.FirstAttr.Name);
+  Assert.AreEqual('role', e.LastAttr.Name);
+
+  Assert.AreEqual('3', e['id']);
+
+  e['id'] := '4';
+
+  Assert.AreEqual('4', e['id']);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

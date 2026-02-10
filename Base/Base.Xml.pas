@@ -98,16 +98,23 @@ type
 
     procedure SetName(const aValue: string);
     procedure SetValue(const aValue: string);
+    function GetAttribute(aName: string): string;
+    procedure SetAttribute(aName: string; const aValue: string);
 
   public
     property Parent: TBvElement read fParent write fParent;
     property Name: string read fName write SetName;
     property Value: string read fValue write SetValue;
+    property Attrs[aName: string]: string read GetAttribute write SetAttribute; default;
 
-    function Count: integer;
+    function ElemCount: integer;
+    function AttrCount: integer;
     function HasValue: boolean;
     function HasElems: boolean;
     function HasAttrs: boolean;
+
+    function FirstAttr: TBvAttribute;
+    function LastAttr: TBvAttribute;
 
     function AsInteger: integer;
     function AsBoolean: boolean;
@@ -593,6 +600,46 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AttrCount: integer;
+begin
+  Result := fAttrs.Count;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.ElemCount: integer;
+begin
+  Result := fElems.Count;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.FirstAttr: TBvAttribute;
+begin
+  Ensure.IsTrue(fAttrs.Count > 0, 'There are no attributes');
+
+  Result := fAttrs[0];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.GetAttribute(aName: string): string;
+begin
+  Result := Attr(aName).Value;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.SetAttribute(aName: string; const aValue: string);
+begin
+  AddOrSetAttr(aName, aValue);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.LastAttr: TBvAttribute;
+begin
+  Ensure.IsTrue(fAttrs.Count > 0, 'There are no attributes');
+
+  Result := fAttrs[Pred(fAttrs.Count)];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsBoolean: boolean;
 begin
   Result := TConvert.ToBoolOr(fValue);
@@ -854,12 +901,6 @@ begin
 
   SetName(aName);
   SetValue(aValue);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.Count: integer;
-begin
-  Result := fElems.Count;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
