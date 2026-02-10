@@ -68,6 +68,7 @@ type
     function AsChar: Char;
     function AsInt64: integer;
     function AsGuid: TGuid;
+    function AsCurrency: Currency;
 
     function AsXml: string;
 
@@ -83,6 +84,7 @@ type
     procedure Assign(const aValue: char); overload;
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
+    procedure Assign(const aValue: Currency); overload;
 
     constructor Create(const aName: string; const aValue: string = '');
   end;
@@ -420,6 +422,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TBvAttribute.AsCurrency: Currency;
+begin
+  Result := TConvert.ToCurrencyOr(fValue, FormatSettings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsDateTime: TDateTime;
 begin
   Result := TConvert.ToDateTimeISO8601(fValue);
@@ -428,31 +436,31 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsDouble: double;
 begin
-  Result := TConvert.ToDoubleDef(fValue);
+  Result := TConvert.ToDoubleOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsGuid: TGuid;
 begin
-  Result := TConvert.ToGuidDef(fValue);
+  Result := TConvert.ToGuidOr(fValue, TGuid.Empty);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsSingle: single;
 begin
-  Result := TConvert.ToSingleDef(fValue);
+  Result := TConvert.ToSingleOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsInt64: integer;
 begin
-  Result := TConvert.ToIntDef(fValue);
+  Result := TConvert.ToInt64Or(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsInteger: integer;
 begin
-  Result := TConvert.ToIntDef(fValue);
+  Result := TConvert.ToIntOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -547,6 +555,11 @@ procedure TBvAttribute.Assign(const aValue: TGuid);
 begin
   fValue := GUIDToString(aValue);
 end;
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvAttribute.Assign(const aValue: Currency);
+begin
+  fValue := CurrToStr(aValue, FormatSettings);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TBvAttribute.Create(const aName, aValue: string);
@@ -611,37 +624,37 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsDateTime: TDateTime;
 begin
-  Result := TConvert.ToDateTimeDef(fValue);
+  Result := TConvert.ToDateTimeOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsDouble: double;
 begin
-  Result := TConvert.ToDoubleDef(fValue);
+  Result := TConvert.ToDoubleOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsGuid: TGuid;
 begin
-  Result := TConvert.ToGuidDef(fValue);
+  Result := TConvert.ToGuidOr(fValue, TGuid.Empty);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsSingle: single;
 begin
-  Result := TConvert.ToSingleDef(fValue);
+  Result := TConvert.ToSingleOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsInt64: integer;
 begin
-  Result := TConvert.ToIntDef(fValue);
+  Result := TConvert.ToInt64Or(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsInteger: integer;
 begin
-  Result := TConvert.ToIntDef(fValue);
+  Result := TConvert.ToIntOr(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

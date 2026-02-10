@@ -45,14 +45,12 @@ begin
   Assert.AreEqual(42, I);
   Assert.IsFalse(TConvert.TryToInt('12 rubbish', I));
 
-  // ToIntOr / ToIntDef
+  // ToIntOr (default parameter)
   Assert.AreEqual(42, TConvert.ToIntOr('42', -1));
   Assert.AreEqual(-1, TConvert.ToIntOr('oops', -1));
-  Assert.AreEqual(0, TConvert.ToIntDef('oops'));
-  Assert.AreEqual(123, TConvert.ToIntDef('123'));
-
-  // ToInt (strict, raises)
-  Assert.WillNotRaise(procedure begin I := TConvert.ToInt('7'); Assert.AreEqual(7, I); end);
+  Assert.AreEqual(0, TConvert.ToIntOr('oops'));
+  Assert.AreEqual(123, TConvert.ToIntOr('123'));
+  Assert.AreEqual(7, TConvert.ToInt('7'));
 
   Assert.WillRaise(procedure begin I := TConvert.ToInt('7x'); end, EStrictConvertError);
 
@@ -63,9 +61,9 @@ begin
 
   Assert.AreEqual(Int64(5), TConvert.ToInt64Or('5', -1));
   Assert.AreEqual(Int64(-1), TConvert.ToInt64Or('nope', -1));
-  Assert.AreEqual(Int64(0), TConvert.ToInt64Def('nope'));
+  Assert.AreEqual(Int64(0), TConvert.ToInt64Or('nope'));
 
-  Assert.WillRaise(procedure begin L := TConvert.ToInt64('nope'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToInt64('nope'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -73,31 +71,51 @@ procedure ConversionsFixture.BooleanTests;
 var
   B: Boolean;
 begin
-  // TryToBool
+  // True set: True/true, T/t, Yes/yes, Y/y, 1
   Assert.IsTrue(TConvert.TryToBool('True', B));
   Assert.IsTrue(B);
 
-  Assert.IsTrue(TConvert.TryToBool('FALSE', B));
-  Assert.IsFalse(B);
+  Assert.IsTrue(TConvert.TryToBool('t', B));
+  Assert.IsTrue(B);
+
+  Assert.IsTrue(TConvert.TryToBool('YES', B));
+  Assert.IsTrue(B);
+
+  Assert.IsTrue(TConvert.TryToBool('y', B));
+  Assert.IsTrue(B);
 
   Assert.IsTrue(TConvert.TryToBool('1', B));
   Assert.IsTrue(B);
 
+  // False set: False/false, F/f, No/no, N/n, 0
+  Assert.IsTrue(TConvert.TryToBool('FALSE', B));
+  Assert.IsFalse(B);
+
+  Assert.IsTrue(TConvert.TryToBool('f', B));
+  Assert.IsFalse(B);
+
+  Assert.IsTrue(TConvert.TryToBool('No', B));
+  Assert.IsFalse(B);
+
+  Assert.IsTrue(TConvert.TryToBool('n', B));
+  Assert.IsFalse(B);
+
   Assert.IsTrue(TConvert.TryToBool('0', B));
   Assert.IsFalse(B);
 
-  Assert.IsFalse(TConvert.TryToBool('yes', B)); // not accepted by TryStrToBool
+  // Reject unknown tokens
+  Assert.IsFalse(TConvert.TryToBool('maybe', B));
+  Assert.IsFalse(TConvert.TryToBool('trueish', B));
+  Assert.IsFalse(TConvert.TryToBool('yes please', B));
 
-  // ToBoolOr / ToBoolDef
+  // ToBoolOr
   Assert.IsTrue(TConvert.ToBoolOr('true', False));
   Assert.IsFalse(TConvert.ToBoolOr('nope', False));
-  Assert.IsFalse(TConvert.ToBoolDef('nope'));
-  Assert.IsTrue(TConvert.ToBoolDef('true'));
+  Assert.IsTrue(TConvert.ToBoolOr('true'));
 
-  // ToBool (strict, raises)
-  Assert.WillNotRaise(procedure begin B := TConvert.ToBool('0'); Assert.IsFalse(B); end);
+  Assert.IsTrue(TConvert.ToBool('yes'));
 
-  Assert.WillRaise(procedure begin B := TConvert.ToBool('yes'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin B := TConvert.ToBool('maybe'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -106,7 +124,6 @@ var
   FSInv, FSGb: TFormatSettings;
   Sng: Single;
   Dbl: Double;
-  Ext: Extended;
 begin
   FSInv := TConvert.InvariantFS;
   FSGb := TFormatSettings.Create('en-GB');
@@ -123,27 +140,28 @@ begin
 
   Assert.AreEqual(2.25, TConvert.ToDoubleOrInv('2.25', -1.0), 1e-12);
   Assert.AreEqual(-1.0, TConvert.ToDoubleOrInv('bad', -1.0), 1e-12);
-  Assert.AreEqual(0.0, TConvert.ToDoubleDefInv('bad'), 1e-12);
 
-  Assert.WillRaise(procedure begin Dbl := TConvert.ToDoubleInv('1.2x'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToDoubleInv('1.2x'); end, EStrictConvertError);
 
-  // Single / Extended (explicit FS)
+  // Single (explicit FS)
   Assert.IsTrue(TConvert.TryToSingle('1.25', Sng, FSInv));
   Assert.AreEqual(1.25, Sng, 1e-6);
 
-  Assert.IsTrue(TConvert.TryToExtended('10.5', Ext, FSInv));
-  Assert.AreEqual(10.5, Ext, 1e-12);
+  // ToXxxOr / ToXxx (explicit FS)
+  Assert.AreEqual(1.25, TConvert.ToSingleOr('1.25', FSInv, -1), 1e-6);
+  Assert.AreEqual(-1.0, TConvert.ToDoubleOr('bad', FSInv, -1.0), 1e-12);
+  Assert.AreEqual(0.0, TConvert.ToDoubleOr('bad', FSInv), 1e-12);
 
-  // ToXxxOr / ToXxxDef / ToXxx (explicit FS)
-  Assert.AreEqual(1.25, TConvert.ToSingleOr('1.25', -1, FSInv), 1e-6);
-  Assert.AreEqual(-1.0, TConvert.ToDoubleOr('bad', -1.0, FSInv), 1e-12);
-  Assert.AreEqual(0.0, TConvert.ToExtendedDef('bad', FSInv), 1e-12);
+  Assert.WillNotRaise(
+    procedure
+    begin
+      Dbl := TConvert.ToDouble('3.14', FSInv);
+      Assert.AreEqual(3.14, Dbl, 1e-12);
+    end);
 
-  Assert.WillNotRaise(procedure begin Dbl := TConvert.ToDouble('3.14', FSInv); Assert.AreEqual(3.14, Dbl, 1e-12); end);
+  Assert.WillRaise(procedure begin TConvert.ToDouble('3,14', FSInv); end, EStrictConvertError);
 
-  Assert.WillRaise(procedure begin Dbl := TConvert.ToDouble('3,14', FSInv); end, EStrictConvertError);
-
-  // Locale sanity check (en-GB usually uses '.', but keep it explicit anyway)
+  // Locale sanity check (keep it explicit anyway)
   Assert.IsTrue(TConvert.TryToDouble('3.14', Dbl, FSGb));
   Assert.AreEqual(3.14, Dbl, 1e-12);
 end;
@@ -170,20 +188,18 @@ begin
   Assert.IsTrue(TConvert.TryToTime('14:30:00', DT, FS));
   Assert.AreEqual(EncodeTime(14, 30, 0, 0), DT, 1e-8);
 
-  // Or / Def
+  // Or (FS overload uses order: S, FS, Default)
   Assert.AreEqual(
     EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
-    TConvert.ToDateTimeOr('09/02/2026 14:30:00', DefaultDT, FS),
+    TConvert.ToDateTimeOr('09/02/2026 14:30:00', FS, DefaultDT),
     1e-8);
 
-  Assert.AreEqual(DefaultDT, TConvert.ToDateTimeOr('bad', DefaultDT, FS), 1e-8);
-
-  Assert.AreEqual(0.0, TConvert.ToDateTimeDef('bad', FS), 1e-8);
+  Assert.AreEqual(DefaultDT, TConvert.ToDateTimeOr('bad', FS, DefaultDT), 1e-8);
+  Assert.AreEqual(0.0, TConvert.ToDateTimeOr('bad', FS), 1e-8);
 
   // Strict (raises)
-  Assert.WillNotRaise(procedure begin DT := TConvert.ToDateTime('09/02/2026 14:30:00', FS); end);
-
-  Assert.WillRaise(procedure begin DT := TConvert.ToDateTime('09/02/2026 bad', FS); end, EStrictConvertError);
+  Assert.WillNotRaise(procedure begin TConvert.ToDateTime('09/02/2026 14:30:00', FS); end);
+  Assert.WillRaise(procedure begin TConvert.ToDateTime('09/02/2026 bad', FS); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -197,18 +213,21 @@ begin
 
   Assert.IsFalse(TConvert.TryToDateTimeISO8601('2026-02-09T14:30:00 rubbish', DT));
 
-  // Or / Def
+  // Or (default Default parameter is 0)
   Assert.AreEqual(
-    EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0), TConvert.ToDateTimeOrISO8601('2026-02-09T14:30:00', 0), 1e-8);
+    EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
+    TConvert.ToDateTimeOrISO8601('2026-02-09T14:30:00', 0),
+    1e-8);
 
-  Assert.AreEqual(EncodeDate(1999, 12, 31), TConvert.ToDateTimeOrISO8601('bad', EncodeDate(1999, 12, 31)), 1e-8);
+  Assert.AreEqual(EncodeDate(1999, 12, 31),
+    TConvert.ToDateTimeOrISO8601('bad', EncodeDate(1999, 12, 31)),
+    1e-8);
 
-  Assert.AreEqual(0.0, TConvert.ToDateTimeDefISO8601('bad'), 1e-8);
+  Assert.AreEqual(0.0, TConvert.ToDateTimeOrISO8601('bad'), 1e-8);
 
   // Strict (raises)
-  Assert.WillNotRaise(procedure begin DT := TConvert.ToDateTimeISO8601('2026-02-09T14:30:00'); end);
-
-  Assert.WillRaise(procedure begin DT := TConvert.ToDateTimeISO8601('nope'); end, EStrictConvertError);
+  Assert.WillNotRaise(procedure begin TConvert.ToDateTimeISO8601('2026-02-09T14:30:00'); end);
+  Assert.WillRaise(procedure begin TConvert.ToDateTimeISO8601('nope'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -223,16 +242,15 @@ begin
   Assert.IsFalse(TConvert.TryToChar('', C));
   Assert.IsFalse(TConvert.TryToChar('AB', C));
 
-  // Or / Def
+  // Or (default Default parameter is #0)
   Assert.AreEqual('Z', TConvert.ToCharOr('Z', '?'));
   Assert.AreEqual('?', TConvert.ToCharOr('', '?'));
-  Assert.AreEqual(#0, TConvert.ToCharDef(''));
-  Assert.AreEqual('X', TConvert.ToCharDef('X'));
+  Assert.AreEqual(#0, TConvert.ToCharOr(''));
+  Assert.AreEqual('X', TConvert.ToCharOr('X'));
 
   // Strict (raises)
-  Assert.WillNotRaise(procedure begin C := TConvert.ToChar('Q'); Assert.AreEqual('Q', C); end);
-
-  Assert.WillRaise(procedure begin C := TConvert.ToChar('QQ'); end, EStrictConvertError);
+  Assert.AreEqual('Q', TConvert.ToChar('Q'));
+  Assert.WillRaise(procedure begin TConvert.ToChar('QQ'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -259,8 +277,9 @@ begin
 
   Assert.AreEqual(UInt64(7), TConvert.ToUInt64Or('7', 99));
   Assert.AreEqual(UInt64(99), TConvert.ToUInt64Or('bad', 99));
+  Assert.AreEqual(UInt64(0), TConvert.ToUInt64Or('bad'));
 
-  Assert.WillRaise(procedure begin U64 := TConvert.ToUInt64('bad'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToUInt64('bad'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -275,9 +294,9 @@ begin
 
   Assert.AreNotEqual(D, TConvert.ToGuidOr('{6F9619FF-8B86-D011-B42D-00C04FC964FF}', D));
   Assert.AreEqual(D, TConvert.ToGuidOr('bad', D));
-  Assert.AreEqual(D, TConvert.ToGuidDef('bad'));
+  Assert.AreEqual(D, TConvert.ToGuidOr('bad', TGUID.Empty));
 
-  Assert.WillRaise(procedure begin G := TConvert.ToGuid('bad'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToGuid('bad'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -300,7 +319,7 @@ begin
   Assert.AreEqual(TTestEnum.teBeta, E);
 
   Assert.AreEqual(TTestEnum.teGamma, TConvert.ToEnumOr<TTestEnum>('nope', TTestEnum.teGamma));
-  Assert.WillRaise(procedure begin E := TConvert.ToEnum<TTestEnum>('nope'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToEnum<TTestEnum>('nope'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -319,10 +338,10 @@ begin
   Assert.IsTrue(TConvert.TryToCurrencyInv('12.34', C));
   Assert.AreEqual(Currency(12.34), C);
 
-  Assert.AreEqual(Currency(9.99), TConvert.ToCurrencyOr('bad', 9.99, FS));
-  Assert.AreEqual(Currency(0), TConvert.ToCurrencyDef('bad', FS));
+  Assert.AreEqual(Currency(9.99), TConvert.ToCurrencyOr('bad', FS, 9.99));
+  Assert.AreEqual(Currency(0), TConvert.ToCurrencyOr('bad', FS));
 
-  Assert.WillRaise(procedure begin C := TConvert.ToCurrency('bad', FS); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToCurrency('bad', FS); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -352,7 +371,7 @@ begin
 
   Assert.AreEqual(Byte($AA), TConvert.ToBytesHexOr('bad', Default)[0]);
 
-  Assert.WillRaise(procedure begin B := TConvert.ToBytesHex('bad'); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToBytesHex('bad'); end, EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -396,11 +415,11 @@ begin
   Assert.IsTrue(TConvert.TryToMoneyInv('1234.50', C, 2));
   Assert.AreEqual(Currency(1234.5), C);
 
-  // Or/Def/Strict
-  Assert.AreEqual(Currency(9.99), TConvert.ToMoneyOr('bad', 9.99, 2, FS));
-  Assert.AreEqual(Currency(0), TConvert.ToMoneyDef('bad', 2, FS));
+  // Or/Strict (FS overload: S, FS, Decimals, Default)
+  Assert.AreEqual(Currency(9.99), TConvert.ToMoneyOr('bad', FS, 2, 9.99));
+  Assert.AreEqual(Currency(0), TConvert.ToMoneyOr('bad', FS, 2));
 
-  Assert.WillRaise(procedure begin C := TConvert.ToMoney('bad', 2, FS); end, EStrictConvertError);
+  Assert.WillRaise(procedure begin TConvert.ToMoney('bad', FS, 2); end, EStrictConvertError);
 end;
 
 initialization
