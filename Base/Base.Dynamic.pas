@@ -3,7 +3,7 @@
   Unit:        Base.Dynamic
   Author:      David Harper
   License:     MIT
-  History:     2026-08-02  Initial version 0.1
+  History:     2026-08-02 Initial version 0.1
   Purpose:     Provides dynamic and extended objects exposed via IDispatch (OleVariant), enabling runtime dispatch.
 -----------------------------------------------------------------------------------------------------------------------}
 

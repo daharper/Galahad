@@ -3,7 +3,7 @@
   Unit:        Base.Xml
   Author:      David Harper
   License:     MIT
-  History:     2026-08-02  Initial version
+  History:     2026-08-02 Initial version 0.1
   Purpose:     Basic XML Object and Parser for simple persistance requirements.
 -----------------------------------------------------------------------------------------------------------------------}
 
@@ -15,7 +15,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Base.Core;
+  Base.Core,
+  Base.Integrity;
 
 type
   { Currently, just basic XML entities are mapped, but given the leisure, see this page:
@@ -45,6 +46,7 @@ type
     xQuote
   );
 
+  /// <summary>Represents an XML Attribute</summary>
   TBvAttribute = class
   private
     fName: string;
@@ -86,6 +88,7 @@ type
     constructor Create(const aName: string; const aValue: string = '');
   end;
 
+  /// <summary>Represents an XML Element</summary>
   TBvElement = class
   private
     fElems: TList<TBvElement>;
@@ -135,7 +138,7 @@ type
 
     /// <summary>Pushes a new attribute onto the back of the list - returns Self for chaining.</summary>
     function PushAttr(const aAttribute: TBvAttribute): TBvElement; overload;
-    function PushAttr(const aName: string; const aValue: string): TBvElement; overload;
+    function PushAttr(const aName: string; const aValue: string = ''): TBvElement; overload;
 
     /// <summary>Returns the last attribute on the list.</summary>
     function PeekAttr: TBvAttribute;
@@ -301,6 +304,58 @@ type
     constructor Create;
   end;
 
+  /// <summary>Basic, but very convenient, XML Parser for simple use cases.</summary>
+  TBvParser = class
+  private
+    fBuffer:      string;
+    fRoot:        TBvElement;
+    fState:       TBvParserState;
+    fPrevState:   TBvParserState;
+    fPrevQuote:   char;
+    fElement:     TBvElement;
+
+    { the core parsing routine }
+    function Parse(const aXml: string): TBvElement;
+
+    { called when we are ready to identify an element opening tag }
+    procedure OnStartElement;
+
+    { called when we are ready to identify an attribute name }
+    procedure OnExpectAttributeName;
+
+    { called when the attribute name has been processed }
+    procedure OnAttributeNameComplete;
+
+    { called when we are to begin processing an attribute value }
+    procedure OnAttributeValue;
+
+    { called when the attribute value has been processed }
+    procedure OnAttributeValueComplete;
+
+    { called when the start element tag has been processed }
+    procedure OnStartElementComplete;
+
+    { called when we are to begin processing an end element tag }
+    procedure OnEndElement;
+
+    { called when the end element tag has been processed }
+    procedure OnEndElementComplete;
+
+    { sometimes tokens are split into two, i.e. because of an interjected comment }
+    procedure UpdateLastValue;
+
+    { changes the parser state, keeps track of previous state }
+    procedure SetState(aState: TBvParserState);
+
+    { raises an exception with debug information }
+    procedure Fail(const aXml: string; const aHint: string; aIndex: integer; aCurrChar, aNextChar: char);
+
+    { ensures we keep previous state on state changes }
+    property State: TBvParserState read FState write SetState;
+  public
+    class function Execute(const aXml: string): TResult<TBvElement>;
+  end;
+
 const
   XmlEntities: array[xAmpersand..xQuote] of string = (
     '&amp;',
@@ -331,7 +386,6 @@ uses
   System.StrUtils,
   System.Character,
   System.DateUtils,
-  Base.Integrity,
   Base.Conversions;
 
 const
@@ -1039,6 +1093,356 @@ begin
   fElems.Free;
 
   inherited;
+end;
+
+{$endregion}
+
+{$region 'TBvParser'}
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TBvParser.Execute(const aXml: string): TResult<TBvElement>;
+begin
+  if string.IsNullOrWhiteSpace(aXml) then
+    TResult<TBvElement>.Err('xml is blank');
+
+  var p := TBvParser.Create;
+  try
+    try
+      var e := p.Parse(aXml);
+
+      if Assigned(e) then
+      begin
+        Result := TResult<TBvElement>.Ok(e);
+        exit;
+      end;
+
+      Result := TResult<TBvElement>.Err('xml is blank');
+    except on E: Exception do
+      Result := TResult<TBvElement>.Err(e.ToString);
+    end;
+
+    p.fRoot.Free;
+  finally
+    p.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvParser.Parse(const aXml: string): TBvElement;
+var
+  i:      integer;
+  count:  integer;
+  curr:   char;
+  next:   char;
+begin
+  fPrevState := psNone;
+  fState     := psNone;
+  fPrevQuote := #0;
+  i          := 0;
+  count      := Length(aXml);
+
+  while (fState <> psDone) and (i < count) do
+  begin
+    curr := aXml.Chars[i];
+
+    Inc(i);
+
+    next := if i = count then #0 else aXml.Chars[i];
+
+    { terminate prologue if possible }
+    if (curr = '?') and (not (fState in ValueState)) then
+    begin
+      if (not (fState in IgnoreState)) or (next <> '>') then
+        Fail(aXml, 'Unexpected characters "?"', i, curr, next);
+
+      Inc(i);
+      State := psNone;
+      continue;
+    end;
+
+    { terminate comment, or continue ignoring }
+    if fState in IgnoreState then
+    begin
+      if (curr = '-') and (next = '-') then
+      begin
+        Inc(i);
+        if (i < count) and (aXml.Chars[i] = '>') then
+        begin
+          Inc(i);
+          fState := fPrevState;
+        end;
+      end;
+      continue;
+    end;
+
+    { manage quotes }
+    if (curr = '''') or (curr = '"') then
+    begin
+      if fState = psExpectAttrValue then
+      begin
+        fPrevQuote := curr;
+        OnAttributeValue;
+        continue;
+      end;
+
+      if fState = psAttrValue then
+      begin
+        if fPrevQuote <> curr then
+          fBuffer := fBuffer + curr
+        else
+        begin
+          OnAttributeValueComplete;
+          fPrevQuote := #0;
+        end;
+        continue;
+      end;
+
+      if FState <> psValue then
+        Fail(aXml, 'Unexpected character (quote): ' + curr, i, curr, next);
+
+      fBuffer := fBuffer + curr;
+      continue;
+    end;
+
+    { manage start tag identifier }
+    if curr = '<' then
+    begin
+      if not (fState in NoneOrValueState) then
+        Fail(aXMl, 'Unexpected character "<"', i, curr, next);
+
+      if next = '/' then
+      begin
+        Inc(i);
+        OnEndElement;
+        continue;
+      end;
+
+      if (next = '?') and (not (fState in ValueState)) then
+      begin
+        Inc(i);
+        State := psIgnore;
+        continue;
+      end;
+
+      if next = '!' then
+      begin
+        Inc(i);
+        if (i < count) and (aXml.Chars[i] = '-') then
+        begin
+          Inc(i);
+          if (i < count) and (aXml.Chars[i] = '-') then
+          begin
+            Inc(i);
+            State := psIgnore;
+            continue;
+          end;
+        end;
+        Fail(aXml, 'Unexpected character "!"', i, curr, next);
+      end;
+
+      OnStartElement;
+      continue;
+    end;
+
+    { manage end tag identifier }
+    if curr = '>' then
+    begin
+      if not (fState in StartEndOrExpAttrNameState) then
+        Fail(aXml, 'Unexpected character ">"', i, curr, next);
+
+      if fState <> psEndElement then
+      begin
+        OnStartElementComplete;
+        continue;
+      end;
+
+      if not Assigned(fRoot) then
+        Fail(aXml, 'Empty element, unexpected character ">"', i, curr, next);
+
+      OnEndElementComplete;
+      continue;
+    end;
+
+    { add to current value }
+    if fState in ValueState then
+    begin
+      if not ((Length(fBuffer) = 0) and ((curr = '\t') or (curr = '\n') or (curr = '\r'))) then
+        FBuffer := fBuffer + curr;
+
+      continue;
+    end;
+
+    { identify state change triggered by space }
+    if curr = #32 then
+    begin
+      if fState = psStartElement then
+        OnExpectAttributeName
+      else if fState = psAttrName then
+        OnAttributeNameComplete;
+
+      continue;
+    end;
+
+    { identify state change triggered by an equal sign }
+    if curr = '=' then
+    begin
+      if fState = psAttrName then
+        OnAttributeNameComplete
+      else if fState <> psExpectEquals then
+        Fail(aXml, 'Unexpected character "="', i, curr, next);
+
+      State := psExpectAttrValue;
+      continue
+    end;
+
+    { manage end of tag }
+    if curr = '/' then
+    begin
+      if (fState in StartEndOrExpAttrNameState) and (next <> '>') then
+        Fail(aXml, 'Unexpected character "/"', i, curr, next);
+
+      OnStartElementComplete;
+      OnEndElementComplete;
+      Inc(i);
+      continue;
+    end;
+
+    if (fState = psExpectAttrName) and (Length(fBuffer) = 0) then
+      State := psAttrName;
+
+    if fState <> psNone then
+      fBuffer := fBuffer + curr;
+  end;
+
+  Result := fRoot;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnStartElement;
+begin
+  if Length(fBuffer) > 0 then UpdateLastValue;
+
+  var e := TBvElement.Create;
+
+  if not Assigned(fRoot) then
+  begin
+    fElement := e;
+    fRoot    := e;
+  end
+  else
+  begin
+    fElement.PushElem(e);
+    fElement := e;
+  end;
+
+  State := psStartElement;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnExpectAttributeName;
+begin
+  if Length(fBuffer) > 0 then
+  begin
+    fElement.Name := fBuffer;
+    fBuffer       := '';
+  end;
+
+  State := psExpectAttrName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnAttributeNameComplete;
+begin
+  fElement.PushAttr(fBuffer);
+  fBuffer := '';
+
+  State := psExpectEquals;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnAttributeValue;
+begin
+  State := psAttrValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnAttributeValueComplete;
+begin
+  fElement.LastAttr.Value := fBuffer;
+  fBuffer := '';
+
+  State := psExpectAttrName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnStartElementComplete;
+begin
+  if Length(FBuffer) > 0 then
+  begin
+    fElement.Name := fBuffer;
+    fBuffer := '';
+  end;
+
+  State := psValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnEndElement;
+begin
+  if Length(FBuffer) > 0 then
+    UpdateLastValue;
+
+  State := psEndElement;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.OnEndElementComplete;
+begin
+  fElement := fElement.Parent;
+  fBuffer := '';
+
+  if not Assigned(fElement) then
+    State := psDone
+  else
+    State := psValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.UpdateLastValue;
+begin
+  fElement.Value := fElement.Value + Trim(fBuffer);
+  fBuffer := '';
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.SetState(aState: TBvParserState);
+begin
+  fPrevState := fState;
+  fState := aState;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvParser.Fail(const aXml: string; const aHint: string; aIndex: integer; aCurrChar, aNextChar: char);
+var
+  e: TBvParserException;
+begin
+  e := TBvParserException.Create;
+
+  with e do begin
+    Hint        := aHint;
+    Index       := aIndex;
+    CurrentChar := aCurrChar;
+    NextChar    := aNextChar;
+    State       := fState;
+    PrevState   := fPrevState;
+    PrevQuote   := fPrevQuote;
+    LastElement := if Assigned(fElement) then fElement.AsXml else '';
+    Stack       := if Assigned(fRoot) then fRoot.AsXml else '';
+    Token       := fBuffer;
+    Xml         := aXml;
+  end;
+
+  raise e;
 end;
 
 {$endregion}

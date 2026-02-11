@@ -3,7 +3,7 @@
   Unit:        Base.Specifications
   Author:      David Harper
   License:     MIT
-  History:     2026-08-02  Initial version 0.1
+  History:     2026-08-02 Initial version 0.1
   Purpose:     Implements the Specification pattern with composable predicates and adapter-driven SQL WHERE generation.
 -----------------------------------------------------------------------------------------------------------------------}
 

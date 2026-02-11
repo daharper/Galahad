@@ -1,3 +1,12 @@
+{-----------------------------------------------------------------------------------------------------------------------
+  Project:     Galahad
+  Unit:        Base.Json
+  Author:      David Harper
+  License:     MIT
+  History:     2026-08-02 Initial version 0.1
+  Purpose:     Provides simple JSON wrappers and utility functions.
+-----------------------------------------------------------------------------------------------------------------------}
+
 unit Base.Json;
 
 interface

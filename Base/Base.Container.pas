@@ -3,7 +3,7 @@
   Unit:        Base.Container
   Author:      David Harper
   License:     MIT
-  History:     2026-08-02  Initial version
+  History:     2026-08-02 Initial version 0.1
   Purpose:     Provides a lightweight, explicit, and Delphi-native Dependency Injection container.
 -----------------------------------------------------------------------------------------------------------------------}
 
