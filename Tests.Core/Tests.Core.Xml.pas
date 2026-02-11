@@ -67,6 +67,16 @@ begin
   e['id'] := '4';
 
   Assert.AreEqual('4', e['id']);
+
+  e.RemoveAttr('name');
+
+  Assert.AreEqual(2, e.AttrCount);
+  Assert.IsFalse(e.HasAttr('name'));
+
+  e.ClearAttrs;
+
+  Assert.AreEqual(0, e.AttrCount);
+  Assert.IsFalse(e.HasAttrs);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

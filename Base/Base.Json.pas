@@ -5,9 +5,9 @@ interface
 uses
   System.SysUtils,
   System.Json,
+  Rest.Json,
   Base.Core,
-  Base.Integrity,
-  Rest.Json;
+  Base.Integrity;
 
 type
     /// <summary>
