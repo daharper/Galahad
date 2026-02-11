@@ -14,31 +14,31 @@ type
     ///  Provides JSON convenience methods.
     /// </summary>
     Json = record
-      /// <summary>Returns a TJSONValue from json text.</summary>
+      /// <summary>Returns a TJSONValue from JSON text.</summary>
       class function Parse(const aJsonText: string): TJSONValue; static;
 
-      /// <summary>Returns a TJSONObject from json text.</summary>
+      /// <summary>Returns a TJSONObject from JSON text.</summary>
       class function ParseObject(const aJsonText: string): TJSONObject; static;
 
-      /// <summary>Returns a TJSONArray from json text.</summary>
+      /// <summary>Returns a TJSONArray from JSON text.</summary>
       class function ParseArray(const aJsonText: string): TJSONArray; static;
 
-      /// <summary>Returns the user model T from json text.</summary>
+      /// <summary>Returns the user model T from JSON text.</summary>
       class function ParseModel<T: class, constructor>(const aJsonText: string):T; static;
 
       /// <summary>Returns a JSON text representation of the instance.</summary>
       class function ToString<T:class>(const aInstance: T): string; static;
 
-      /// <summary>Clones an object using Json serialization.</summary>
+      /// <summary>Clones an object using JSON serialization.</summary>
       class function Clone<T:class, constructor>(const aInstance: T): T; static;
 
-      /// <summary>Returns a TJSONObject from json text.</summary>
+      /// <summary>Returns a TJSONObject from JSON text.</summary>
       class function AsObject(const aJsonText: string): TResult<TJSONObject>; static;
 
-      /// <summary>Returns a TJSONArray, or error, from json text wrapped in a TResult.</summary>
+      /// <summary>Returns a TJSONArray, or error, from JSON text wrapped in a TResult.</summary>
       class function AsArray(const aJsonText: string): TResult<TJSONArray>; static;
 
-      /// <summary>Returns a user model T, or error, from json text wrapped in a TResult.</summary>
+      /// <summary>Returns a user model T, or error, from JSON text wrapped in a TResult.</summary>
       class function AsModel<T: class, constructor>(const aJsonText: string):TResult<T>; static;
 
       /// <summary>Returns JSON text of the instance T, or error, wrapped in a TResult.</summary>
