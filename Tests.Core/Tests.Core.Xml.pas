@@ -18,6 +18,7 @@ type
     [Test] procedure Test_Can_Walk_Elements;
     [Test] procedure Test_Can_TakeOwnership_Of_Element;
     [Test] procedure Test_To_Xml;
+    [Test] procedure Test_Parser_RoundTrip_XML;
   end;
 
 implementation
@@ -32,6 +33,35 @@ uses
 { TXmlFixture }
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Parser_RoundTrip_Xml;
+const
+  XML = '''
+        <e1>
+          <id a="1" b="2" c="3">1</id>
+          <name d="4">Fred</name>
+          <role e="5" f="6">Developer</role>
+        </e1>
+        ''';
+var scope: TScope;
+begin
+  var parseXML := TBvParser.Execute(XML);
+
+  Assert.IsTrue(parseXML.IsOk);
+
+  var e := scope.Owns(parseXML.Value);
+
+  Assert.AreSame(e, e.ElemAt(0).Parent);
+  Assert.AreSame(e, e.ElemAt(1).Parent);
+  Assert.AreSame(e, e.ElemAt(2).Parent);
+
+  Assert.AreEqual(3, e.ElemAt(0).AttrCount);
+  Assert.AreEqual(1, e.ElemAt(1).AttrCount);
+  Assert.AreEqual(2, e.ElemAt(2).AttrCount);
+
+  Assert.AreEqual(XML, e.AsXml);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_To_Xml;
 var scope: TScope;
 const
@@ -43,6 +73,7 @@ const
         </e1>
         ''';
 begin
+
   var e := scope.Owns(TBvElement.Create('e1'));
 
   e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
