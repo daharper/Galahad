@@ -66,7 +66,7 @@ type
     // Indexed property
     property Item[aIndex: Integer]: string read GetItem write SetItem;
 
-    function MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant; override;
+    function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; override;
   end;
 
   // Instrumented extended object
@@ -75,7 +75,7 @@ type
     LastMissingName: string;
     LastMissingArgs: TArray<Variant>;
     MissingCount: Integer;
-    function MethodMissing(const Name: string; const Args: TArray<Variant>): Variant; override;
+    function MethodMissing(const Name: string; const aHint: TInvokeHint; const Args: TArray<Variant>): Variant; override;
   end;
 
   [TestFixture]
@@ -561,7 +561,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TTestDynamic.MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant;
+function TTestDynamic.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
   Inc(MissingCount);
   LastMissingName := aName;
@@ -584,7 +584,7 @@ end;
 { TTestExtended }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TTestExtended.MethodMissing(const Name: string; const Args: TArray<Variant>): Variant;
+function TTestExtended.MethodMissing(const Name: string; const aHint: TInvokeHint; const Args: TArray<Variant>): Variant;
 begin
   Inc(MissingCount);
   LastMissingName := Name;

@@ -35,6 +35,14 @@ type
   PVariantArray    = ^TVariantArray;
   TVariantArray    = array[0..MaxInt div SizeOf(Variant) - 1] of Variant;
 
+  TInvokeHint = (
+    Unknown          = 0,
+    Method           = 1,
+    PropertyGet      = 2,
+    PropertySetValue = 4,
+    PropertySetRef   = 8
+  );
+
   /// <summary>
   ///  Per-class RTTI cache for dynamic dispatch.
   ///
@@ -115,6 +123,7 @@ type
     class function TryInvokeOnType(aSelf: TObject; const aName: string; const aArgs: TArray<Variant>; aFlags: Word; out aReturnValue: TValue): Boolean;
     class function EffectivePropertyFlags(aFlags: Word; const aDisplayParams: TDispParams; const aArgs: TArray<Variant>): Word;
     class function DerefArg(const V:OleVariant): Variant;
+    class function EffectiveInvokeKind(aFlags: Word; const aDP: TDispParams): Word;
 
     class constructor Create;
     class destructor Destroy;
@@ -153,7 +162,7 @@ type
     /// Fallback handler invoked when a member cannot be resolved via RTTI.
     /// Override to implement "method_missing" behaviour.
     /// </summary>
-    function MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant; virtual;
+    function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; virtual;
 
     procedure AfterConstruction; override;
 
@@ -196,7 +205,7 @@ type
     /// <summary>
     /// Handles all dynamic invocations. Override to implement interception / "method_missing" behaviour.
     /// </summary>
-    function MethodMissing(const Name: string; const Args: TArray<Variant>): Variant; virtual;
+    function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; virtual;
 
     procedure AfterConstruction; override;
 
@@ -243,7 +252,7 @@ type
     /// <summary>
     /// Fallback handler invoked when neither decorator nor source can resolve the member via RTTI.
     /// </summary>
-    function MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant; virtual;
+    function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; virtual;
 
     /// <summary>
     /// Detaches the wrapped source from the decorator (preventing the decorator from freeing it).
@@ -396,6 +405,7 @@ begin
     lName := Format('DISPID_%d', [aDispID]);
 
   lEffFlags := TDynamicHelper.EffectivePropertyFlags(aFlags, lDispParams^, lArgs);
+  var hint := TInvokeHint(TDynamicHelper.EffectiveInvokeKind(lEffFlags, lDispParams^));
 
   try
     if TDynamicHelper.TryInvokeOnType(Self, lName, lArgs, lEffFlags, lReturnValue) then
@@ -411,9 +421,9 @@ begin
     end;
 
     if Assigned(aVarResult) then
-      PVariant(aVarResult)^ := MethodMissing(lName, lArgs)
+      PVariant(aVarResult)^ := MethodMissing(lName, hint, lArgs)
     else
-      MethodMissing(lName, lArgs);
+      MethodMissing(lName, hint, lArgs);
 
     Result := S_OK;
   except
@@ -433,7 +443,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TDynamicObject.MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant;
+function TDynamicObject.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
   Result := Format('[missing] %s(%d args)', [aName, Length(aArgs)]);
 end;
@@ -554,11 +564,14 @@ begin
   if not FIdToName.TryGetValue(aDispID, lName) then
     lName := Format('DISPID_%d', [aDispID]);
 
+  var effFlags := TDynamicHelper.EffectivePropertyFlags(aFlags, lDispParams^, lArgs);
+  var hint := TInvokeHint(TDynamicHelper.EffectiveInvokeKind(effFlags, lDispParams^));
+
   try
     if Assigned(aVarResult) then
-      PVariant(aVarResult)^ := MethodMissing(lName, lArgs)
+      PVariant(aVarResult)^ := MethodMissing(lName, hint, lArgs)
     else
-      MethodMissing(lName, lArgs);
+      MethodMissing(lName, hint, lArgs);
 
     Result := S_OK;
   except
@@ -577,9 +590,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TExtendedObject.MethodMissing(const Name: string; const Args: TArray<Variant>): Variant;
+function TExtendedObject.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
-  Result := Format('[missing] %s(%d args)', [Name, Length(Args)]);
+  Result := Format('[missing] %s(%d args)', [aName, Length(aArgs)]);
 end;
 
 { TDynamicDecorator }
@@ -706,6 +719,8 @@ begin
     lName := Format('DISPID_%d', [aDispID]);
 
   lEffFlags := TDynamicHelper.EffectivePropertyFlags(aFlags, lDispParams^, lArgs);
+  var hint := TInvokeHint(TDynamicHelper.EffectiveInvokeKind(lEffFlags, lDispParams^));
+
 
   try
     if TDynamicHelper.TryInvokeOnType(Self, lName, lArgs, lEffFlags, lReturnValue) then
@@ -736,9 +751,9 @@ begin
     end;
 
     if Assigned(aVarResult) then
-      PVariant(aVarResult)^ := MethodMissing(lName, lArgs)
+      PVariant(aVarResult)^ := MethodMissing(lName, hint, lArgs)
     else
-      MethodMissing(lName, lArgs);
+      MethodMissing(lName, hint, lArgs);
 
     Result := S_OK;
   except
@@ -757,7 +772,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TDynamicDecorator<T>.MethodMissing(const aName: string; const aArgs: TArray<Variant>): Variant;
+function TDynamicDecorator<T>.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
   Result := Format('[missing] %s(%d args)', [aName, Length(aArgs)]);
 end;
@@ -836,7 +851,6 @@ begin
   fContext.Free;
 end;
 
-
 {----------------------------------------------------------------------------------------------------------------------}
 class function TDynamicHelper.EffectivePropertyFlags(aFlags: Word; const aDisplayParams: TDispParams; const aArgs: TArray<Variant>): Word;
 var
@@ -861,6 +875,40 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TDynamicHelper.EffectiveInvokeKind(aFlags: Word; const aDP: TDispParams): Word;
+var
+  HasMethod, HasGet, HasPut, HasPutRef: Boolean;
+begin
+  HasMethod := (aFlags and DISPATCH_METHOD) <> 0;
+  HasGet    := (aFlags and DISPATCH_PROPERTYGET) <> 0;
+  HasPut    := (aFlags and DISPATCH_PROPERTYPUT) <> 0;
+  HasPutRef := (aFlags and DISPATCH_PROPERTYPUTREF) <> 0;
+
+  // Puts win (they're semantically specific)
+  if HasPutRef then Exit(DISPATCH_PROPERTYPUTREF);
+  if HasPut    then Exit(DISPATCH_PROPERTYPUT);
+
+  // Method/Get ambiguity
+  if HasMethod and HasGet then
+  begin
+    // use args heuristic
+    if aDP.cArgs > 0 then
+      Exit(DISPATCH_METHOD)
+    else
+      Exit(DISPATCH_PROPERTYGET);
+
+    // return DISPATCH_METHOD and let RTTI fallback to property-get if needed.
+  end;
+
+  // Single bit cases
+  if HasMethod then Exit(DISPATCH_METHOD);
+  if HasGet    then Exit(DISPATCH_PROPERTYGET);
+
+  // Nothing usable
+  Exit(0);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TDynamicHelper.TryInvokeOnType(aSelf: TObject; const aName: string; const aArgs: TArray<Variant>; aFlags: Word; out aReturnValue: TValue): Boolean;
 var
   lType: TRttiType;
@@ -876,6 +924,28 @@ var
   lCache: TDynamicClassCache;
   lMethodFound: boolean;
   lInstance: TValue;
+
+  function IsCallableMethod(const aMethod: TRttiMethod): Boolean;
+  begin
+    Result := false;
+
+    if aMethod.IsConstructor or aMethod.IsDestructor then exit;
+
+    if not SameText(aMethod.Name, aName) then exit;
+
+    if SameText(aMethod.Name, 'Free') then exit;
+    if SameText(aMethod.Name, 'Destroy') then exit;
+    if SameText(aMethod.Name, 'MethodMissing') then exit;
+    if SameText(aMethod.Name, 'AfterConstruction') then exit;
+    if SameText(aMethod.Name, 'BeforeDestruction') then exit;
+
+    Result := true;
+
+//    if (lMethod.Parent is TRttiInstanceType) and
+//       (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then
+//      Continue;
+  end;
+
 begin
   Result := False;
   aReturnValue := TValue.Empty;
@@ -887,7 +957,6 @@ begin
 
   LType     := fContext.GetType(aSelf.ClassType);
   lCache    := DynamicCache.GetCache(aSelf.ClassType);
-  LInstance := TValue.From<TObject>(aSelf);
 
   { Indexed property (ask explicitly) }
 
@@ -964,15 +1033,7 @@ begin
   { Pass 1: STRICT matching (no string->numeric coercion) }
   for lMethod in LType.GetMethods do
   begin
-    if not SameText(lMethod.Name, aName) then
-      Continue;
-
-    if lMethod.IsConstructor or lMethod.IsDestructor then
-      Continue;
-
-    if (lMethod.Parent is TRttiInstanceType) and
-       (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then
-      Continue;
+    if not IsCallableMethod(lMethod) then Continue;
 
     lParams := lMethod.GetParameters;
 
@@ -988,15 +1049,7 @@ begin
   begin
     for lMethod in LType.GetMethods do
     begin
-      if not SameText(lMethod.Name, aName) then
-        Continue;
-
-      if lMethod.IsConstructor or lMethod.IsDestructor then
-        Continue;
-
-      if (lMethod.Parent is TRttiInstanceType) and
-         (TRttiInstanceType(lMethod.Parent).MetaclassType = TDynamicObject) then
-        Continue;
+      if not IsCallableMethod(lMethod) then Continue;
 
       lParams := lMethod.GetParameters;
 
