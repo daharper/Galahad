@@ -502,8 +502,6 @@ type
     /// Encodes bytes as canonical hexadecimal text (uppercase, no separators).
     /// </summary>
     class function BytesToHexStringInv(const aValue: TBytes): string; static;
-
-
   end;
 
 implementation
@@ -678,8 +676,6 @@ begin
     Result := false;
 end;
 
-{$endregion}
-
 {----------------------------------------------------------------------------------------------------------------------}
 class function TConvert.ToBoolOr(const S: string; const aDefault: Boolean): Boolean;
 begin
@@ -691,6 +687,8 @@ class function TConvert.ToBool(const S: string): Boolean;
 begin
   if not TryToBool(S, Result) then RaiseStrict('Boolean', S);
 end;
+
+{$endregion}
 
 {$region 'Char'}
 

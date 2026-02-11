@@ -175,6 +175,7 @@
         <DCCReference Include="Base\Base.Formatting.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Formatting.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Xml.pas"/>
+        <DCCReference Include="Base\Base.Mapping.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
