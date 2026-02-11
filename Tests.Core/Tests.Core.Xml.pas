@@ -77,6 +77,23 @@ begin
 
   Assert.AreEqual(0, e.AttrCount);
   Assert.IsFalse(e.HasAttrs);
+
+  e.PushAttr('id', '5');
+
+  Assert.IsTrue(e.HasAttrs);
+  Assert.IsTrue(e.HasAttr('id'));
+  Assert.AreEqual(0, e.AttrIndexOf('id'));
+  Assert.AreEqual('5', e.Attr('id').Value);
+  Assert.AreEqual('5', e.PeekAttr.Value);
+
+  a := e.PopAttr;
+
+  Assert.AreEqual('5', a.Value);
+  Assert.AreEqual('id', a.Name);
+
+  Assert.IsFalse(e.HasAttrs);
+
+  a.Free;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

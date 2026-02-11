@@ -107,36 +107,13 @@ type
     property Value: string read fValue write SetValue;
     property Attrs[aName: string]: string read GetAttribute write SetAttribute; default;
 
-    function ElemCount: integer;
-    function AttrCount: integer;
-    function HasValue: boolean;
-    function HasElems: boolean;
+    {------------------------------------------------ Attributes -------------------------------------------------}
+
     function HasAttrs: boolean;
+    function AttrCount: integer;
 
     function FirstAttr: TBvAttribute;
     function LastAttr: TBvAttribute;
-
-    function AsInteger: integer;
-    function AsBoolean: boolean;
-    function AsString: string;
-    function AsSingle: single;
-    function AsDouble: double;
-    function AsDateTime: TDateTime;
-    function AsChar: Char;
-    function AsInt64: Int64;
-    function AsGuid: TGuid;
-    function AsCurrency: Currency;
-
-    procedure Assign(const aValue: integer); overload;
-    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
-    procedure Assign(const aValue: string); overload;
-    procedure Assign(const aValue: single); overload;
-    procedure Assign(const aValue: double); overload;
-    procedure Assign(const aValue: TDateTime); overload;
-    procedure Assign(const aValue: char); overload;
-    procedure Assign(const aValue: Int64); overload;
-    procedure Assign(const aValue: TGuid); overload;
-    procedure Assign(const aValue: Currency); overload;
 
     /// <summary>
     ///  Updates the attribute if it exists, adds an attribute if it doesn't.
@@ -149,6 +126,22 @@ type
     /// </summary>
     /// <returns>The current element.</returns>
     function AddOrSetAttr(const aOther: TBvAttribute): TBvElement; overload;
+
+    /// <summary>
+    ///  Pushes a new attribute onto the back of the list
+    /// </summary>
+    procedure PushAttr(const aAttribute: TBvAttribute); overload;
+    procedure PushAttr(const aName: string; const aValue: string); overload;
+
+    /// <summary>
+    ///  Returns the last attribute on the list.
+    /// </summary>
+    function PeekAttr: TBvAttribute;
+
+    /// <summary>
+    ///  Removes the last attribute from the list.
+    /// </summary>
+    function PopAttr: TBvAttribute;
 
     /// <summary>
     ///  Gets the attribute with the specified name, add it if it doesn't.
@@ -174,6 +167,34 @@ type
     ///  Clears attributes.
     /// </summary>
     procedure ClearAttrs;
+
+    {------------------------------------------------ Elements ---------------------------------------------------}
+
+    function ElemCount: integer;
+    function HasValue: boolean;
+    function HasElems: boolean;
+
+    function AsInteger: integer;
+    function AsBoolean: boolean;
+    function AsString: string;
+    function AsSingle: single;
+    function AsDouble: double;
+    function AsDateTime: TDateTime;
+    function AsChar: Char;
+    function AsInt64: Int64;
+    function AsGuid: TGuid;
+    function AsCurrency: Currency;
+
+    procedure Assign(const aValue: integer); overload;
+    procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
+    procedure Assign(const aValue: string); overload;
+    procedure Assign(const aValue: single); overload;
+    procedure Assign(const aValue: double); overload;
+    procedure Assign(const aValue: TDateTime); overload;
+    procedure Assign(const aValue: char); overload;
+    procedure Assign(const aValue: Int64); overload;
+    procedure Assign(const aValue: TGuid); overload;
+    procedure Assign(const aValue: Currency); overload;
 
     /// <summary>
     ///  Sets the value of the element with the specified name, if it doesn't exist then a new element is created
@@ -201,6 +222,8 @@ type
     ///  Returns the index of the element with the specified name, otherwise -1.
     /// </summary>
     function ElemIndexOf(const aName: string): integer;
+
+    {--------------------------------------------- Initialization ------------------------------------------------}
 
     constructor Create; overload;
     constructor Create(const aName: string; const aValue: string = ''); overload;
@@ -660,6 +683,40 @@ begin
   Ensure.IsTrue(fAttrs.Count > 0, 'There are no attributes');
 
   Result := fAttrs[Pred(fAttrs.Count)];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.PeekAttr: TBvAttribute;
+begin
+  Result := LastAttr;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.PopAttr: TBvAttribute;
+begin
+  Ensure.IsTrue(fAttrs.Count > 0, 'There are no attributes to pop');
+
+  var i := Pred(fAttrs.Count);
+
+  Result := fAttrs[i];
+
+  fAttrs.Delete(i);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.PushAttr(const aAttribute: TBvAttribute);
+const
+  ERR = 'Attribute with the same name already exists: %s';
+begin
+  Ensure.IsFalse(HasAttr(aAttribute.Name), Format(ERR, [aAttribute.Name]));
+
+  fAttrs.Add(aAttribute);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.PushAttr(const aName, aValue: string);
+begin
+  PushAttr(TBvAttribute.Create(aName, aValue));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
