@@ -19,6 +19,8 @@ type
     [Test] procedure Test_Can_TakeOwnership_Of_Element;
     [Test] procedure Test_To_Xml;
     [Test] procedure Test_Parser_RoundTrip_XML;
+    [Test] procedure Test_Convert_To_Entities;
+    [Test] procedure Test_Ignore_Comments;
   end;
 
 implementation
@@ -33,6 +35,63 @@ uses
 { TXmlFixture }
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Ignore_Comments;
+const
+  XML_I = '''
+
+          <!-- comment -->
+
+          <?xml
+            version="1.0"
+            encoding="UTF-8"
+          ?>
+
+          <e1> <!-- should ignore this -->
+            <id a="1" b="2" c="3">1</id>
+            <!-- and this -->
+            <name d="4">Fred</name>
+            <role e="5" f="6">Developer</role>
+          </e1>
+          ''';
+
+  XML_O = '''
+          <e1>
+            <id a="1" b="2" c="3">1</id>
+            <name d="4">Fred</name>
+            <role e="5" f="6">Developer</role>
+          </e1>
+          ''';
+var
+  scope: TScope;
+begin
+  var parseXML := TBvParser.Execute(XML_I);
+
+  Assert.IsTrue(parseXML.IsOk);
+
+  var e := scope.Owns(parseXML.Value);
+
+  Assert.AreEqual(XML_O, e.AsXml);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Convert_To_Entities;
+begin
+  Assert.AreEqual('&amp;', ConvertToEntities('&'));
+
+  Assert.AreEqual('&amp;', ConvertToEntities('&amp;'));
+  Assert.AreEqual('&quot;', ConvertToEntities('"'));
+  Assert.AreEqual('&apos;', ConvertToEntities(''''));
+  Assert.AreEqual('&lt;', ConvertToEntities('<'));
+  Assert.AreEqual('&gt;', ConvertToEntities('>'));
+
+  Assert.AreEqual('a &lt; b', ConvertToEntities('a < b'));
+  Assert.AreEqual('a &gt; b', ConvertToEntities('a > b'));
+  Assert.AreEqual('hello &amp; world', ConvertToEntities('hello & world'));
+  Assert.AreEqual('yes&apos;', ConvertToEntities('yes'''));
+  Assert.AreEqual('&quot;yes&quot;', ConvertToEntities('"yes"'));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Parser_RoundTrip_Xml;
 const
   XML = '''
@@ -42,7 +101,8 @@ const
           <role e="5" f="6">Developer</role>
         </e1>
         ''';
-var scope: TScope;
+var
+  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML);
 
@@ -63,7 +123,6 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_To_Xml;
-var scope: TScope;
 const
   XML = '''
         <e1>
@@ -72,8 +131,9 @@ const
           <role e="5" f="6">Developer</role>
         </e1>
         ''';
+var
+  scope: TScope;
 begin
-
   var e := scope.Owns(TBvElement.Create('e1'));
 
   e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');

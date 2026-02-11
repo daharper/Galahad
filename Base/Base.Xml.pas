@@ -356,6 +356,12 @@ type
     class function Execute(const aXml: string): TResult<TBvElement>;
   end;
 
+  TXml = record
+    class function Parse(const aXml: string): TResult<TBvElement>; static;
+    class function Load(const aPath: string): TResult<TBvElement>; static;
+    class procedure Save(const aPath: string; const aElement: TBvElement); static;
+  end;
+
 const
   XmlEntities: array[xAmpersand..xQuote] of string = (
     '&amp;',
@@ -378,6 +384,7 @@ const
   function IsValidNameChar(aChar: char): boolean; inline;
   function IsValidName(const aName: string): boolean;
   function RemoveEntities(const aValue: string): string;
+  function ConvertToEntities(const aValue: string): string;
 
 implementation
 
@@ -386,6 +393,7 @@ uses
   System.StrUtils,
   System.Character,
   System.DateUtils,
+  System.IOUtils,
   Base.Conversions;
 
 const
@@ -397,6 +405,8 @@ const
 var
   lEntityToLiteralMap: TDictionary<string, string>;
   lLiteralToEntityMap: TDictionary<string, string>;
+
+{$region 'Functions' }
 
 {----------------------------------------------------------------------------------------------------------------------}
 function IsValidNameChar(aChar: char): boolean;
@@ -422,6 +432,67 @@ begin
     if not IsValidNameChar(lCh) then exit(false);
 
   Result := Length(aName) > 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function ConvertToEntities(const aValue: string): string;
+  function GetEntity(aIndex: integer): string;
+  begin
+    if aValue.Chars[aIndex] <> '&' then exit(aValue.Chars[aIndex]);
+
+    Result := '&';
+    Inc(aIndex);
+
+    while (aIndex < Length(aValue)) and (Length(Result) < 6)  do
+    begin
+      Result := Result + aValue.Chars[aIndex];
+
+      if Result = ';' then break;
+
+      Inc(aIndex);
+    end;
+
+    if lEntityToLiteralMap.ContainsKey(Result) then exit;
+
+    Result := '';
+  end;
+
+begin
+  if string.IsNullOrWhiteSpace(aValue) then exit(aValue);
+
+  var i := 0;
+
+  while i < aValue.Length do
+  begin
+    var ch := aValue.Chars[i];
+
+    case ch of
+        '<':
+          Result := Result + lLiteralToEntityMap['<'];
+        '>':
+          Result := Result + lLiteralToEntityMap['>'];
+        #$0027:
+          Result := Result + lLiteralToEntityMap[#$0027];
+        #$0022:
+          Result := Result + lLiteralToEntityMap[#$0022];
+        '&':
+          begin
+            var text := GetEntity(i);
+
+            if text = '' then
+              Result := Result + lLiteralToEntityMap['&']
+            else
+            begin
+              Inc(i, Length(text) - 1);
+              Result := Result + text;
+            end;
+          end
+        else
+          Result := Result + ch;
+    end;
+
+    Inc(i);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -489,7 +560,9 @@ begin
   end;
 end;
 
-{ TBvElement }
+{$endregion}
+
+{$region 'TBvElement'}
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.SetName(const aValue: string);
@@ -626,7 +699,7 @@ begin
   aBuilder.Append('>');
 
   if HasValue then
-    aBuilder.Append(fValue);
+    aBuilder.Append(ConvertToEntities(fValue));
 
   if not HasElems then
   begin
@@ -856,7 +929,9 @@ begin
   Result := fElems[aIndex];
 end;
 
-{$region 'BvElement Attributes'}
+{$endregion}
+
+{$region 'TBvElement Attributes'}
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.HasAttrs: boolean;
@@ -1032,7 +1107,7 @@ end;
 
 {$endregion}
 
-{$region 'BvElement Initialization'}
+{$region 'TBvElement Initialization'}
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Initialize;
@@ -1543,14 +1618,9 @@ function TBvAttribute.AsXml: string;
 begin
   if Length(fValue) = 0 then exit('');
 
-  if not fValue.Contains('"') then
-    exit(Format('%s="%s"', [fName, fValue]));
+  var value := ConvertToEntities(fValue);
 
-  if not fValue.Contains('''') then
-    exit(Format('%s=''%s''', [fName, fValue]));
-
-  { TODO : Replace Literals with Entities }
-  Result := Format('%s="%s"', [fName, fValue]);
+  Result := Format('%s="%s"', [fName, value]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1696,6 +1766,30 @@ begin
   Result := sb.ToString;
 
   sb.Free;
+end;
+
+{$endregion}
+
+{$region 'TXml'}
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TXml.Parse(const aXml: string): TResult<TBvElement>;
+begin
+  Result := TBvParser.Execute(aXml);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TXml.Load(const aPath: string): TResult<TBvElement>;
+begin
+  var xml := TFile.ReadAllText(aPath);
+  Result := TBvParser.Execute(xml);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TXml.Save(const aPath: string; const aElement: TBvElement);
+begin
+  var xml := aElement.AsXml;
+  TFile.WriteAllText(aPath, xml);
 end;
 
 {$endregion}
