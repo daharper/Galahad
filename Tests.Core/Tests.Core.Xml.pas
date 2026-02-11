@@ -16,6 +16,7 @@ type
     [Test] procedure Test_Subelements;
     [Test] procedure Test_Can_Walk_Attributes;
     [Test] procedure Test_Can_Walk_Elements;
+    [Test] procedure Test_Can_TakeOwnership_Of_Element;
   end;
 
 implementation
@@ -28,6 +29,41 @@ uses
   Base.Xml;
 
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Can_TakeOwnership_Of_Element;
+var scope: TScope;
+begin
+  var e := TBvElement.Create('e1');
+
+  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
+
+  Assert.AreSame(e, e.ElemAt(0).Parent);
+  Assert.AreSame(e, e.ElemAt(1).Parent);
+  Assert.AreSame(e, e.ElemAt(2).Parent);
+
+  e.ElemAt(0).PushAttr('a', '1').PushAttr('b', '2').PushAttr('c', '3');
+  e.ElemAt(1).PushAttr('d', '4');
+  e.ElemAt(2).PushAttr('e', '5').PushAttr('f', '6');
+
+  Assert.AreEqual(3, e.ElemAt(0).AttrCount);
+  Assert.AreEqual(1, e.ElemAt(1).AttrCount);
+  Assert.AreEqual(2, e.ElemAt(2).AttrCount);
+
+  var e2 := scope.Owns(TBvElement.Create(e));
+
+  Assert.AreEqual(3, e2.ElemCount);
+
+  Assert.AreSame(e2, e2.ElemAt(0).Parent);
+  Assert.AreSame(e2, e2.ElemAt(1).Parent);
+  Assert.AreSame(e2, e2.ElemAt(2).Parent);
+
+  Assert.AreEqual(3, e2.ElemAt(0).AttrCount);
+  Assert.AreEqual(1, e2.ElemAt(1).AttrCount);
+  Assert.AreEqual(2, e2.ElemAt(2).AttrCount);
+
+  Assert.IsFalse(Assigned(e));
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Can_Walk_Elements;

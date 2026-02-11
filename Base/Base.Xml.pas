@@ -161,6 +161,9 @@ type
     /// <summary>Returns an enumerator for attributes.</summary>
     function Attrs: TEnumerable<TBvAttribute>;
 
+    /// <summary>Returns the attribute at the specified index.</summary>
+    function AttrAt(const aIndex: integer): TBvAttribute;
+
     {------------------------------------------------ Elements ---------------------------------------------------}
 
     function ElemCount: integer;
@@ -236,13 +239,16 @@ type
     /// <summary>Returns an enumerator for attributes.</summary>
     function Elems: TEnumerable<TBvElement>;
 
+    /// <summary>Returns the element at the specified index.</summary>
+    function ElemAt(const aIndex: integer): TBvElement;
+
     {--------------------------------------------- Initialization ------------------------------------------------}
 
     constructor Create; overload;
     constructor Create(const aName: string; const aValue: string = ''); overload;
 
-    { takes ownership of aOther's properties and frees aOther }
-    constructor Create(aOther: TBvElement); overload;
+    /// <summary>Takes ownership of other's elements and attribtues and frees/nils other.</summary>
+    constructor Create(var aOther: TBvElement); overload;
 
     destructor Destroy; override;
   end;
@@ -621,6 +627,7 @@ begin
   begin
     fElems.Add(TBvElement.Create(aName, aValue));
     i := Pred(fElems.Count);
+    fElems[i].Parent := self;
   end;
 
   Result := fElems[i];
@@ -639,6 +646,7 @@ begin
   else
   begin
     fElems.Add(aOther);
+    aOther.Parent := self;
     i := Pred(fElems.Count);
   end;
 
@@ -663,7 +671,6 @@ begin
   Ensure.IsTrue(fElems.Count > 0, 'There are no subelements');
 
   Result := fElems[0];
-
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -688,6 +695,7 @@ begin
   var i := Pred(fElems.Count);
 
   Result := fElems[i];
+  Result.Parent := nil;
 
   fElems.Delete(i);
 end;
@@ -695,6 +703,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.PushElem(const aElement: TBvElement) : TBvElement;
 begin
+  aElement.Parent := self;
+
   fElems.Add(aElement);
 
   Result := self;
@@ -703,7 +713,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.PushElem(const aName, aValue: string) : TBvElement;
 begin
-  fElems.Add(TBvElement.Create(aName, aValue));
+  PushElem(TBvElement.Create(aName, aValue));
 
   Result := self;
 end;
@@ -729,6 +739,17 @@ begin
   fElems.Clear;
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.ElemAt(const aIndex: integer): TBvElement;
+begin
+  Ensure.IsTrue(fElems.Count > 0, 'There are no elements')
+        .IsTrue((aIndex >= 0) and (aIndex < fElems.Count), 'element index out of range');
+
+  Result := fElems[aIndex];
+end;
+
+
+
 {$region 'BvElement Attributes'}
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -741,6 +762,15 @@ end;
 function TBvElement.AttrCount: integer;
 begin
   Result := fAttrs.Count;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AttrAt(const aIndex: integer): TBvAttribute;
+begin
+  Ensure.IsTrue(fAttrs.Count > 0, 'There are no attributes')
+        .IsTrue((aIndex >= 0) and (aIndex < fAttrs.Count), 'attribute index out of range');
+
+  Result := fAttrs[aIndex];
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -921,18 +951,23 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TBvElement.Create(aOther: TBvElement);
+constructor TBvElement.Create(var aOther: TBvElement);
 begin
   fName := aOther.Name;
   fValue := aOther.Value;
 
-  fElems := TList<TBvElement>.Create(aOther.fElems);
+  fElems := TList<TBvElement>.Create;
+
+  for var e in aOther.fElems do
+    PushElem(e);
+
   fAttrs := TList<TBvAttribute>.Create(aOther.fAttrs);
 
   aOther.fElems.Clear;
   aOther.fAttrs.Clear;
 
   aOther.Free;
+  aOther := nil;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
