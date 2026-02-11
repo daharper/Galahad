@@ -219,9 +219,45 @@ type
     function HasElem(const aName: string): boolean;
 
     /// <summary>
+    ///  Returns the first subelement.
+    /// </summary>
+    function FirstElem: TBvElement;
+
+    /// <summary>
+    ///  Returns the last subelement.
+    /// </summary>
+    function LastElem: TBvElement;
+
+    /// <summary>
     ///  Returns the index of the element with the specified name, otherwise -1.
     /// </summary>
     function ElemIndexOf(const aName: string): integer;
+
+    /// <summary>
+    ///  Pushes a new element onto the back of the list.
+    /// </summary>
+    procedure PushElem(const aElement: TBvElement); overload;
+    procedure PushElem(const aName: string; const aValue: string); overload;
+
+    /// <summary>
+    ///  Returns the last element on the list.
+    /// </summary>
+    function PeekElem: TBvElement;
+
+    /// <summary>
+    ///  Removes the last element from the list.
+    /// </summary>
+    function PopElem: TBvElement;
+
+    /// <summary>
+    ///  Removes a subelement from the list.
+    /// </summary>
+    procedure RemoveElem(const aName: string);
+
+    /// <summary>
+    ///  Clears subelements.
+    /// </summary>
+    procedure ClearElems;
 
     {--------------------------------------------- Initialization ------------------------------------------------}
 
@@ -414,8 +450,6 @@ begin
   end;
 end;
 
-
-
 { TBvElement }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -455,8 +489,6 @@ function TBvElement.ElemCount: integer;
 begin
   Result := fElems.Count;
 end;
-
-
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsBoolean: boolean;
@@ -642,8 +674,75 @@ begin
   Result := fElems[Pred(fElems.Count)];
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.FirstElem: TBvElement;
+begin
+  Ensure.IsTrue(fElems.Count > 0, 'There are no subelements');
 
-{$region 'Attributes'}
+  Result := fElems[0];
+
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.LastElem: TBvElement;
+begin
+  Ensure.IsTrue(fElems.Count > 0, 'There are no subelements');
+
+  Result := fElems[Pred(fElems.Count)];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.PeekElem: TBvElement;
+begin
+  Result := LastElem;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.PopElem: TBvElement;
+begin
+  Ensure.IsTrue(fElems.Count > 0, 'There are no subelements to pop');
+
+  var i := Pred(fElems.Count);
+
+  Result := fElems[i];
+
+  fElems.Delete(i);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.PushElem(const aElement: TBvElement);
+begin
+  fElems.Add(aElement);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.PushElem(const aName, aValue: string);
+begin
+  fElems.Add(TBvElement.Create(aName, aValue));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.RemoveElem(const aName: string);
+begin
+  var i := ElemIndexOf(aName);
+
+  if i <> -1 then
+  begin
+    fElems[i].Free;
+    fElems.Delete(i);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.ClearElems;
+begin
+  for var i := 0 to Pred(fElems.Count) do
+    fElems[i].Free;
+
+  fElems.Clear;
+end;
+
+{$region 'BvElement Attributes'}
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.HasAttrs: boolean;
@@ -718,6 +817,7 @@ procedure TBvElement.PushAttr(const aName, aValue: string);
 begin
   PushAttr(TBvAttribute.Create(aName, aValue));
 end;
+
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.RemoveAttr(const aName: string);
@@ -800,6 +900,8 @@ end;
 
 {$endregion}
 
+{$region 'BvElement Initialization'}
+
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Initialize;
 begin
@@ -853,6 +955,8 @@ begin
 
   inherited;
 end;
+
+{$endregion}
 
 {$region 'TBvAttribute'}
 

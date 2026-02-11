@@ -13,6 +13,7 @@ type
     [Test] procedure Test_Attribute;
     [Test] procedure Test_Element_Value;
     [Test] procedure Test_Element_Attributes;
+    [Test] procedure Test_Subelements;
   end;
 
 implementation
@@ -23,8 +24,53 @@ uses
   Base.Integrity,
   Base.Xml;
 
-
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Subelements;
+var scope: TScope;
+begin
+  var e := scope.Owns(TBvElement.Create('employee'));
+
+  Assert.IsFalse(e.HasElems);
+
+  e.AddOrSetElem('id', '1');
+
+  Assert.IsTrue(e.HasElems);
+  Assert.AreEqual(1, e.ElemCount);
+  Assert.IsTrue(e.HasElem('id'));
+
+  var id := e.Elem('id');
+
+  Assert.AreSame(id, e.Elem('id'));
+  Assert.AreEqual('1', e.Elem('id').Value);
+
+  e.Elem('id').Value := '2';
+
+  Assert.AreEqual('2', id.Value);
+
+  e.PushElem('name', 'Fred');
+  e.PushElem(TBvElement.Create('role', 'developer'));
+
+  Assert.AreEqual(3, e.ElemCount);
+
+  Assert.AreSame(e.FirstElem, e.Elem('id'));
+  Assert.AreSame(e.LastElem, e.Elem('role'));
+  Assert.AreSame(e.LastElem, e.PeekElem);
+
+  var role := scope.Owns(e.PopElem);
+
+  Assert.AreEqual('role', role.Name);
+
+  e.RemoveElem('id');
+
+  Assert.AreEqual(1, e.ElemCount);
+  Assert.AreEqual('name', e.PeekElem.Name);
+
+  e.ClearElems;
+
+  Assert.AreEqual(0, e.ElemCount);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Element_Attributes;
