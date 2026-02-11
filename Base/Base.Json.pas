@@ -24,7 +24,7 @@ type
       class function ParseArray(const aJsonText: string): TJSONArray; static;
 
       /// <summary>Returns the user model T from JSON text.</summary>
-      class function ParseModel<T: class, constructor>(const aJsonText: string):T; static;
+      class function ParseType<T: class, constructor>(const aJsonText: string):T; static;
 
       /// <summary>Returns a JSON text representation of the instance.</summary>
       class function ToString<T:class>(const aInstance: T): string; static;
@@ -39,7 +39,7 @@ type
       class function AsArray(const aJsonText: string): TResult<TJSONArray>; static;
 
       /// <summary>Returns a user model T, or error, from JSON text wrapped in a TResult.</summary>
-      class function AsModel<T: class, constructor>(const aJsonText: string):TResult<T>; static;
+      class function AsType<T: class, constructor>(const aJsonText: string):TResult<T>; static;
 
       /// <summary>Returns JSON text of the instance T, or error, wrapped in a TResult.</summary>
       class function AsString<T:class>(const aInstance: T): TResult<string>; static;
@@ -93,7 +93,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function Json.ParseModel<T>(const aJsonText: string): T;
+class function Json.ParseType<T>(const aJsonText: string): T;
 begin
   Ensure.IsNotBlank(aJsonText, 'Missing JSON text');
 
@@ -152,12 +152,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function Json.AsModel<T>(const aJsonText: string): TResult<T>;
+class function Json.AsType<T>(const aJsonText: string): TResult<T>;
 const
   ERR = 'Could not parse JSON into %s: %s';
 begin
   try
-    Result.SetOk(ParseModel<T>(aJsonText));
+    Result.SetOk(ParseType<T>(aJsonText));
   except
     on E:Exception do
       Result.SetErr(ERR, [T.ClassName, E.Message]);
