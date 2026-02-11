@@ -17,6 +17,7 @@ type
     [Test] procedure Test_Can_Walk_Attributes;
     [Test] procedure Test_Can_Walk_Elements;
     [Test] procedure Test_Can_TakeOwnership_Of_Element;
+    [Test] procedure Test_To_Xml;
   end;
 
 implementation
@@ -29,6 +30,31 @@ uses
   Base.Xml;
 
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_To_Xml;
+var scope: TScope;
+const
+  XML = '''
+        <e1>
+          <id a="1" b="2" c="3">1</id>
+          <name d="4">Fred</name>
+          <role e="5" f="6">Developer</role>
+        </e1>
+        ''';
+begin
+  var e := scope.Owns(TBvElement.Create('e1'));
+
+  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
+
+  e.ElemAt(0).PushAttr('a', '1').PushAttr('b', '2').PushAttr('c', '3');
+  e.ElemAt(1).PushAttr('d', '4');
+  e.ElemAt(2).PushAttr('e', '5').PushAttr('f', '6');
+
+  var s := e.AsXml;
+
+  Assert.AreEqual(XML, e.AsXml);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Can_TakeOwnership_Of_Element;

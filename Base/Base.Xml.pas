@@ -94,13 +94,13 @@ type
     fName: string;
     fValue: string;
 
-    procedure Initialize;
+    function GetAttribute(aName: string): string;
 
+    procedure Initialize;
     procedure SetName(const aValue: string);
     procedure SetValue(const aValue: string);
-    function GetAttribute(aName: string): string;
     procedure SetAttribute(aName: string; const aValue: string);
-
+    procedure AppendXml(const [ref] aBuilder: TStringBuilder; indent: string = '');
   public
     property Parent: TBvElement read fParent write fParent;
     property Name: string read fName write SetName;
@@ -180,6 +180,8 @@ type
     function AsInt64: Int64;
     function AsGuid: TGuid;
     function AsCurrency: Currency;
+
+    function AsXml:string;
 
     procedure Assign(const aValue: integer); overload;
     procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
@@ -534,6 +536,58 @@ end;
 function TBvElement.AsString: string;
 begin
   Result := fValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.AsXml: string;
+var
+  lBuilder: TStringBuilder;
+begin
+  lBuilder := TStringBuilder.Create;
+  try
+    AppendXml(lBuilder);
+    Result := TrimRight(lBuilder.ToString);
+  finally
+    lBuilder.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.AppendXml(const [ref] aBuilder: TStringBuilder; indent: string);
+var
+  lAttr: TBvAttribute;
+  lElem: TBvElement;
+begin
+  aBuilder.AppendFormat('%s<%s', [indent, fName]);
+
+  for lAttr in Attrs do
+    aBuilder.AppendFormat(' %s', [lAttr.AsXml]);
+
+  if (not HasValue) and (not HasElems) then
+  begin
+    aBuilder.AppendLine(' />');
+    exit;
+  end;
+
+  aBuilder.Append('>');
+
+  if HasValue then
+    aBuilder.Append(fValue);
+
+  if not HasElems then
+  begin
+    aBuilder.AppendFormat('</%s>', [fName]);
+    aBuilder.AppendLine;
+    exit;
+  end;
+
+  aBuilder.AppendLine;
+
+  for lElem in fElems do
+    lElem.AppendXml(aBuilder, indent + '  ');
+
+  aBuilder.AppendFormat('%s</%s>', [indent, fName]);
+  aBuilder.AppendLine;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
