@@ -105,14 +105,20 @@ type
     property Parent: TBvElement read fParent write fParent;
     property Name: string read fName write SetName;
     property Value: string read fValue write SetValue;
-    property Attrs[aName: string]: string read GetAttribute write SetAttribute; default;
+    property Attributes[aName: string]: string read GetAttribute write SetAttribute; default;
 
     {------------------------------------------------ Attributes -------------------------------------------------}
 
+    /// <summary>Returns true if there are attributes.</summary>
     function HasAttrs: boolean;
+
+    /// <summary>Returns the attribute count.</summary>
     function AttrCount: integer;
 
+    /// <summary>Returns the first attribute.</summary>
     function FirstAttr: TBvAttribute;
+
+    /// <summary>Returns the last attribute.</summary>
     function LastAttr: TBvAttribute;
 
     /// <summary>
@@ -127,46 +133,33 @@ type
     /// <returns>The current element.</returns>
     function AddOrSetAttr(const aOther: TBvAttribute): TBvElement; overload;
 
-    /// <summary>
-    ///  Pushes a new attribute onto the back of the list
-    /// </summary>
-    procedure PushAttr(const aAttribute: TBvAttribute); overload;
-    procedure PushAttr(const aName: string; const aValue: string); overload;
+    /// <summary>Pushes a new attribute onto the back of the list - returns Self for chaining.</summary>
+    function PushAttr(const aAttribute: TBvAttribute): TBvElement; overload;
+    function PushAttr(const aName: string; const aValue: string): TBvElement; overload;
 
-    /// <summary>
-    ///  Returns the last attribute on the list.
-    /// </summary>
+    /// <summary>Returns the last attribute on the list.</summary>
     function PeekAttr: TBvAttribute;
 
-    /// <summary>
-    ///  Removes the last attribute from the list.
-    /// </summary>
+    /// <summary>Removes the last attribute from the list.</summary>
     function PopAttr: TBvAttribute;
 
-    /// <summary>
-    ///  Gets the attribute with the specified name, add it if it doesn't.
-    /// </summary>
+    /// <summary>Gets the attribute with the specified name, add it if it doesn't.</summary>
     function Attr(const aName: string; const aValue: string = ''): TBvAttribute;
 
-    /// <summary>
-    ///  Returns true if an attribute with the specified name exists.
-    /// </summary>
+    /// <summary>Returns true if an attribute with the specified name exists.</summary>
     function HasAttr(const aName: string): boolean;
 
-    /// <summary>
-    ///  Returns the index of the attribute with the specified name, otherwise -1.
-    /// </summary>
+    /// <summary>Returns the index of the attribute with the specified name, otherwise -1.</summary>
     function AttrIndexOf(const aName: string): integer;
 
-    /// <summary>
-    ///  Removes an attribute from the list.
-    /// </summary>
+    /// <summary>Removes an attribute from the list.</summary>
     procedure RemoveAttr(const aName: string);
 
-    /// <summary>
-    ///  Clears attributes.
-    /// </summary>
+    /// <summary>Clears attributes.</summary>
     procedure ClearAttrs;
+
+    /// <summary>Returns an enumerator for attributes.</summary>
+    function Attrs: TEnumerable<TBvAttribute>;
 
     {------------------------------------------------ Elements ---------------------------------------------------}
 
@@ -208,56 +201,40 @@ type
     /// <returns>The added or updated element.</returns>
     function AddOrSetElem(const aOther: TBvElement): TBvElement; overload;
 
-    /// <summary>
-    ///  Gets the element with the specified name, adds it if it doesn't exist.
-    /// </summary>
+    /// <summary>Gets the element with the specified name, adds it if it doesn't exist.</summary>
     function Elem(const aName: string; const aValue: string = ''): TBvElement;
 
-    /// <summary>
-    ///  Returns true if an element with the specified name exists.
-    /// </summary>
+    /// <summary>Returns true if an element with the specified name exists.</summary>
     function HasElem(const aName: string): boolean;
 
-    /// <summary>
-    ///  Returns the first subelement.
-    /// </summary>
+    /// <summary>Returns the first subelement.</summary>
     function FirstElem: TBvElement;
 
-    /// <summary>
-    ///  Returns the last subelement.
-    /// </summary>
+    /// <summary>Returns the last subelement.</summary>
     function LastElem: TBvElement;
 
-    /// <summary>
-    ///  Returns the index of the element with the specified name, otherwise -1.
-    /// </summary>
+    /// <summary>Returns the index of the element with the specified name, otherwise -1.</summary>
     function ElemIndexOf(const aName: string): integer;
 
-    /// <summary>
-    ///  Pushes a new element onto the back of the list.
-    /// </summary>
-    procedure PushElem(const aElement: TBvElement); overload;
-    procedure PushElem(const aName: string; const aValue: string); overload;
+    /// <summary>Pushes a new element onto the back of the list.</summary>
+    /// <remarks>Returns the current element for chaining.</remarks>
+    function PushElem(const aElement: TBvElement): TBvElement; overload;
+    function PushElem(const aName: string; const aValue: string): TBvElement; overload;
 
-    /// <summary>
-    ///  Returns the last element on the list.
-    /// </summary>
+    /// <summary>Returns the last element on the list./summary>
     function PeekElem: TBvElement;
 
-    /// <summary>
-    ///  Removes the last element from the list.
-    /// </summary>
+    /// <summary>Removes the last element from the list.</summary>
     function PopElem: TBvElement;
 
-    /// <summary>
-    ///  Removes a subelement from the list.
-    /// </summary>
+    /// <summary>Removes a subelement from the list.</summary>
     procedure RemoveElem(const aName: string);
 
-    /// <summary>
-    ///  Clears subelements.
-    /// </summary>
+    /// <summary>Clears subelements.</summary>
     procedure ClearElems;
+
+    /// <summary>Returns an enumerator for attributes.</summary>
+    function Elems: TEnumerable<TBvElement>;
 
     {--------------------------------------------- Initialization ------------------------------------------------}
 
@@ -622,6 +599,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Elems: TEnumerable<TBvElement>;
+begin
+  Result := fElems;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.HasElem(const aName: string): boolean;
 begin
   Result := ElemIndexOf(aName) <> -1;
@@ -710,15 +693,19 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.PushElem(const aElement: TBvElement);
+function TBvElement.PushElem(const aElement: TBvElement) : TBvElement;
 begin
   fElems.Add(aElement);
+
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.PushElem(const aName, aValue: string);
+function TBvElement.PushElem(const aName, aValue: string) : TBvElement;
 begin
   fElems.Add(TBvElement.Create(aName, aValue));
+
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -803,21 +790,24 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.PushAttr(const aAttribute: TBvAttribute);
+function TBvElement.PushAttr(const aAttribute: TBvAttribute): TBvElement;
 const
   ERR = 'Attribute with the same name already exists: %s';
 begin
   Ensure.IsFalse(HasAttr(aAttribute.Name), Format(ERR, [aAttribute.Name]));
 
   fAttrs.Add(aAttribute);
+
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TBvElement.PushAttr(const aName, aValue: string);
+function TBvElement.PushAttr(const aName, aValue: string): TBvElement;
 begin
   PushAttr(TBvAttribute.Create(aName, aValue));
-end;
 
+  Result := self;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.RemoveAttr(const aName: string);
@@ -838,6 +828,12 @@ begin
     if (fAttrs[i].Name = aName) then exit(i);
 
   Result := -1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Attrs: TEnumerable<TBvAttribute>;
+begin
+  Result := fAttrs;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

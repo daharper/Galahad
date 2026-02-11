@@ -14,17 +14,56 @@ type
     [Test] procedure Test_Element_Value;
     [Test] procedure Test_Element_Attributes;
     [Test] procedure Test_Subelements;
+    [Test] procedure Test_Can_Walk_Attributes;
+    [Test] procedure Test_Can_Walk_Elements;
   end;
 
 implementation
 
 uses
   System.DateUtils,
+  System.Generics.Collections,
   Base.Core,
   Base.Integrity,
   Base.Xml;
 
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Can_Walk_Elements;
+var scope: TScope;
+begin
+  var e := scope.Owns(TBvElement.Create('test'));
+
+  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'developer');
+
+  var elems := scope.Owns(TList<string>.Create);
+
+  for var elem in e.Elems do
+    elems.Add(elem.Name);
+
+  Assert.IsTrue(elems.Contains('id'));
+  Assert.IsTrue(elems.Contains('name'));
+  Assert.IsTrue(elems.Contains('role'));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Can_Walk_Attributes;
+var scope: TScope;
+begin
+  var e := scope.Owns(TBvElement.Create('test'));
+
+  e.PushAttr('id', '1').PushAttr('name', 'Fred').PushAttr('role', 'developer');
+
+  var attrs := scope.Owns(TList<string>.Create);
+
+  for var attr in e.Attrs do
+    attrs.Add(attr.Name);
+
+  Assert.IsTrue(attrs.Contains('id'));
+  Assert.IsTrue(attrs.Contains('name'));
+  Assert.IsTrue(attrs.Contains('role'));
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Subelements;
