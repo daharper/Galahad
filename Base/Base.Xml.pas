@@ -407,7 +407,6 @@ uses
   Base.Conversions;
 
 const
-//  IgnoreState:                TBvParserStates = [psIgnore];
   ValueState:                 TBvParserStates = [psValue, psAttrValue];
   NoneOrValueState:           TBvParserStates = [psNone, psValue, psAttrValue];
   StartEndOrExpAttrNameState: TBvParserStates = [psStartElement, psEndElement, psExpectAttrName];
@@ -1416,7 +1415,6 @@ begin
               end;
 
               Inc(i, 2);
-
               continue;
             end;
           end;
@@ -1448,7 +1446,6 @@ begin
       if (next = '?') and (not (fState in ValueState)) then
       begin
         Inc(i);
-//        State := psIgnore;
         State := psPrologue;
         continue;
       end;
@@ -1460,13 +1457,6 @@ begin
     { manage end tag identifier }
     if curr = '>' then
     begin
-//      if fState = psValue then
-//      begin
-//        OnEndElement;
-//        Inc(i);
-//        continue;
-//      end;
-
       if not (fState in StartEndOrExpAttrNameState) then
         Fail(aXml, 'Unexpected character ">"', i, curr, next);
 
@@ -1532,7 +1522,6 @@ begin
 
     if (fState <> psNone) then
       fBuffer := fBuffer + curr;
-
   end;
 
   Result := fRoot;
