@@ -262,9 +262,12 @@ type
   TBvParserState = (
     { The parser has no state }
     psNone,
+    { The parser is processing a comment }
     psComment,
+    { The parser is processing the prologue }
     psPrologue,
-
+    { The parser is processing a CDATA section }
+    psCDATA,
     { The parser is analyzing a start element tag (opening tag) }
     psStartElement,
     { The parser is analyzing an end element tag (closing tag) }
@@ -283,8 +286,6 @@ type
     psValue,
     { The parser has completed building the root element }
     psDone
-
-//    psIgnore,
   );
 
   TBvParserStates = set of TBvParserState;
@@ -393,6 +394,7 @@ const
   function ConvertToEntities(const aValue: string): string;
   function GetEntity(const aValue: string; aIndex: integer): string;
   function GetCharacter(const aValue: string; var aIndex: integer): string;
+  function PeekAhead(const aValue: string; const aIndex: integer; const aCount: integer): string;
 
 implementation
 
@@ -1293,9 +1295,28 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function PeekAhead(const aValue: string; const aIndex: integer; const aCount: integer): string;
+begin
+  Result := '';
+
+  var n := aIndex + aCount;
+
+  if n >= Length(aValue) then exit('');
+
+  var i := aIndex;
+
+  while i < n do
+  begin
+    Result := Result + aValue[i];
+    Inc(i);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvParser.Parse(const aXml: string): TBvElement;
 var
   i:      integer;
+  j:      integer;
   count:  integer;
   curr:   char;
   next:   char;
@@ -1311,6 +1332,9 @@ begin
     curr := aXml.Chars[i];
 
     Inc(i);
+
+    if ((curr = #10) or (curr = #13)) and ((fState <> psValue) and (fState <> psAttrValue))  then
+      curr := #32;
 
     next := if i = count then #0 else aXml.Chars[i];
 
@@ -1372,6 +1396,32 @@ begin
     begin
       if next = '!' then
       begin
+        { if there's a CDATA read it straight into the buffer }
+        if (fState = psValue) and (fPrevQuote = #0) then
+        begin
+          j := i + 2;
+
+          if (j < count) and (aXml[j] = '[')  and (PeekAhead(aXml, j, 7) = '[CDATA[') then
+          begin
+            Inc(i, 9);
+
+            var endIndex := aXml.IndexOf(']]>', i);
+
+            if endIndex <> -1 then
+            begin
+              while i <= endIndex do
+              begin
+                fBuffer := fBuffer + aXml[i];
+                Inc(i);
+              end;
+
+              Inc(i, 2);
+
+              continue;
+            end;
+          end;
+        end;
+
         if not (fState in CommentValidState) then
           Fail(aXMl, 'Unexpected character "<"', i, curr, next);
 
@@ -1382,18 +1432,6 @@ begin
           continue;
         end;
 
-//        Inc(i);
-//        if (i < count) and (aXml.Chars[i] = '-') then
-//        begin
-//          Inc(i);
-//          if (i < count) and (aXml.Chars[i] = '-') then
-//          begin
-//            Inc(i);
-//            State := psComment;
-////            State := psIgnore;
-//            continue;
-//          end;
-//        end;
         Fail(aXml, 'Unexpected character "<"', i, curr, next);
       end;
 
@@ -1415,8 +1453,6 @@ begin
         continue;
       end;
 
-
-
       OnStartElement;
       continue;
     end;
@@ -1424,6 +1460,13 @@ begin
     { manage end tag identifier }
     if curr = '>' then
     begin
+//      if fState = psValue then
+//      begin
+//        OnEndElement;
+//        Inc(i);
+//        continue;
+//      end;
+
       if not (fState in StartEndOrExpAttrNameState) then
         Fail(aXml, 'Unexpected character ">"', i, curr, next);
 
@@ -1487,8 +1530,9 @@ begin
     if (fState = psExpectAttrName) and (Length(fBuffer) = 0) then
       State := psAttrName;
 
-    if fState <> psNone then
+    if (fState <> psNone) then
       fBuffer := fBuffer + curr;
+
   end;
 
   Result := fRoot;
