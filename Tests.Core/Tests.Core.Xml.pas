@@ -48,7 +48,7 @@ const
           <e1> <!-- should ignore this -->
             <id a="1" b="2" c="3">1</id>
             <!-- and this -->
-            <name d="4">Mr <first>Fred<!-- this -->dy&amp;1"&quot;</first><last>Blogs<!-- this --></last></name>
+            <name d="4">Mr &#128512;<first>Fred<!-- this -->dy&amp;1"&quot;</first><last>Blogs<!-- this --></last></name>
             <role e="5" <!-- here --> f="6">Developer<!-- and here --></role>
           </e1>
           ''';
@@ -56,7 +56,7 @@ const
   XML_O = '''
           <e1>
             <id a="1" b="2" c="3">1</id>
-            <name d="4">Mr
+            <name d="4">Mr 😀
               <first>Freddy&amp;1&quot;&quot;</first>
               <last>Blogs</last>
             </name>
@@ -64,7 +64,7 @@ const
           </e1>
           ''';
 
-  XML_T = '<e1><id a="1" b="2" c="3">1</id><name d="4">Mr<first>Freddy&amp;1&quot;&quot;</first><last>Blogs</last></name><role e="5" f="6">Developer</role></e1>';
+  XML_T = '<e1><id a="1" b="2" c="3">1</id><name d="4">Mr 😀<first>Freddy&amp;1&quot;&quot;</first><last>Blogs</last></name><role e="5" f="6">Developer</role></e1>';
 
 var
   scope: TScope;
