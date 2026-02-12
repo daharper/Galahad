@@ -38,9 +38,7 @@ uses
 procedure TXmlFixture.Test_Ignore_Comments;
 const
   XML_I = '''
-
           <!-- comment -->
-
           <?xml
             version="1.0"
             encoding="UTF-8"
@@ -49,18 +47,24 @@ const
           <e1> <!-- should ignore this -->
             <id a="1" b="2" c="3">1</id>
             <!-- and this -->
-            <name d="4">Fred</name>
-            <role e="5" f="6">Developer</role>
+            <name d="4">Mr <first>Fred<!-- this -->dy&amp;1"&quot;</first><last>Blogs<!-- this --></last></name>
+            <role e="5" <!-- here --> f="6">Developer<!-- and here --></role>
           </e1>
           ''';
 
   XML_O = '''
           <e1>
             <id a="1" b="2" c="3">1</id>
-            <name d="4">Fred</name>
+            <name d="4">Mr
+              <first>Freddy&amp;1&quot;&quot;</first>
+              <last>Blogs</last>
+            </name>
             <role e="5" f="6">Developer</role>
           </e1>
           ''';
+
+  XML_T = '<e1><id a="1" b="2" c="3">1</id><name d="4">Mr<first>Freddy&amp;1&quot;&quot;</first><last>Blogs</last></name><role e="5" f="6">Developer</role></e1>';
+
 var
   scope: TScope;
 begin
@@ -71,6 +75,7 @@ begin
   var e := scope.Owns(parseXML.Value);
 
   Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_T, e.AsXml(true));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

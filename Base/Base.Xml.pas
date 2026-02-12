@@ -104,6 +104,7 @@ type
     procedure SetValue(const aValue: string);
     procedure SetAttribute(aName: string; const aValue: string);
     procedure AppendXml(const [ref] aBuilder: TStringBuilder; indent: string = '');
+    procedure AppendTrimXml(const [ref] aBuilder: TStringBuilder);
   public
     property Parent: TBvElement read fParent write fParent;
     property Name: string read fName write SetName;
@@ -184,7 +185,7 @@ type
     function AsGuid: TGuid;
     function AsCurrency: Currency;
 
-    function AsXml:string;
+    function AsXml(const aTrimmed: boolean = false):string;
 
     procedure Assign(const aValue: integer); overload;
     procedure Assign(const aValue: boolean; const aUseBoolStrs: boolean = true); overload;
@@ -261,6 +262,9 @@ type
   TBvParserState = (
     { The parser has no state }
     psNone,
+    psComment,
+    psPrologue,
+
     { The parser is analyzing a start element tag (opening tag) }
     psStartElement,
     { The parser is analyzing an end element tag (closing tag) }
@@ -278,9 +282,9 @@ type
     { The parser is analyzing an element value }
     psValue,
     { The parser has completed building the root element }
-    psDone,
-    { The parser is currently ignoring characters, i.e. prologue, comments, will return to previous state }
-    psIgnore
+    psDone
+
+//    psIgnore,
   );
 
   TBvParserStates = set of TBvParserState;
@@ -385,6 +389,7 @@ const
   function IsValidName(const aName: string): boolean;
   function RemoveEntities(const aValue: string): string;
   function ConvertToEntities(const aValue: string): string;
+  function GetEntity(const aValue: string; aIndex: integer): string;
 
 implementation
 
@@ -397,10 +402,11 @@ uses
   Base.Conversions;
 
 const
-  IgnoreState:                TBvParserStates = [psIgnore];
+//  IgnoreState:                TBvParserStates = [psIgnore];
   ValueState:                 TBvParserStates = [psValue, psAttrValue];
   NoneOrValueState:           TBvParserStates = [psNone, psValue, psAttrValue];
   StartEndOrExpAttrNameState: TBvParserStates = [psStartElement, psEndElement, psExpectAttrName];
+  CommentValidState:          TBvParserStates = [psNone, psStartElement, psEndElement, psExpectAttrName, psValue];
 
 var
   lEntityToLiteralMap: TDictionary<string, string>;
@@ -435,28 +441,62 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function ConvertToEntities(const aValue: string): string;
-  function GetEntity(aIndex: integer): string;
+function GetEntity(const aValue: string; aIndex: integer): string;
+begin
+  if aValue.Chars[aIndex] <> '&' then exit(aValue.Chars[aIndex]);
+
+  Result := '&';
+  Inc(aIndex);
+
+  while (aIndex < Length(aValue)) and (Length(Result) < 6)  do
   begin
-    if aValue.Chars[aIndex] <> '&' then exit(aValue.Chars[aIndex]);
+    var c := aValue.Chars[aIndex];
+    Result := Result + c ;
 
-    Result := '&';
+    if c = ';' then break;
+
     Inc(aIndex);
-
-    while (aIndex < Length(aValue)) and (Length(Result) < 6)  do
-    begin
-      Result := Result + aValue.Chars[aIndex];
-
-      if Result = ';' then break;
-
-      Inc(aIndex);
-    end;
-
-    if lEntityToLiteralMap.ContainsKey(Result) then exit;
-
-    Result := '';
   end;
 
+  if lEntityToLiteralMap.ContainsKey(Result) then exit;
+
+  Result := '';
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function RemoveEntities(const aValue: string): string;
+begin
+  if string.IsNullOrWhiteSpace(aValue) then exit(aValue);
+
+  Result := '';
+
+  var i := 0;
+
+  while i < aValue.Length do
+  begin
+    var ch := aValue.Chars[i];
+
+    if ch = '&' then
+    begin
+      var text := GetEntity(aValue, i);
+
+      if text = '' then
+        Result := Result + ch
+      else
+      begin
+        Inc(i, Length(text) - 1);
+        Result := Result + lEntityToLiteralMap[text];
+      end;
+    end
+    else
+      Result := Result + ch;
+
+    Inc(i);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function ConvertToEntities(const aValue: string): string;
 begin
   if string.IsNullOrWhiteSpace(aValue) then exit(aValue);
 
@@ -477,7 +517,7 @@ begin
           Result := Result + lLiteralToEntityMap[#$0022];
         '&':
           begin
-            var text := GetEntity(i);
+            var text := GetEntity(aValue, i);
 
             if text = '' then
               Result := Result + lLiteralToEntityMap['&']
@@ -492,71 +532,6 @@ begin
     end;
 
     Inc(i);
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function RemoveEntities(const aValue: string): string;
-var
-  lTokens: TList<string>;
-  lToken: string;
-  lCh: char;
-
-  { helpers }
-
-  function IsTokens: boolean;  begin Result := Assigned(lTokens); end;
-
-  procedure OnClearToken; begin lToken := ''; end;
-  procedure OnTokenStart; begin lToken := '&'; end;
-  procedure OnTokenChar(aChar: char); begin lToken := lToken + aChar.ToLower; end;
-
-  procedure OnTokenEnd;
-  begin
-    if lEntityToLiteralMap.ContainsKey(lToken) then
-    begin
-      if not IsTokens then lTokens := TList<string>.Create;
-
-      if not lTokens.Contains(lToken) then
-        lTokens.Add(lToken);
-    end;
-  end;
-
-begin
-  if string.IsNullOrWhiteSpace(aValue) then exit(aValue);
-
-  lTokens := nil;
-
-  try
-    for lCh in aValue do
-    begin
-      if lCh = '&' then
-      begin
-        OnTokenStart;
-        continue;
-      end;
-
-      if (Length(lToken) = 0) then continue;
-
-      if lCh = ';' then
-      begin
-        OnTokenEnd;
-        OnClearToken;
-        continue;
-      end;
-
-      if not IsValidNameChar(lCh) then
-        OnClearToken
-      else
-        OnTokenChar(lCh);
-    end;
-
-    if not IsTokens then exit(aValue);
-
-    for lToken in lTokens do
-      Result := ReplaceText(Result, lToken, lEntityToLiteralMap[lToken]);
-
-  finally
-    lTokens.Free;
   end;
 end;
 
@@ -666,17 +641,57 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.AsXml: string;
+function TBvElement.AsXml(const aTrimmed: boolean = false): string;
 var
   lBuilder: TStringBuilder;
 begin
+  if Length(fName) = 0 then exit('');
+
   lBuilder := TStringBuilder.Create;
   try
-    AppendXml(lBuilder);
+    if aTrimmed then
+      AppendTrimXml(lBuilder)
+    else
+      AppendXml(lBuilder);
+
     Result := TrimRight(lBuilder.ToString);
   finally
     lBuilder.Free;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.AppendTrimXml(const [ref] aBuilder: TStringBuilder);
+var
+  lAttr: TBvAttribute;
+  lElem: TBvElement;
+begin
+  aBuilder.AppendFormat('<%s', [fName]);
+
+  for lAttr in Attrs do
+    aBuilder.AppendFormat(' %s', [lAttr.AsXml]);
+
+  if (not HasValue) and (not HasElems) then
+  begin
+    aBuilder.Append('/>');
+    exit;
+  end;
+
+  aBuilder.Append('>');
+
+  if HasValue then
+    aBuilder.Append(ConvertToEntities(fValue));
+
+  if not HasElems then
+  begin
+    aBuilder.AppendFormat('</%s>', [fName]);
+    exit;
+  end;
+
+  for lElem in fElems do
+    lElem.AppendTrimXml(aBuilder);
+
+  aBuilder.AppendFormat('</%s>', [fName]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -692,7 +707,7 @@ begin
 
   if (not HasValue) and (not HasElems) then
   begin
-    aBuilder.AppendLine(' />');
+    aBuilder.AppendLine('/>');
     exit;
   end;
 
@@ -1189,7 +1204,7 @@ begin
         exit;
       end;
 
-      Result := TResult<TBvElement>.Err('xml is blank');
+      Result := TResult<TBvElement>.Ok(TBVElement.Create);
     except on E: Exception do
       Result := TResult<TBvElement>.Err(e.ToString);
     end;
@@ -1223,28 +1238,26 @@ begin
     next := if i = count then #0 else aXml.Chars[i];
 
     { terminate prologue if possible }
-    if (curr = '?') and (not (fState in ValueState)) then
+    if fState = psPrologue then
     begin
-      if (not (fState in IgnoreState)) or (next <> '>') then
-        Fail(aXml, 'Unexpected characters "?"', i, curr, next);
-
+      if curr <> '?' then continue;
+      if next <> '>' then Fail(aXml, 'Unexpected characters "?"', i, curr, next);
       Inc(i);
       State := psNone;
       continue;
     end;
 
-    { terminate comment, or continue ignoring }
-    if fState in IgnoreState then
+    { terminate comment if possible }
+    if fState = psComment then
     begin
-      if (curr = '-') and (next = '-') then
-      begin
-        Inc(i);
-        if (i < count) and (aXml.Chars[i] = '>') then
-        begin
-          Inc(i);
-          fState := fPrevState;
-        end;
-      end;
+      if curr <> '-' then continue;
+      if next <> '-' then continue;
+
+      if (i+1 < count) and (aXml.Chars[i+1] = '>') then
+        fState := fPrevState;
+
+      Inc(i, 2);
+
       continue;
     end;
 
@@ -1280,7 +1293,34 @@ begin
     { manage start tag identifier }
     if curr = '<' then
     begin
-      if not (fState in NoneOrValueState) then
+      if next = '!' then
+      begin
+        if not (fState in CommentValidState) then
+          Fail(aXMl, 'Unexpected character "<"', i, curr, next);
+
+        if (i + 2 < count) and (aXml.Chars[i+1] = '-') and (aXml.Chars[i+2] = '-') then
+        begin
+          Inc(i, 3);
+          State := psComment;
+          continue;
+        end;
+
+//        Inc(i);
+//        if (i < count) and (aXml.Chars[i] = '-') then
+//        begin
+//          Inc(i);
+//          if (i < count) and (aXml.Chars[i] = '-') then
+//          begin
+//            Inc(i);
+//            State := psComment;
+////            State := psIgnore;
+//            continue;
+//          end;
+//        end;
+        Fail(aXml, 'Unexpected character "<"', i, curr, next);
+      end;
+
+     if not (fState in NoneOrValueState) then
         Fail(aXMl, 'Unexpected character "<"', i, curr, next);
 
       if next = '/' then
@@ -1293,25 +1333,12 @@ begin
       if (next = '?') and (not (fState in ValueState)) then
       begin
         Inc(i);
-        State := psIgnore;
+//        State := psIgnore;
+        State := psPrologue;
         continue;
       end;
 
-      if next = '!' then
-      begin
-        Inc(i);
-        if (i < count) and (aXml.Chars[i] = '-') then
-        begin
-          Inc(i);
-          if (i < count) and (aXml.Chars[i] = '-') then
-          begin
-            Inc(i);
-            State := psIgnore;
-            continue;
-          end;
-        end;
-        Fail(aXml, 'Unexpected character "!"', i, curr, next);
-      end;
+
 
       OnStartElement;
       continue;
