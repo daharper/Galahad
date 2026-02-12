@@ -1,4 +1,4 @@
-unit Tests.Core.Xml;
+﻿unit Tests.Core.Xml;
 
 interface
 
@@ -21,6 +21,7 @@ type
     [Test] procedure Test_Parser_RoundTrip_XML;
     [Test] procedure Test_Convert_To_Entities;
     [Test] procedure Test_Ignore_Comments;
+    [Test] procedure Test_Convert_CharRef;
   end;
 
 implementation
@@ -76,6 +77,46 @@ begin
 
   Assert.AreEqual(XML_O, e.AsXml);
   Assert.AreEqual(XML_T, e.AsXml(true));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Convert_CharRef;
+var
+  i: integer;
+begin
+  i := 0; Assert.AreEqual(#9, GetCharacter('&#9;', i));
+  i := 0; Assert.AreEqual(#13, GetCharacter('&#13;', i));
+  i := 0; Assert.AreEqual(#32, GetCharacter('&#x20;', i));
+  i := 0; Assert.AreEqual('A', GetCharacter('&#x41;', i));
+  i := 0; Assert.AreEqual('©', GetCharacter('&#169;', i));
+  i := 0; Assert.AreEqual('€', GetCharacter('&#8364;', i));
+  i := 0; Assert.AreEqual('α', GetCharacter('&#x3B1;', i));
+  i := 0; Assert.AreEqual('😀', GetCharacter('&#128512;', i));
+  i := 0; Assert.AreEqual('🚀', GetCharacter('&#x1F680;', i));
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#13', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#;', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#x;', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#x8;', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#xD800;', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&amp;', i));
+  Assert.AreEqual(0, i);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

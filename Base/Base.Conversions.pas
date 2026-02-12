@@ -502,6 +502,21 @@ type
     /// Encodes bytes as canonical hexadecimal text (uppercase, no separators).
     /// </summary>
     class function BytesToHexStringInv(const aValue: TBytes): string; static;
+
+    /// <summary>
+    ///  Returns the hex value for the character
+    /// </summary>
+    class function HexValue(c: Char): Integer; static;
+
+    /// <summary>
+    ///  Returns the decimal value for the character
+    /// </summary>
+    class function DecimalValue(c: Char): Integer; static;
+
+    /// <summary>
+    ///  Returns the string representing the specified code point
+    /// </summary>
+    class function CodePointToString(aCodePoint: Integer): string; static;
   end;
 
 implementation
@@ -1529,6 +1544,46 @@ begin
 end;
 
 {$endregion}
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.HexValue(c: Char): Integer;
+begin
+  case C of
+    '0'..'9': Result := Ord(C) - Ord('0');
+    'A'..'F': Result := Ord(C) - Ord('A') + 10;
+    'a'..'f': Result := Ord(C) - Ord('a') + 10;
+  else
+    raise Exception.Create('Invalid hex digit');
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.DecimalValue(c: Char): Integer;
+begin
+  if (c < '0') or (c > '9') then
+    raise Exception.Create('Invalid decimal digit');
+
+  Result := Ord(c) - Ord('0');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.CodePointToString(aCodePoint: Integer): string;
+begin
+  if aCodePoint <= $FFFF then
+  begin
+    // BMP character (no surrogate needed)
+    Result := Char(aCodePoint);
+  end
+  else
+  begin
+    // Non-BMP character => UTF-16 surrogate pair
+    Dec(aCodePoint, $10000);
+
+    Result :=
+      Char($D800 + (aCodePoint shr 10)) +   // high surrogate
+      Char($DC00 + (aCodePoint and $3FF));  // low surrogate
+  end;
+end;
 
 end.
 

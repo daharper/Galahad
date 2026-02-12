@@ -390,6 +390,7 @@ const
   function RemoveEntities(const aValue: string): string;
   function ConvertToEntities(const aValue: string): string;
   function GetEntity(const aValue: string; aIndex: integer): string;
+  function GetCharacter(const aValue: string; var aIndex: integer): string;
 
 implementation
 
@@ -411,6 +412,7 @@ const
 var
   lEntityToLiteralMap: TDictionary<string, string>;
   lLiteralToEntityMap: TDictionary<string, string>;
+  lInvalidCharacters: TList<integer>;
 
 {$region 'Functions' }
 
@@ -464,6 +466,59 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function GetCharacter(const aValue: string; var aIndex: integer): string;
+begin
+  var isHex := false;
+  var i := aIndex;
+
+  if aValue.Chars[i] <> '&' then exit(aValue.Chars[aIndex]);
+  Inc(i);
+
+  if aValue.Chars[i] <> '#' then exit(aValue.Chars[aIndex]);
+  Inc(i);
+
+  if aValue.Chars[i] = 'x' then
+  begin
+    isHex := true;
+    Inc(i);
+  end;
+
+  var num := '';
+  var amp := false;
+
+  while (not amp) and (i < Length(aValue)) and (Length(num) < 7)  do
+  begin
+    var ch := aValue.Chars[i];
+
+    if ch = ';' then
+      amp := true
+    else
+      num := num + ch;
+
+    Inc(i);
+  end;
+
+  if not amp then exit(aValue.Chars[aIndex]);
+
+  var value := 0;
+
+  for var c in num do
+    if isHex then
+      value := value * 16 + TConvert.HexValue(c)
+    else
+      value := value * 10 + TConvert.DecimalValue(c);
+
+  if value > $10FFFF then exit(aValue.Chars[aIndex]);
+
+  if lInvalidCharacters.Contains(value) then
+    exit(aValue.Chars[aIndex]);
+
+  aIndex := i;
+
+  Result := TConvert.CodePointToString(value);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function RemoveEntities(const aValue: string): string;
 begin
   if string.IsNullOrWhiteSpace(aValue) then exit(aValue);
@@ -471,25 +526,39 @@ begin
   Result := '';
 
   var i := 0;
+  var n := aValue.Length - 1;
 
   while i < aValue.Length do
   begin
     var ch := aValue.Chars[i];
+    var next := if i < n then aValue.Chars[i + 1] else #0;
 
-    if ch = '&' then
+    { normal character }
+    if ch <> '&' then
     begin
-      var text := GetEntity(aValue, i);
-
-      if text = '' then
-        Result := Result + ch
-      else
-      begin
-        Inc(i, Length(text) - 1);
-        Result := Result + lEntityToLiteralMap[text];
-      end;
-    end
-    else
       Result := Result + ch;
+      Inc(i);
+      continue;
+    end;
+
+    { possible character reference }
+    if next = '#' then
+    begin
+      Result := Result + GetCharacter(aValue, i);
+      Inc(i);
+      continue;
+    end;
+
+    { possible entity }
+    var text := GetEntity(aValue, i);
+
+    if text = '' then
+      Result := Result + ch
+    else
+    begin
+      Inc(i, Length(text) - 1);
+      Result := Result + lEntityToLiteralMap[text];
+    end;
 
     Inc(i);
   end;
@@ -1827,6 +1896,7 @@ var
 begin
   lEntityToLiteralMap := TDictionary<string, string>.Create(TIStringComparer.Ordinal);
   lLiteralToEntityMap := TDictionary<string, string>.Create(TIStringComparer.Ordinal);
+  lInvalidCharacters  := TList<integer>.Create([0, 1, 8, 11, 12, 14, 55296, 57343, 65534, 65535]);
 
   for lEntity in [xAmpersand..xQuote] do
   begin
@@ -1839,5 +1909,5 @@ end;
 finalization
   FreeAndNil(lEntityToLiteralMap);
   FreeAndNil(lLiteralToEntityMap);
-
+  FreeAndNil(lInvalidCharacters);
 end.
