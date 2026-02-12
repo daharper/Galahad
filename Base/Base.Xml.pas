@@ -308,7 +308,9 @@ type
     constructor Create;
   end;
 
-  /// <summary>Basic, but very convenient, XML Parser for simple use cases.</summary>
+  /// <summary>
+  ///  Basic, but convenient, permissive XML Parser for simple use cases.
+  /// </summary>
   TBvParser = class
   private
     fBuffer:      string;
@@ -468,13 +470,15 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function GetCharacter(const aValue: string; var aIndex: integer): string;
 begin
-  var isHex := false;
+  var isHex    := false;
+  var fallback := aValue.Chars[aIndex];
+
   var i := aIndex;
 
-  if aValue.Chars[i] <> '&' then exit(aValue.Chars[aIndex]);
+  if aValue.Chars[i] <> '&' then exit(fallback);
   Inc(i);
 
-  if aValue.Chars[i] <> '#' then exit(aValue.Chars[aIndex]);
+  if aValue.Chars[i] <> '#' then exit(fallback);
   Inc(i);
 
   if aValue.Chars[i] = 'x' then
@@ -493,12 +497,17 @@ begin
     if ch = ';' then
       amp := true
     else
-      num := num + ch;
+    begin
+      if (TConvert.IsDecimalValue(ch)) or (isHex and TConvert.IsHexValue(ch)) then
+        num := num + ch
+      else
+        exit(fallback)
+    end;
 
     Inc(i);
   end;
 
-  if not amp then exit(aValue.Chars[aIndex]);
+  if not amp then exit(fallback);
 
   var value := 0;
 
@@ -508,10 +517,9 @@ begin
     else
       value := value * 10 + TConvert.DecimalValue(c);
 
-  if value > $10FFFF then exit(aValue.Chars[aIndex]);
+  if value > $10FFFF then exit(fallback);
 
-  if lInvalidCharacters.Contains(value) then
-    exit(aValue.Chars[aIndex]);
+  if lInvalidCharacters.Contains(value) then exit(fallback);
 
   aIndex := i;
 

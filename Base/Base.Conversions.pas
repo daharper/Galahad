@@ -509,6 +509,16 @@ type
     class function HexValue(c: Char): Integer; static;
 
     /// <summary>
+    ///  Returns true if character is a valid hex value
+    /// </summary>
+    class function IsHexValue(c: Char): boolean; static;
+
+    /// <summary>
+    ///  Returns true if character is a valid decimal value
+    /// </summary>
+    class function IsDecimalValue(c: Char): boolean; static;
+
+    /// <summary>
     ///  Returns the decimal value for the character
     /// </summary>
     class function DecimalValue(c: Char): Integer; static;
@@ -1554,6 +1564,28 @@ begin
     'a'..'f': Result := Ord(C) - Ord('a') + 10;
   else
     raise Exception.Create('Invalid hex digit');
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.IsHexValue(c: Char): boolean;
+begin
+  case C of
+    '0'..'9': Result := true;
+    'A'..'F': Result := true;
+    'a'..'f': Result := true;
+  else
+    Result := false;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.IsDecimalValue(c: Char): boolean;
+begin
+  case C of
+    '0'..'9': Result := true;
+  else
+    Result := false;
   end;
 end;
 

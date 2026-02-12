@@ -90,12 +90,16 @@ begin
   i := 0; Assert.AreEqual('A', GetCharacter('&#x41;', i));
   i := 0; Assert.AreEqual('©', GetCharacter('&#169;', i));
   i := 0; Assert.AreEqual('€', GetCharacter('&#8364;', i));
-  i := 0; Assert.AreEqual('α', GetCharacter('&#x3B1;', i));
+  i := 0; Assert.AreEqual('α', GetCharacter('&#x3b1;', i));
   i := 0; Assert.AreEqual('😀', GetCharacter('&#128512;', i));
   i := 0; Assert.AreEqual('🚀', GetCharacter('&#x1F680;', i));
 
   i := 0;
   Assert.AreEqual('&', GetCharacter('&#13', i));
+  Assert.AreEqual(0, i);
+
+  i := 0;
+  Assert.AreEqual('&', GetCharacter('&#13N', i));
   Assert.AreEqual(0, i);
 
   i := 0;
