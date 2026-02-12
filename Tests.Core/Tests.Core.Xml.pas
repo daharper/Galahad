@@ -262,13 +262,13 @@ const
           from="alice@example.com"
             to="bob@example.com"
           type="chat">
-            <body>Hello Bob!</body>
+            <body>Hello Bob! 😀</body>
           </message>
           ''';
 
   XML_O = '''
           <message from="alice@example.com" to="bob@example.com" type="chat">
-            <body>Hello Bob!</body>
+            <body>Hello Bob! 😀</body>
           </message>
           ''';
 
@@ -295,7 +295,9 @@ const
           ?>
 
           <e1> <!-- should ignore this -->
-            <id a="1" b="2" c="3">1</id>
+            <id a="1
+             with 2" b="2" c="3
+            and 4">1</id>
             <content><![CDATA[<p>This is <b>bold</b> text.</p>]]></content>
             <code><![CDATA[
               if (a < b && b > c) {
@@ -309,7 +311,9 @@ const
 
   XML_O = '''
           <e1>
-            <id a="1" b="2" c="3">1</id>
+            <id a="1
+             with 2" b="2" c="3
+            and 4">1</id>
             <content>&lt;p&gt;This is &lt;b&gt;bold&lt;/b&gt; text.&lt;/p&gt;</content>
             <code>if (a &lt; b &amp;&amp; b &gt; c) {
                 return a &amp; b;
