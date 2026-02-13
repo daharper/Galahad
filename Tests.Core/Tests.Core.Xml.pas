@@ -57,7 +57,7 @@ const
           </message>
           ''';
 begin
-  var _: TDynamic := TBvElement.Create.AsDynamic;
+  var _ := TBvElement.New;
 
   _.message['from'] := 'romeo@montague.lit/orchard';
   _.message['to']   := 'juliet@capulet.lit/balcony';

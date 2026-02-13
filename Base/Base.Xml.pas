@@ -356,6 +356,8 @@ type
     constructor Create(const aName: string; const aValue: string = ''); overload;
     constructor Create(var aOther: IBvElement); overload;
     destructor Destroy; override;
+
+    class function New: TDynamic;
   end;
 
   TBvParserState = (
@@ -1650,6 +1652,13 @@ begin
 
   inherited;
 end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TBvElement.New: TDynamic;
+begin
+  Result := TBvElement.Create.AsDynamic;
+end;
+
 
 {$endregion}
 
