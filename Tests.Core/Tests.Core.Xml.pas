@@ -27,6 +27,8 @@ type
     [Test] procedure Test_IQ_Stanza;
     [Test] procedure Test_Stream_Stanza;
     [Test] procedure Test_AST;
+    [Test] procedure Test_Dynamically_Build_Xml;
+    [Test] procedure Test_Dynamic_Message_Stanza;
   end;
 
 implementation
@@ -36,9 +38,69 @@ uses
   System.Generics.Collections,
   Base.Core,
   Base.Integrity,
-  Base.Xml;
+  Base.Xml,
+  Base.Dynamic;
 
 { TXmlFixture }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Dynamic_Message_Stanza;
+const
+  XML_O = '''
+          <message from="romeo@montague.lit/orchard" to="juliet@capulet.lit/balcony" type="chat" id="msg-1234">
+            <body>Hello Juliet, wherefore art thou?</body>
+            <subject>Greeting</subject>
+            <thread>e0ffe42b28561960c6b12b944a092794b9683a38</thread>
+            <active xmlns="http://jabber.org/protocol/chatstates"/>
+            <markable xmlns="urn:xmpp:chat-markers:0"/>
+            <request xmlns="urn:xmpp:receipts"/>
+          </message>
+          ''';
+begin
+  var _: TDynamic := TBvElement.Create.AsDynamic;
+
+  _.message['from'] := 'romeo@montague.lit/orchard';
+  _.message['to']   := 'juliet@capulet.lit/balcony';
+  _.message['type'] := 'chat';
+  _.message['id']   := 'msg-1234';
+
+  _.message.body    := 'Hello Juliet, wherefore art thou?';
+  _.message.subject := 'Greeting';
+  _.message.thread  := 'e0ffe42b28561960c6b12b944a092794b9683a38';
+
+  _.message.active['xmlns']   :='http://jabber.org/protocol/chatstates';
+  _.message.markable['xmlns'] := 'urn:xmpp:chat-markers:0';
+  _.message.request['xmlns']  := 'urn:xmpp:receipts';
+
+  var xml: string := _.message.AsPrettyXml;
+
+  Assert.AreEqual(XML_O, xml);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TXmlFixture.Test_Dynamically_Build_Xml;
+const
+  XML_O = '''
+          <iq id="1" to="aquinas.localhost" type="get">
+            <Ping xmlns="urn:xmpp:ping"/>
+          </iq>
+          ''';
+begin
+  var _: TDynamic := TBvElement.Create.AsDynamic;
+
+  _.iq['id']   := '1';
+  _.iq['to']   := 'aquinas.localhost';
+  _.iq['type'] := 'get';
+
+  _.iq.Ping['xmlns'] := 'urn:xmpp:ping';
+
+  var xml: string := _.iq.AsPrettyXml;
+
+  Assert.AreEqual<string>('aquinas.localhost', _.iq['to']);
+  Assert.AreEqual<string>('urn:xmpp:ping', _.iq.Ping['xmlns']);
+
+  Assert.AreEqual(XML_O, xml);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_AST;
@@ -181,16 +243,15 @@ const
             </INITIALIZATION>
           </UNIT>
           ''';
-var
-  scope: TScope;
+
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -208,16 +269,14 @@ const
           <stream:stream xmlns="jabber:client" xmlns:stream="http://etherx.jabber.org/streams" to="example.com" version="1.0"/>
           ''';
 
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -242,16 +301,14 @@ const
           </iq>
           ''';
 
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -272,16 +329,14 @@ const
           </message>
           ''';
 
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -328,16 +383,14 @@ const
 
   XML_C = '<p>This is <b>bold</b> text.</p>';
 
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
   Assert.AreEqual(XML_C, e.Elem('content').Value);
 end;
 
@@ -372,17 +425,15 @@ const
 
   XML_T = '<e1><id a="1" b="2" c="3">1</id><name d="4">Mr 😀<first>Freddy&amp;1&quot;&quot;</first><last>Blogs</last></name><role e="5" f="6">Developer</role></e1>';
 
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML_I);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e: IBvElement := parseXML.Value;
 
-  Assert.AreEqual(XML_O, e.AsXml);
-  Assert.AreEqual(XML_T, e.AsXml(true));
+  Assert.AreEqual(XML_O, e.AsPrettyXml);
+  Assert.AreEqual(XML_T, e.AsXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -457,14 +508,12 @@ const
           <role e="5" f="6">Developer</role>
         </e1>
         ''';
-var
-  scope: TScope;
 begin
   var parseXML := TBvParser.Execute(XML);
 
   Assert.IsTrue(parseXML.IsOk);
 
-  var e := scope.Owns(parseXML.Value);
+  var e : IBvElement := parseXML.Value;
 
   Assert.AreSame(e, e.ElemAt(0).Parent);
   Assert.AreSame(e, e.ElemAt(1).Parent);
@@ -474,7 +523,7 @@ begin
   Assert.AreEqual(1, e.ElemAt(1).AttrCount);
   Assert.AreEqual(2, e.ElemAt(2).AttrCount);
 
-  Assert.AreEqual(XML, e.AsXml);
+  Assert.AreEqual(XML, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -487,10 +536,8 @@ const
           <role e="5" f="6">Developer</role>
         </e1>
         ''';
-var
-  scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('e1'));
+  var e : IBvElement := TBvElement.Create('e1');
 
   e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
 
@@ -498,16 +545,13 @@ begin
   e.ElemAt(1).PushAttr('d', '4');
   e.ElemAt(2).PushAttr('e', '5').PushAttr('f', '6');
 
-  var s := e.AsXml;
-
-  Assert.AreEqual(XML, e.AsXml);
+  Assert.AreEqual(XML, e.AsPrettyXml);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Can_TakeOwnership_Of_Element;
-var scope: TScope;
 begin
-  var e := TBvElement.Create('e1');
+  var e : IBvElement := TBvElement.Create('e1');
 
   e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
 
@@ -523,7 +567,7 @@ begin
   Assert.AreEqual(1, e.ElemAt(1).AttrCount);
   Assert.AreEqual(2, e.ElemAt(2).AttrCount);
 
-  var e2 := scope.Owns(TBvElement.Create(e));
+  var e2 : IBvElement := TBvElement.Create(e);
 
   Assert.AreEqual(3, e2.ElemCount);
 
@@ -534,15 +578,13 @@ begin
   Assert.AreEqual(3, e2.ElemAt(0).AttrCount);
   Assert.AreEqual(1, e2.ElemAt(1).AttrCount);
   Assert.AreEqual(2, e2.ElemAt(2).AttrCount);
-
-  Assert.IsFalse(Assigned(e));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Can_Walk_Elements;
 var scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('test'));
+  var e : IBvElement := TBvElement.Create('test');
 
   e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'developer');
 
@@ -560,7 +602,7 @@ end;
 procedure TXmlFixture.Test_Can_Walk_Attributes;
 var scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('test'));
+  var e : IBvElement := TBvElement.Create('test');
 
   e.PushAttr('id', '1').PushAttr('name', 'Fred').PushAttr('role', 'developer');
 
@@ -576,9 +618,8 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Subelements;
-var scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('employee'));
+  var e := TBvElement.Create('employee');
 
   Assert.IsFalse(e.HasElems);
 
@@ -606,7 +647,7 @@ begin
   Assert.AreSame(e.LastElem, e.Elem('role'));
   Assert.AreSame(e.LastElem, e.PeekElem);
 
-  var role := scope.Owns(e.PopElem);
+  var role := e.PopElem;
 
   Assert.AreEqual('role', role.Name);
 
@@ -622,9 +663,8 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Element_Attributes;
-var scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('employee'));
+  var e : IBvElement := TBvElement.Create('employee');
 
   Assert.IsFalse(e.HasAttrs);
 
@@ -692,9 +732,8 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TXmlFixture.Test_Element_Value;
-var scope: TScope;
 begin
-  var e := scope.Owns(TBvElement.Create('id'));
+  var e : IBvElement := TBvElement.Create('id');
 
   Assert.AreEqual('id', e.Name);
   Assert.AreEqual('', e.Value);

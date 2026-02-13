@@ -305,6 +305,16 @@ type
     /// </summary>
     function AreDifferent(const aLhs: integer; const aRhs: integer; const aMessage: string = ''): TEnsure; overload;
 
+    /// <summary>
+    ///  Throws if the value is not in the specified range.
+    /// </summary>
+    function InRange(const aValue: integer; const aMin: integer; const aMax: integer; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Throws if the is in the specified range.
+    /// </summary>
+    function NotInRange(const aValue: integer; const aMin: integer; const aMax: integer; const aMessage: string = ''): TEnsure; overload;
+
     class constructor Create;
     class destructor Destroy;
   end;
@@ -946,6 +956,34 @@ begin
   if CompareStr(aLhs, aRhs) = 0 then
   begin
     var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.InRange(const aValue: integer; const aMin: integer; const aMax: integer; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Expected the value (%d) to be in the range: %d..%d';
+begin
+  if (aValue < aMin) or (aValue > aMax) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMin, aMax]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.NotInRange(const aValue: integer; const aMin: integer; const aMax: integer; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Expected the value (%d) not to be in the range: %d..%d';
+begin
+  if (aValue >= aMin) and (aValue <= aMax) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMin, aMax]);
     TError.Throw<EArgumentException>(msg);
   end;
 

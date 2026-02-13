@@ -36,11 +36,11 @@ type
   TVariantArray    = array[0..MaxInt div SizeOf(Variant) - 1] of Variant;
 
   TInvokeHint = (
-    Unknown          = 0,
-    Method           = 1,
-    PropertyGet      = 2,
-    PropertySetValue = 4,
-    PropertySetRef   = 8
+    ivUnknown          = 0,
+    ivMethod           = 1,
+    ivPropertyGet      = 2,
+    ivPropertySetValue = 4,
+    ivPropertySetRef   = 8
   );
 
   /// <summary>
@@ -157,6 +157,7 @@ type
     class var fContext: TRttiContext;
   public
     function AsVariant: OleVariant;
+    function AsDynamic: TDynamic;
 
     /// <summary>
     /// Fallback handler invoked when a member cannot be resolved via RTTI.
@@ -328,6 +329,12 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TDynamicObject.AsVariant: OleVariant;
+begin
+  Result := IDispatch(Self);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDynamicObject.AsDynamic: TDynamic;
 begin
   Result := IDispatch(Self);
 end;
