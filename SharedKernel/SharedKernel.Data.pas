@@ -114,10 +114,11 @@ type
   private
     fDatabase: IDatabaseService;
   protected
+    fDirectives: TDictionary<TDirective, string>;
+
     class var fName: string;
     class var fPropertyOrder: TList<string>;
     class var fProperties: TDictionary<string, TRttiProperty>;
-    class var fDirectives: TDictionary<TDirective, string>;
 
     constructor Create(aDatabase: IDatabaseService);
   public
@@ -169,11 +170,15 @@ begin
   inherited Create;
 
   fDatabase := aDatabase;
+
+  fDirectives := TDictionary<TDirective, string>.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 destructor TRepository<TService, T>.Destroy;
 begin
+  fDirectives.Free;
+
   inherited;
 end;
 
@@ -185,21 +190,18 @@ var
   lProperty: TRttiProperty;
   lClass: TRttiInstanceType;
 begin
-  fDirectives := TDictionary<TDirective, string>.Create;
-  fPropertyOrder := TList<string>.Create;
-
   lCtx   := TRttiContext.Create;
 
   try
     lType  := lCtx.GetType(T);
     lClass := TRttiInstanceType(lType);
 
+    Ensure.IsTrue(lClass.Name.StartsWith('T', true), 'Entities follow T[Table] naming convention');
+
     fName := lClass.Name;
-
-    Ensure.IsTrue(fName.StartsWith('T', true), 'Entities follow T[Table] naming convention');
-
     fName := fName.Substring(1);
 
+    fPropertyOrder := TList<string>.Create;
     fProperties := TDictionary<string, TRttiProperty>.Create(TIStringComparer.Ordinal);
 
     for lProperty in lType.GetProperties do
@@ -218,7 +220,6 @@ class destructor TRepository<TService, T>.Destroy;
 begin
   FreeAndNil(fProperties);
   FreeAndNil(fPropertyOrder);
-  FreeAndNil(fDirectives);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
