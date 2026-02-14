@@ -55,7 +55,7 @@ Subsequent releases will seek to expand upon the initial limited core feature se
 
 This project is experimental and exploratory in nature:
 
-- **Project Galahad** does not aim to be an ORM, nor a framework, it is a set of types
+- **Project Galahad** does not aim to be an ORM, nor a framework; it is a set of types
 - **Project Escape** only implements what it needs for demonstrating and dogfooding the base types
 
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
