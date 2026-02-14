@@ -27,7 +27,7 @@ The name **Galahad** was chosen after King Arthur's knight, pure and of great in
 
 The Holy Grail, in this sense, is maintainable code. 
 
-**Project Galahad** aims to be a minimal and opinionated set of types ordered to modern coding practices.
+**Project Galahad** aims to be a minimal and opinionated set of types to support modern coding practices.
 
 For example, the TScope type:
 
