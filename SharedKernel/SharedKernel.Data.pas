@@ -161,7 +161,7 @@ begin
 end;
 
 
-{ TRepository<TIfce, T> }
+{ TRepository<TService, T> }
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TRepository<TService, T>.Create(aDatabase: IDatabaseService);
