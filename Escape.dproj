@@ -209,6 +209,7 @@
         <DCCReference Include="Base\Base.Specifications.pas"/>
         <DCCReference Include="Base\Base.Stream.pas"/>
         <DCCReference Include="Base\Base.Xml.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Data.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -18,9 +18,12 @@ uses
   Base.Reflection in 'Base\Base.Reflection.pas',
   Base.Specifications in 'Base\Base.Specifications.pas',
   Base.Stream in 'Base\Base.Stream.pas',
-  Base.Xml in 'Base\Base.Xml.pas';
+  Base.Xml in 'Base\Base.Xml.pas',
+  SharedKernel.Data in 'SharedKernel\SharedKernel.Data.pas';
 
 begin
+  ReportMemoryLeaksOnShutdown := true;
+
   try
     { TODO -oUser -cConsole Main : Insert code here }
   except
