@@ -51,11 +51,11 @@ begin
 end; 
 ```
 
+Subsequent releases will aim to expand upon the initial limited core feature set.
+
 This project is experimental and exploratory in nature.
 
-It targets desktop and mobile applications with basic database requirements. 
-
-Subsequent releases will aim to expand upon the initial limited core feature set.
+**Project Galahad** does not aim to be an ORM, nor a framework.
 
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
