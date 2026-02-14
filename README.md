@@ -8,13 +8,15 @@ Modern engineering types for Delphi, allowing Clean Architecture and best practi
 
 The repository should take shape over the next few weeks, in the meantime there will be lots of churn.
 
-I'm currently:
+Initial project push (version 0.1) involved:
 
 - Pulling code from a personal project
 - Clarifying policies
 - Refactoring
 - Writing tests
-- Incrementally updating this repository
+
+The second phase has just begun which is a basic application (named Escape) that uses the Galahad base types.
+This is the testing, hardening and polishing phase of the initial version 0.1 release.
 
 Once the dust settles, I'll provide documentation.
 
