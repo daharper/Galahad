@@ -6,6 +6,9 @@
         <Projects Include="Galahad.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="Escape.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -23,14 +26,23 @@
     <Target Name="Galahad:Make">
         <MSBuild Projects="Galahad.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Escape">
+        <MSBuild Projects="Escape.dproj"/>
+    </Target>
+    <Target Name="Escape:Clean">
+        <MSBuild Projects="Escape.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Escape:Make">
+        <MSBuild Projects="Escape.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="Galahad"/>
+        <CallTarget Targets="Galahad;Escape"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Galahad:Clean"/>
+        <CallTarget Targets="Galahad:Clean;Escape:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Galahad:Make"/>
+        <CallTarget Targets="Galahad:Make;Escape:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
