@@ -19,6 +19,8 @@ The second phase has just begun which is a basic application (named Escape) that
 
 This is the application, hardening, and polishing of the initial version 0.1 release.
 
+Project.groupproj opens both projects; for individual projects open Galahad.dproj or Escape.drpoj.
+
 Once the dust settles, I'll provide documentation.
 
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
