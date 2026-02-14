@@ -16,7 +16,8 @@ Initial project push (version 0.1) involved:
 - Writing tests
 
 The second phase has just begun which is a basic application (named Escape) that uses the Galahad base types.
-This is the testing, hardening and polishing phase of the initial version 0.1 release.
+
+This is the application, hardening, and polishing of the initial version 0.1 release.
 
 Once the dust settles, I'll provide documentation.
 
