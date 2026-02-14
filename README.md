@@ -51,7 +51,7 @@ begin
 end; 
 ```
 
-Subsequent releases will aim to expand upon the initial limited core feature set.
+Subsequent releases will seek to expand upon the initial limited core feature set.
 
 This project is experimental and exploratory in nature.
 
