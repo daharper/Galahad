@@ -11,7 +11,7 @@ type
   /// <summary>
   ///  Registers services with the application builder.
   /// </summary>
-  TConsoleApplicationModule = class(TInterfacedObject, IContainerModule)
+  TConsoleModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -42,10 +42,10 @@ begin
   Writeln('Press Q to quit, T for Terms, S for Synonyms');
 end;
 
-{ TConsoleApplicationModule }
+{ TConsoleModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleApplicationModule.RegisterServices(const aContainer: TContainer);
+procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.Add<IApplication, TConsoleApplication>(Singleton);
 end;

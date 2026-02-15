@@ -29,7 +29,7 @@ uses
 begin
   ReportMemoryLeaksOnShutdown := true;
 
-  ApplicationBuilder.Services.AddModule(TConsoleApplicationModule.Create);
+  ApplicationBuilder.Services.AddModule(TConsoleModule.Create);
 
   var app := ApplicationBuilder.Build;
 
