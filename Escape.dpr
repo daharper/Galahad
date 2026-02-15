@@ -20,13 +20,22 @@ uses
   Base.Stream in 'Base\Base.Stream.pas',
   Base.Xml in 'Base\Base.Xml.pas',
   SharedKernel.Data in 'SharedKernel\SharedKernel.Data.pas',
-  Application.Language in 'Application\Application.Language.pas';
+  Application.Language in 'Application\Application.Language.pas',
+  Infrastructure.ConsoleApplication in 'Infrastructure\Infrastructure.ConsoleApplication.pas',
+  Application.Contracts in 'Application\Application.Contracts.pas',
+  Domain.Game in 'Domain\Domain.Game.pas',
+  Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;
 
+  ApplicationBuilder.Services.AddModule(TConsoleApplicationModule.Create);
+
+  var app := ApplicationBuilder.Build;
+
   try
-    { TODO -oUser -cConsole Main : Insert code here }
+    app.Welcome;
+    app.Execute;
   except
     on E: Exception do
       Writeln(E.ClassName, ': ', E.Message);

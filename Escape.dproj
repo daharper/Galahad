@@ -211,6 +211,10 @@
         <DCCReference Include="Base\Base.Xml.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Data.pas"/>
         <DCCReference Include="Application\Application.Language.pas"/>
+        <DCCReference Include="Infrastructure\Infrastructure.ConsoleApplication.pas"/>
+        <DCCReference Include="Application\Application.Contracts.pas"/>
+        <DCCReference Include="Domain\Domain.Game.pas"/>
+        <DCCReference Include="Infrastructure\Infrastructure.ApplicationBuilder.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
