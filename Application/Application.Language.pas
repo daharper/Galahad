@@ -27,9 +27,21 @@ type
     procedure SetKindId(const aValue: integer);
     procedure SetKind(const aValue: TTermKind);
 
+    property Kind: TTermKind read GetKind write SetKind;
     property Value: string read GetValue write SetValue;
     property KindId: integer read GetKindId write SetKindId;
-    property Kind: TTermKind read GetKind write SetKind;
+  end;
+
+  ISynonym = interface(IEntity)
+    ['{BEA756F2-0334-447F-AC31-7B088C7C6FD1}']
+    function GetValue: string;
+    function GetTermId: integer;
+
+    procedure SetValue(const aValue: string);
+    procedure SetTermId(const aValue: integer);
+
+    property Value: string read GetValue write SetValue;
+    property TermId: integer read GetTermId write SetTermId;
   end;
 
   TTerm = class(TEntity, ITerm)
@@ -44,11 +56,31 @@ type
     procedure SetValue(const aValue: string);
     procedure SetKindId(const aValue: integer);
     procedure SetKind(const aValue: TTermKind);
+
+    [Transient]
+    property Kind: TTermKind read GetKind write SetKind;
+    property Value: string read GetValue write SetValue;
+    property KindId: integer read GetKindId write SetKindId;
   end;
 
-  ITermRepository = interface(IRepository<ITerm, TTerm>)
+  TSynonym = class(TEntity, ISynonym)
+  private
+    fValue: string;
+    fTermId: integer;
+  public
+    function GetValue: string;
+    function GetTermId: integer;
 
+    procedure SetValue(const aValue: string);
+    procedure SetTermId(const aValue: integer);
+
+    property Value: string read GetValue write SetValue;
+    property TermId: integer read GetTermId write SetTermId;
   end;
+
+  ITermRepository = IRepository<ITerm, TTerm>;
+
+  ISynonymRepository = IRepository<ISynonym, TSynonym>;
 
 implementation
 
@@ -86,6 +118,32 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TTerm.SetValue(const aValue: string);
+begin
+  fValue := aValue;
+end;
+
+{ TSynonym }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSynonym.GetTermId: integer;
+begin
+  Result := fTermId;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSynonym.SetTermId(const aValue: integer);
+begin
+  fTermId := aValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSynonym.GetValue: string;
+begin
+  Result := fValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSynonym.SetValue(const aValue: string);
 begin
   fValue := aValue;
 end;

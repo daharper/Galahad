@@ -184,6 +184,11 @@ type
     class function &As<T>(const aSource: IInterface): T; overload; static; inline;
 
     /// <summary>
+    ///  Returns true if T implements TService interface.
+    /// </summary>
+    class function &Is<T:class, constructor; TService>: boolean; static;
+
+    /// <summary>
     /// Returns True if the object implements interface T.
     /// </summary>
     class function Implements<T>(const aSource: TObject): Boolean; overload; static; inline;
@@ -551,6 +556,31 @@ begin
 
   if not Supports(aSource, InterfaceGuidOf<T>, Result) then
     raise EIntfCastError.CreateFmt('Interface does not support %s', [GetTypeName(TypeInfo(T))]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TReflection.&Is<T, TService>: boolean;
+begin
+  var obj := T.Create;
+
+  var info: PTypeInfo := TypeInfo(TService);
+
+  if (info = nil) or (info^.Kind <> tkInterface) then
+  begin
+    obj.Free;
+    exit(false);
+  end;
+
+  var data := GetTypeData(info);
+  var guid := data^.Guid;
+  var ifce: IInterface := nil;
+
+  Result := Supports(obj, guid, ifce);
+
+  if Result then
+    ifce := nil
+  else
+    obj.Free;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

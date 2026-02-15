@@ -5,13 +5,30 @@ interface
 uses
   Base.Core,
   Base.Container,
-  Application.Contracts;
+  Application.Contracts,
+  Application.Language;
 
 type
   /// <summary>
-  ///  Registers services with the application builder.
+  ///  Registers console modules with the service container.
   /// </summary>
-  TConsoleModule = class(TInterfacedObject, IContainerModule)
+  TConsoleModule = class(TTransient, IContainerModule)
+  public
+    procedure RegisterServices(const aContainer: TContainer);
+  end;
+
+  /// <summary>
+  ///  Registers console services with the application builder.
+  /// </summary>
+  TConsoleServiceModule = class(TTransient, IContainerModule)
+  public
+    procedure RegisterServices(const aContainer: TContainer);
+  end;
+
+  /// <summary>
+  ///  Registers data services with the application builder.
+  /// </summary>
+  TConsoleDataServicesModule = class(TTransient, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -27,6 +44,11 @@ type
 
 implementation
 
+uses
+  SharedKernel.Data,
+  Infrastructure.Files,
+  Infrastructure.Data;
+
 { TConsole }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -39,7 +61,26 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleApplication.Welcome;
 begin
-  Writeln('Press Q to quit, T for Terms, S for Synonyms');
+  Writeln('Press enter to quit...');
+end;
+
+{ TConsoleServiceModule }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TConsoleServiceModule.RegisterServices(const aContainer: TContainer);
+begin
+  aContainer.Add<IApplication, TConsoleApplication>(Singleton);
+end;
+
+{ TDataServicesModule }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContainer);
+begin
+  aContainer.Add<IFileService, TFileService>(Singleton);
+  aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
+  aContainer.Add<ITermRepository, TTermRepository>(Transient);
+  aContainer.Add<ISynonymRepository, TSynonymRepository>(Transient);
 end;
 
 { TConsoleModule }
@@ -47,7 +88,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
-  aContainer.Add<IApplication, TConsoleApplication>(Singleton);
+  aContainer.AddModule(TConsoleServiceModule.Create);
+  aContainer.AddModule(TConsoleDataServicesModule.Create);
 end;
 
 end.

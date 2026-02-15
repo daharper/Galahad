@@ -103,8 +103,10 @@ type
   IRepository<TService: IEntity; T: TEntity, constructor> = interface
     ['{2B0A8B8E-2A59-43E7-8B3F-0A6B8A2A4A3C}']
 
+    function TableName: string;
+
 //    function FirstBy(const aSpec: TSpecification<T>): TMaybe<T>;
-    function GetAll(const aId: integer): TArray<TService>;
+    function GetAll: TArray<TService>;
   end;
 
   /// <summary>
@@ -113,8 +115,18 @@ type
   TRepository<TService: IEntity; T: TEntity, constructor> = class(TDynamicObject, IRepository<TService, T>)
   private
     fDatabase: IDatabaseService;
+    fResults: TList<TService>;
+
+    function GetQueryResults:TList<TService>;
   protected
     fDirectives: TDictionary<TDirective, string>;
+
+    function Database: IDatabaseService;
+    function Connection: TFDConnection;
+    function Query: TFDQuery;
+
+    function ExecQuery(const aSql: string):TList<TService>; overload;
+    function ExecQuery:TList<TService>; overload;
 
     class var fName: string;
     class var fPropertyOrder: TList<string>;
@@ -122,7 +134,8 @@ type
 
     constructor Create(aDatabase: IDatabaseService);
   public
-    function GetAll(const aId: integer): TArray<TService>;
+    function TableName: string;
+    function GetAll: TArray<TService>;
 
     destructor Destroy; override;
 
@@ -133,7 +146,8 @@ type
 implementation
 
 uses
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Base.Reflection;
 
 { TEntity }
 
@@ -161,22 +175,122 @@ begin
   Result := fId < 1;
 end;
 
-
 { TRepository<TService, T> }
+
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.Database: IDatabaseService;
+begin
+  Result := fDatabase;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.Connection: TFDConnection;
+begin
+  Result := fDatabase.Connection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.Query: TFDQuery;
+begin
+  Result := fDatabase.Query;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.GetAll: TArray<TService>;
+const
+  SQL = 'select * from %s';
+begin
+  var qry := SQL.Format(SQL, [TableName]);
+  Result := ExecQuery(qry).ToArray;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.TableName: string;
+begin
+  Result := fName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.ExecQuery(const aSql: string):TList<TService>;
+begin
+  Query.SQL.Text := aSQL;
+  Result := ExecQuery;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.ExecQuery: TList<TService>;
+begin
+  Query.Open;
+
+  try
+    Result := GetQueryResults;
+  finally
+    Query.Close;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.GetQueryResults: TList<TService>;
+const
+  ERR = '%s does not support requested interface %s';
+var
+  lValue: TValue;
+  lEntity: T;
+  lName: string;
+  lVariant: Variant;
+  lProperty: TRttiProperty;
+  lNamedProperty: TPair<string, TRttiProperty>;
+begin
+  fResults.Clear;
+
+  Result := fResults;
+
+  if Query.RecordCount = 0 then exit;
+
+  Query.First;
+
+  while not Query.Eof do
+  begin
+    lEntity := T.Create;
+
+    for lNamedProperty in fProperties do
+    begin
+      lName     := lNamedProperty.Key;
+      lProperty := lNamedProperty.Value;
+      lVariant  := query[lName];
+
+      if not TReflection.TryVariantToTValue(lVariant, lProperty.PropertyType.Handle, lValue) then
+        lValue := TValue.FromVariant(lVariant);
+
+      lProperty.SetValue(TObject(lEntity), lValue);
+    end;
+
+    Result.Add(TReflection.As<TService>(lEntity));
+
+    Query.Next;
+  end;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TRepository<TService, T>.Create(aDatabase: IDatabaseService);
 begin
   inherited Create;
 
-  fDatabase := aDatabase;
-
+  fDatabase   := aDatabase;
+  fResults    := TList<TService>.Create;
   fDirectives := TDictionary<TDirective, string>.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 destructor TRepository<TService, T>.Destroy;
 begin
+  if Assigned(fResults) then
+  begin
+    fResults.Clear;
+    fResults.Free;
+  end;
+
   fDirectives.Free;
 
   inherited;
@@ -186,32 +300,41 @@ end;
 class constructor TRepository<TService, T>.Create;
 const
   NAME_ERR = 'Entities should follow the T[Table] naming convention: %s';
+  TYPE_ERR = '%s does not implement %s';
 var
   lCtx: TRttiContext;
 begin
-  lCtx   := TRttiContext.Create;
+  lCtx := TRttiContext.Create;
 
-  try
-    var lType  := lCtx.GetType(T);
-    var lClass := TRttiInstanceType(lType);
+{$IFDEF DEBUG}
+  // Delphi can't constrain Class + Interface on T, so we fail fast here.
+  // T must implement TService.
+  Assert(TReflection.Is<T, TService>, Format(TYPE_ERR, [T.ClassName, TReflection.TypeNameOf<TService>]));
+{$ENDIF}
 
-    Ensure.IsTrue(lClass.Name.StartsWith('T', true), Format(NAME_ERR, [lClass.Name]));
+  var lType :=  lCtx.GetType(T);
+  var lClass := TRttiInstanceType(lType);
 
-    fName := lClass.Name;
-    fName := fName.Substring(1);
+{$IFDEF DEBUG}
+  // Name entities with the T prefix convention so we know where to begin looking for the table name
+  // The entity name should match T[Table], i.e. TCustomer => Customer
+  Assert(lClass.Name.StartsWith('T', true), Format(NAME_ERR, [lClass.Name]));
+{$ENDIF}
 
-    fPropertyOrder := TList<string>.Create;
-    fProperties := TDictionary<string, TRttiProperty>.Create(TIStringComparer.Ordinal);
+  fName := lClass.Name;
+  fName := fName.Substring(1);
 
-    for var lProperty in lType.GetProperties do
-    begin
-      if Assigned(lProperty.GetAttribute<TransientAttribute>()) then continue;
+  fPropertyOrder := TList<string>.Create;
+  fProperties := TDictionary<string, TRttiProperty>.Create(TIStringComparer.Ordinal);
 
-      fProperties.Add(lProperty.Name, lProperty);
-      fPropertyOrder.Add(lProperty.Name);
-    end;
-  finally
-    lCtx.Free;
+  for var lProperty in lType.GetProperties do
+  begin
+    if SameText(lProperty.Name, 'RefCount') then Continue;
+
+    if Assigned(lProperty.GetAttribute<TransientAttribute>()) then continue;
+
+    fProperties.Add(lProperty.Name, lProperty);
+    fPropertyOrder.Add(lProperty.Name);
   end;
 end;
 
@@ -220,12 +343,6 @@ class destructor TRepository<TService, T>.Destroy;
 begin
   FreeAndNil(fProperties);
   FreeAndNil(fPropertyOrder);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.GetAll(const aId: integer): TArray<TService>;
-begin
-  //
 end;
 
 end.
