@@ -115,6 +115,8 @@ type
   TRepository<TService: IEntity; T: TEntity, constructor> = class(TDynamicObject, IRepository<TService, T>)
   private
     fDatabase: IDatabaseService;
+
+    // data moves around internally in a list (efficient) but returns to the client as an Array (memory safe)
     fResults: TList<TService>;
 
     function GetQueryResults:TList<TService>;
