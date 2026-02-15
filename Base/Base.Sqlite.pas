@@ -78,8 +78,9 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 destructor TSqliteDatabase.Destroy;
 begin
-  fConnection.Connected := false;
+  fQuery.Close;
 
+  fConnection.Connected := false;
   fConnection.ExecSQL('PRAGMA wal_checkpoint(TRUNCATE);');
 
   fConnection.Free;

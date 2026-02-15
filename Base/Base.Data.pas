@@ -107,6 +107,7 @@ type
 
 //    function FirstBy(const aSpec: TSpecification<T>): TMaybe<T>;
     function GetAll: TArray<TService>;
+    function GetBy(const aId: integer): TMaybe<TService>;
   end;
 
   /// <summary>
@@ -138,7 +139,9 @@ type
     constructor Create(aDatabase: IDatabaseService);
   public
     function TableName: string;
+
     function GetAll: TArray<TService>;
+    function GetBy(const aId: integer): TMaybe<TService>;
 
     destructor Destroy; override;
 
@@ -206,6 +209,25 @@ const
 begin
   var qry := SQL.Format(SQL, [TableName]);
   Result := ExecQuery(qry).ToArray;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.GetBy(const aId: integer): TMaybe<TService>;
+const
+  SQL = 'select * from %s where id = %d';
+var
+  lInstance: TService;
+begin
+  var qry  := SQL.Format(SQL, [TableName, aId]);
+  var list := ExecQuery(qry);
+
+  if list.IsEmpty then
+    Result.SetNone
+  else
+  begin
+    lInstance := list[0];
+    Result.SetSome(lInstance);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

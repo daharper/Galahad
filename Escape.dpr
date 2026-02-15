@@ -46,8 +46,9 @@ begin
 
     var synonyms := Container.Resolve<ISynonymRepository>;
 
-    for var synonym in synonyms.GetAll do
-      Writeln(synonym.Value);
+    var getById := synonyms.GetBy(1);
+
+    Writeln(getById.Value.Value);
 
     { test console application build }
 
