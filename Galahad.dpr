@@ -49,7 +49,8 @@ uses
   Tests.Core.Formatting in 'Tests.Core\Tests.Core.Formatting.pas',
   Tests.Core.Xml in 'Tests.Core\Tests.Core.Xml.pas',
   Base.Json in 'Base\Base.Json.pas',
-  Base.Sqlite in 'Base\Base.Sqlite.pas';
+  Base.Sqlite in 'Base\Base.Sqlite.pas',
+  Base.Data in 'Base\Base.Data.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

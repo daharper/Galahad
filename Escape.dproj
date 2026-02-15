@@ -210,7 +210,6 @@
         <DCCReference Include="Base\Base.Stream.pas"/>
         <DCCReference Include="Base\Base.Sqlite.pas"/>
         <DCCReference Include="Base\Base.Xml.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.Data.pas"/>
         <DCCReference Include="Domain\Domain.Game.pas"/>
         <DCCReference Include="Application\Application.Language.pas"/>
         <DCCReference Include="Application\Application.Contracts.pas"/>
@@ -218,6 +217,7 @@
         <DCCReference Include="Infrastructure\Infrastructure.Files.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.ConsoleApplication.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.ApplicationBuilder.pas"/>
+        <DCCReference Include="Base\Base.Data.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

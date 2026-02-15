@@ -3,7 +3,7 @@ unit Application.Language;
 interface
 
 uses
-  SharedKernel.Data;
+  Base.Data;
 
 type
   TTermKind = (

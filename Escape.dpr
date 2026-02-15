@@ -20,14 +20,14 @@ uses
   Base.Stream in 'Base\Base.Stream.pas',
   Base.Sqlite in 'Base\Base.Sqlite.pas',
   Base.Xml in 'Base\Base.Xml.pas',
-  SharedKernel.Data in 'SharedKernel\SharedKernel.Data.pas',
   Domain.Game in 'Domain\Domain.Game.pas',
   Application.Language in 'Application\Application.Language.pas',
   Application.Contracts in 'Application\Application.Contracts.pas',
   Infrastructure.Data in 'Infrastructure\Infrastructure.Data.pas',
   Infrastructure.Files in 'Infrastructure\Infrastructure.Files.pas',
   Infrastructure.ConsoleApplication in 'Infrastructure\Infrastructure.ConsoleApplication.pas',
-  Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas';
+  Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas',
+  Base.Data in 'Base\Base.Data.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;

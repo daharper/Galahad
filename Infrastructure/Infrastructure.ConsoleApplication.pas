@@ -45,7 +45,7 @@ type
 implementation
 
 uses
-  SharedKernel.Data,
+  Base.Data,
   Infrastructure.Files,
   Infrastructure.Data;
 

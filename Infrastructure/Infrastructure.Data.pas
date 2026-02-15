@@ -4,7 +4,7 @@ interface
 
 uses
   Base.Sqlite,
-  SharedKernel.Data,
+  Base.Data,
   Application.Contracts,
   Application.Language;
 

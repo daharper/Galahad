@@ -1,13 +1,13 @@
 {-----------------------------------------------------------------------------------------------------------------------
   Project:     Escape
-  Unit:        SharedKernel.Data
+  Unit:        Base.Data
   Author:      David Harper
   License:     MIT
   History:     2026-08-02 Initial version 0.1
   Purpose:     Provides simple data abstractions for the minimal database requirements of Escape.
 -----------------------------------------------------------------------------------------------------------------------}
 
-unit SharedKernel.Data;
+unit Base.Data;
 
 interface
 
@@ -110,7 +110,8 @@ type
   end;
 
   /// <summary>
-  ///  Base type for all repositories.
+  ///  Base type for all repositories. Requires entities to follow the T[Table] naming convention,
+  ///  for example, TCustomer for a table named Customer.
   /// </summary>
   TRepository<TService: IEntity; T: TEntity, constructor> = class(TDynamicObject, IRepository<TService, T>)
   private
