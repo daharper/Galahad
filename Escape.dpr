@@ -19,7 +19,8 @@ uses
   Base.Specifications in 'Base\Base.Specifications.pas',
   Base.Stream in 'Base\Base.Stream.pas',
   Base.Xml in 'Base\Base.Xml.pas',
-  SharedKernel.Data in 'SharedKernel\SharedKernel.Data.pas';
+  SharedKernel.Data in 'SharedKernel\SharedKernel.Data.pas',
+  Application.Language in 'Application\Application.Language.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;

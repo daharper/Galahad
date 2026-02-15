@@ -93,7 +93,7 @@ type
   ///
   /// Ownership contract:
   /// - Never mutates the input list.
-  /// - Never frees items.
+  /// - Never frees items (unless specifically noted)
   /// - Any returned list is newly allocated and caller-owned.
   /// - The Dispose and ToArray utility functions being the exceptions.
   /// </summary>
@@ -403,11 +403,100 @@ type
 
     /// <summary>Counts items that satisfy Predicate.</summary>
     class function Count<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): Integer; static;
+
+    /// <summary>Utility function to free all objects in the list, and clear the list</summary>
+    class procedure FreeObjects<T: class>(const aSource: TList<T>); static;
+
+    /// <summary>Utility function to free all objects in the list, clears the list, frees and nils the list.</summary>
+    class procedure FreeAll<T: class>(var aSource: TList<T>); static;
+
+    /// <summary>Converts an enumeration of strings to a dictionary with a string key and value.</summary>
+    class function ToStringMap(
+      const aItems: TEnumerable<string>;
+      const aText: string;
+      const aDelimiter: string;
+      const aStrictPair: boolean = true;
+      const aIgnoreCase: boolean = true
+    ) : TDictionary<string, string>; overload;
+
+    /// <summary>Converts a list of strings to a dictionary with a string key and value.</summary>
+    class function ToStringMap(
+      const aItems: TArray<string>;
+      const aText: string;
+      const aDelimiter: string;
+      const aStrictPair: boolean = true;
+      const aIgnoreCase: boolean = true
+    ) : TDictionary<string, string>; overload;
   end;
+
+
+  function ToPair(const aString: string; const aDelimiter: string; const aStrictPair: boolean = true): TPair<string, string>;
 
 implementation
 
+uses
+  System.StrUtils;
+
+{ Functions }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function ToPair(const aString: string; const aDelimiter: string; const aStrictPair: boolean): TPair<string, string>;
+var
+  lParts: TArray<string>;
+begin
+  Ensure.IsNotBlank(aString, 'Error creating pair: blank string')
+        .IsNotBlank(aDelimiter, 'Error creating pair: blank delimiter');
+
+  lParts := SplitString(aString, aDelimiter);
+
+  Ensure.IsTrue((aStrictPair = false) or (Length(lParts) = 2), 'Error creating pair: missing value');
+
+  Result := TPair<string, string>.Create(lParts[0], lParts[1]);
+end;
+
 { TCollect }
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.ToStringMap(
+  const aItems: TEnumerable<string>;
+  const aText: string;
+  const aDelimiter: string;
+  const aStrictPair: boolean;
+  const aIgnoreCase: boolean
+) : TDictionary<string, string>;
+begin
+  Result := if aIgnoreCase then
+              TDictionary<string, string>.Create(TIStringComparer.Ordinal)
+            else
+              TDictionary<string, string>.Create;
+
+  for var lItem in aItems do
+  begin
+    var pair := ToPair(lItem, aDelimiter, aStrictPair);
+    Result.Add(pair.Key, pair.Value);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollect.ToStringMap(
+  const aItems: TArray<string>;
+  const aText: string;
+  const aDelimiter: string;
+  const aStrictPair: boolean;
+  const aIgnoreCase: boolean
+) : TDictionary<string, string>;
+begin
+  Result := if aIgnoreCase then
+              TDictionary<string, string>.Create(TIStringComparer.Ordinal)
+            else
+              TDictionary<string, string>.Create;
+
+  for var lItem in aItems do
+  begin
+    var pair := ToPair(lItem, aDelimiter, aStrictPair);
+    Result.Add(pair.Key, pair.Value);
+  end;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.All<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): Boolean;
@@ -702,6 +791,31 @@ begin
   end;
 
   Result := scope.Release(list);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TCollect.FreeAll<T>(var aSource: TList<T>);
+begin
+  if not Assigned(aSource) then exit;
+
+  for var i := 0 to Pred(aSource.Count) do
+    aSource[i].Free;
+
+  aSource.Clear;
+  aSource.Free;
+
+  aSource := nil;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TCollect.FreeObjects<T>(const aSource: TList<T>);
+begin
+  if not Assigned(aSource) then exit;
+
+  for var i := 0 to Pred(aSource.Count) do
+    aSource[i].Free;
+
+  aSource.Clear;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

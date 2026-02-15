@@ -184,19 +184,18 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class constructor TRepository<TService, T>.Create;
+const
+  NAME_ERR = 'Entities should follow the T[Table] naming convention: %s';
 var
   lCtx: TRttiContext;
-  lType: TRttiType;
-  lProperty: TRttiProperty;
-  lClass: TRttiInstanceType;
 begin
   lCtx   := TRttiContext.Create;
 
   try
-    lType  := lCtx.GetType(T);
-    lClass := TRttiInstanceType(lType);
+    var lType  := lCtx.GetType(T);
+    var lClass := TRttiInstanceType(lType);
 
-    Ensure.IsTrue(lClass.Name.StartsWith('T', true), 'Entities follow T[Table] naming convention');
+    Ensure.IsTrue(lClass.Name.StartsWith('T', true), Format(NAME_ERR, [lClass.Name]));
 
     fName := lClass.Name;
     fName := fName.Substring(1);
@@ -204,7 +203,7 @@ begin
     fPropertyOrder := TList<string>.Create;
     fProperties := TDictionary<string, TRttiProperty>.Create(TIStringComparer.Ordinal);
 
-    for lProperty in lType.GetProperties do
+    for var lProperty in lType.GetProperties do
     begin
       if Assigned(lProperty.GetAttribute<TransientAttribute>()) then continue;
 
@@ -213,7 +212,8 @@ begin
     end;
   finally
     lCtx.Free;
-  end;end;
+  end;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class destructor TRepository<TService, T>.Destroy;
