@@ -86,12 +86,22 @@ type
   strict private
     fState: TResultState;
     fError: string;
+    fErrorToken: string;
+    fErrorDetails: string;
     fValue: T;
 
     function GetValue: T;
   public
     property Value: T read GetValue;
+
+    /// <summary>the user friendly error message</summary>
     property Error: string read fError;
+
+    /// <summary>a domain token like http.404</summary>
+    property ErrorToken: string read fErrorToken;
+
+    /// <summary>extra error information</summary>
+    property ErrorDetails: string read fErrorDetails;
 
     function IsErr: Boolean;
     function IsOk: Boolean;
@@ -112,14 +122,22 @@ type
     function Validate(const aPredicate: TFunc<T, Boolean>; const aErrorFunc: TFunc<T, string>): TResult<T>; overload;
 
     procedure SetOk(const aValue: T);
+
     procedure SetErr(const aMessage: string = ''); overload;
     procedure SetErr(const aFormat: string; const aArgs: array of const); overload;
+
+    procedure SetErrEx(const aToken: string; const aDetails: string; const aMessage: string); overload;
+    procedure SetErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const); overload;
 
     class function TryGet(const Func: TFunc<T>): TResult<T>; static; inline;
 
     class function Ok(const aValue: T): TResult<T>; static; inline;
+
     class function Err(const aMessage: string = ''): TResult<T>; overload; static; inline;
     class function Err(const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
+
+    class function ErrEx(const aToken: string; const aDetails: string; const aMessage: string): TResult<T>; overload; static;
+    class function ErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
 
     class operator Initialize;
   end;
@@ -633,6 +651,28 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetErrEx(const aToken, aDetails, aMessage: string);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsErr;
+  fError := aMessage;
+  fErrorToken := aToken;
+  fErrorDetails := aDetails;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetErrEx(const aToken, aDetails, aFormat: string; const aArgs: array of const);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsErr;
+  fError := Format(aFormat, aArgs);
+  fErrorToken := aToken;
+  fErrorDetails := aDetails;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TResult<T>.Tap(const aProc: TProc<T>): TResult<T>;
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
@@ -677,6 +717,20 @@ class function TResult<T>.Err(const aFormat: string; const aArgs: array of const
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   Result.SetErr(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.ErrEx(const aToken, aDetails, aMessage: string): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetErrEx(aToken, aDetails, aMessage);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.ErrEx(const aToken, aDetails, aFormat: string; const aArgs: array of const): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetErrEx(aToken, aDetails, aFormat, aArgs);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
