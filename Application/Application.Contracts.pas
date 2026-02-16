@@ -1,4 +1,4 @@
-unit Application.Core.Contracts;
+unit Application.Contracts;
 
 interface
 

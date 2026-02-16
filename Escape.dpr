@@ -26,9 +26,10 @@ uses
   Infrastructure.ConsoleApplication in 'Infrastructure\Infrastructure.ConsoleApplication.pas',
   Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas',
   Base.Data in 'Base\Base.Data.pas',
-  Application.Core.Contracts in 'Application.Core\Application.Core.Contracts.pas',
-  Application.Core.Language in 'Application.Core\Application.Core.Language.pas',
-  Application.UseCases.StartGame in 'Application.UseCases\Application.UseCases.StartGame.pas';
+  Application.UseCases.StartGame in 'Application.UseCases\Application.UseCases.StartGame.pas',
+  Domain.Terms in 'Domain\Domain.Terms.pas',
+  Application.Contracts in 'Application\Application.Contracts.pas',
+  Application.Language in 'Application\Application.Language.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;

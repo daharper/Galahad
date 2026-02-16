@@ -6,8 +6,9 @@ uses
   Base.Core,
   Base.Container,
   Domain.Game,
-  Application.Core.Contracts,
-  Application.Core.Language,
+  Domain.Terms,
+  Application.Contracts,
+  Application.Language,
   Application.UseCases.StartGame;
 
 type

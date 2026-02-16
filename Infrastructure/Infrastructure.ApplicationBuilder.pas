@@ -5,7 +5,7 @@ interface
 uses
   Base.Core,
   Base.Container,
-  Application.Core.Contracts;
+  Application.Contracts;
 
 type
   TApplicationBuilder = class
