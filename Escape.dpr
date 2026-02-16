@@ -21,13 +21,13 @@ uses
   Base.Sqlite in 'Base\Base.Sqlite.pas',
   Base.Xml in 'Base\Base.Xml.pas',
   Domain.Game in 'Domain\Domain.Game.pas',
-  Application.Language in 'Application\Application.Language.pas',
-  Application.Contracts in 'Application\Application.Contracts.pas',
   Infrastructure.Data in 'Infrastructure\Infrastructure.Data.pas',
   Infrastructure.Files in 'Infrastructure\Infrastructure.Files.pas',
   Infrastructure.ConsoleApplication in 'Infrastructure\Infrastructure.ConsoleApplication.pas',
   Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas',
-  Base.Data in 'Base\Base.Data.pas';
+  Base.Data in 'Base\Base.Data.pas',
+  Application.Core.Contracts in 'Application.Core\Application.Core.Contracts.pas',
+  Application.Core.Language in 'Application.Core\Application.Core.Language.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;
@@ -39,16 +39,12 @@ begin
   try
     { test data access }
 
-    var terms := Container.Resolve<ITermRepository>;
+    var vocab := Container.Resolve<IVocabRegistrar>;
 
-    for var term in terms.GetAll do
-      Writeln(term.Value);
+    var termOpt := vocab.ResolveTerm('GOLDEN');
 
-    var synonyms := Container.Resolve<IWordRepository>;
-
-    var getById := synonyms.GetBy(1);
-
-    Writeln(getById.Value.Value);
+    if termOpt.IsSome then
+      Writeln(termOpt.Value.Value);
 
     { test console application build }
 

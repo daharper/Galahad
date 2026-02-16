@@ -5,8 +5,8 @@ interface
 uses
   Base.Sqlite,
   Base.Data,
-  Application.Contracts,
-  Application.Language;
+  Application.Core.Contracts,
+  Application.Core.Language;
 
 type
   TDatabaseService = class(TSqliteDatabase, IDatabaseService)

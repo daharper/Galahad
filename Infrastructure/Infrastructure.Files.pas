@@ -4,7 +4,7 @@ interface
 
 uses
   Base.Core,
-  Application.Contracts;
+  Application.Core.Contracts;
 
 type
   TFileService = class(TSingleton, IFileService)

@@ -71,6 +71,8 @@ type
     function GetId: integer;
     function IsNew: boolean;
     function Exists: boolean;
+
+    property Id: integer read GetId write SetId;
   end;
 
   /// <summary>

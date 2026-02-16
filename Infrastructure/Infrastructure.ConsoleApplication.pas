@@ -5,8 +5,9 @@ interface
 uses
   Base.Core,
   Base.Container,
-  Application.Contracts,
-  Application.Language;
+  Domain.Game,
+  Application.Core.Contracts,
+  Application.Core.Language;
 
 type
   /// <summary>
@@ -38,8 +39,12 @@ type
   /// </summary>
   TConsoleApplication = class(TSingleton, IApplication)
   private
+    fSession: IGameSession;
+  public
     procedure Welcome;
     procedure Execute;
+
+//    constructor Create(aStartGameUseCase: IStartGameUseCase);
   end;
 
 implementation
@@ -50,6 +55,12 @@ uses
   Infrastructure.Data;
 
 { TConsole }
+
+{----------------------------------------------------------------------------------------------------------------------}
+//constructor TConsoleApplication.Create;
+//begin
+// lSession := fStartGameUse.Execute;//  fSession := aSession;
+//end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleApplication.Execute;
@@ -69,6 +80,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleServiceModule.RegisterServices(const aContainer: TContainer);
 begin
+  aContainer.Add<IGameSession, TGameSession>(Singleton);
   aContainer.Add<IApplication, TConsoleApplication>(Singleton);
 end;
 
@@ -81,6 +93,9 @@ begin
   aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);
   aContainer.Add<IWordRepository, TWordRepository>(Transient);
+  aContainer.Add<IWordRegistry, TWordRegistry>(Singleton);
+  aContainer.Add<ITermRegistry, TTermRegistry>(Singleton);
+  aContainer.Add<IVocabRegistrar, TVocabRegistrar>(Singleton);
 end;
 
 { TConsoleModule }

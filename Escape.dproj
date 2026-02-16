@@ -211,13 +211,13 @@
         <DCCReference Include="Base\Base.Sqlite.pas"/>
         <DCCReference Include="Base\Base.Xml.pas"/>
         <DCCReference Include="Domain\Domain.Game.pas"/>
-        <DCCReference Include="Application\Application.Language.pas"/>
-        <DCCReference Include="Application\Application.Contracts.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Data.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Files.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.ConsoleApplication.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.ApplicationBuilder.pas"/>
         <DCCReference Include="Base\Base.Data.pas"/>
+        <DCCReference Include="Application.Core\Application.Core.Contracts.pas"/>
+        <DCCReference Include="Application.Core\Application.Core.Language.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

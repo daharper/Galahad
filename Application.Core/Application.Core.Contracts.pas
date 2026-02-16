@@ -1,4 +1,4 @@
-unit Application.Contracts;
+unit Application.Core.Contracts;
 
 interface
 
@@ -15,6 +15,8 @@ type
     function StartupPath: string;
     function DatabasePath: string;
   end;
+
+
 
 implementation
 
