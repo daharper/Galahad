@@ -44,7 +44,7 @@ begin
     for var term in terms.GetAll do
       Writeln(term.Value);
 
-    var synonyms := Container.Resolve<ISynonymRepository>;
+    var synonyms := Container.Resolve<IWordRepository>;
 
     var getById := synonyms.GetBy(1);
 

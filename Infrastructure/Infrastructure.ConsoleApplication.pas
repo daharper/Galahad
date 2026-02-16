@@ -80,7 +80,7 @@ begin
   aContainer.Add<IFileService, TFileService>(Singleton);
   aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);
-  aContainer.Add<ISynonymRepository, TSynonymRepository>(Transient);
+  aContainer.Add<IWordRepository, TWordRepository>(Transient);
 end;
 
 { TConsoleModule }

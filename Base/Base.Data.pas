@@ -106,7 +106,6 @@ type
 
     function TableName: string;
 
-//    function FirstBy(const aSpec: TSpecification<T>): TMaybe<T>;
     function GetAll: TArray<TService>;
     function GetBy(const aId: integer): TMaybe<TService>;
   end;

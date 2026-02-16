@@ -20,7 +20,7 @@ type
     constructor Create(const aDatabaseService: IDatabaseService);
   end;
 
-  TSynonymRepository = class(TRepository<ISynonym, TSynonym>, ISynonymRepository)
+  TWordRepository = class(TRepository<IWord, TWord>, IWordRepository)
   public
     constructor Create(const aDatabaseService: IDatabaseService);
   end;
@@ -52,7 +52,7 @@ end;
 { TSynonymRepository }
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TSynonymRepository.Create(const aDatabaseService: IDatabaseService);
+constructor TWordRepository.Create(const aDatabaseService: IDatabaseService);
 begin
   inherited Create(aDatabaseService);
 end;

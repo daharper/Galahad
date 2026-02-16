@@ -32,7 +32,7 @@ type
     property KindId: integer read GetKindId write SetKindId;
   end;
 
-  ISynonym = interface(IEntity)
+  IWord = interface(IEntity)
     ['{BEA756F2-0334-447F-AC31-7B088C7C6FD1}']
     function GetValue: string;
     function GetTermId: integer;
@@ -63,7 +63,7 @@ type
     property KindId: integer read GetKindId write SetKindId;
   end;
 
-  TSynonym = class(TEntity, ISynonym)
+  TWord = class(TEntity, IWord)
   private
     fValue: string;
     fTermId: integer;
@@ -80,7 +80,7 @@ type
 
   ITermRepository = IRepository<ITerm, TTerm>;
 
-  ISynonymRepository = IRepository<ISynonym, TSynonym>;
+  IWordRepository = IRepository<IWord, TWord>;
 
 implementation
 
@@ -122,28 +122,28 @@ begin
   fValue := aValue;
 end;
 
-{ TSynonym }
+{ TWord }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TSynonym.GetTermId: integer;
+function TWord.GetTermId: integer;
 begin
   Result := fTermId;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSynonym.SetTermId(const aValue: integer);
+procedure TWord.SetTermId(const aValue: integer);
 begin
   fTermId := aValue;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TSynonym.GetValue: string;
+function TWord.GetValue: string;
 begin
   Result := fValue;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSynonym.SetValue(const aValue: string);
+procedure TWord.SetValue(const aValue: string);
 begin
   fValue := aValue;
 end;
