@@ -19,6 +19,7 @@ uses
   System.Variants,
   System.Generics.Collections,
   FireDAC.Comp.Client,
+  FireDAC.Stan.Param,
   Base.Core,
   Base.Integrity,
   Base.Dynamic,
@@ -183,7 +184,6 @@ end;
 
 { TRepository<TService, T> }
 
-
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.Database: IDatabaseService;
 begin
@@ -214,12 +214,14 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.GetBy(const aId: integer): TMaybe<TService>;
 const
-  SQL = 'select * from %s where id = %d';
+  SQL = 'select * from %s where id = :id';
 var
   lInstance: TService;
 begin
-  var qry  := SQL.Format(SQL, [TableName, aId]);
-  var list := ExecQuery(qry);
+  Query.SQL.Text := SQL.Format(SQL, [TableName, aId]);
+  Query.ParamByName('id').AsInteger := aId;
+
+  var list := ExecQuery;
 
   if list.IsEmpty then
     Result.SetNone
