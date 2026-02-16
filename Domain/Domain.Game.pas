@@ -10,6 +10,7 @@ type
 
   IGameSession = interface
     ['{E02EFAA3-617B-4B9E-9E88-413BD0E5052D}']
+    function IsRunning: boolean;
     function GetState: TGameState;
 
     procedure SetState(const aState: TGameState);
@@ -21,6 +22,7 @@ type
   private
     fState: TGameState;
   public
+    function IsRunning: boolean;
     function GetState: TGameState;
 
     procedure SetState(const aState: TGameState);
@@ -34,6 +36,12 @@ implementation
 function TGameSession.GetState: TGameState;
 begin
   Result := fState;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TGameSession.IsRunning: boolean;
+begin
+  Result := fState = gsRunning;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -27,7 +27,8 @@ uses
   Infrastructure.ApplicationBuilder in 'Infrastructure\Infrastructure.ApplicationBuilder.pas',
   Base.Data in 'Base\Base.Data.pas',
   Application.Core.Contracts in 'Application.Core\Application.Core.Contracts.pas',
-  Application.Core.Language in 'Application.Core\Application.Core.Language.pas';
+  Application.Core.Language in 'Application.Core\Application.Core.Language.pas',
+  Application.UseCases.StartGame in 'Application.UseCases\Application.UseCases.StartGame.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;
@@ -37,17 +38,6 @@ begin
   var app := ApplicationBuilder.Build;
 
   try
-    { test data access }
-
-    var vocab := Container.Resolve<IVocabRegistrar>;
-
-    var termOpt := vocab.ResolveTerm('GOLDEN');
-
-    if termOpt.IsSome then
-      Writeln(termOpt.Value.Value);
-
-    { test console application build }
-
     app.Welcome;
     app.Execute;
   except

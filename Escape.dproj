@@ -218,6 +218,7 @@
         <DCCReference Include="Base\Base.Data.pas"/>
         <DCCReference Include="Application.Core\Application.Core.Contracts.pas"/>
         <DCCReference Include="Application.Core\Application.Core.Language.pas"/>
+        <DCCReference Include="Application.UseCases\Application.UseCases.StartGame.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

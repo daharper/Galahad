@@ -7,7 +7,8 @@ uses
   Base.Container,
   Domain.Game,
   Application.Core.Contracts,
-  Application.Core.Language;
+  Application.Core.Language,
+  Application.UseCases.StartGame;
 
 type
   /// <summary>
@@ -35,6 +36,14 @@ type
   end;
 
   /// <summary>
+  ///  Registers use cases with the application builder.
+  /// </summary>
+  TUseCaseModule = class(TTransient, IContainerModule)
+  public
+    procedure RegisterServices(const aContainer: TContainer);
+  end;
+
+  /// <summary>
   ///  The console application.
   /// </summary>
   TConsoleApplication = class(TSingleton, IApplication)
@@ -44,12 +53,13 @@ type
     procedure Welcome;
     procedure Execute;
 
-//    constructor Create(aStartGameUseCase: IStartGameUseCase);
+    constructor Create(const aStartGameUseCase: IStartGameUseCase);
   end;
 
 implementation
 
 uses
+  System.SysUtils,
   Base.Data,
   Infrastructure.Files,
   Infrastructure.Data;
@@ -57,16 +67,35 @@ uses
 { TConsole }
 
 {----------------------------------------------------------------------------------------------------------------------}
-//constructor TConsoleApplication.Create;
-//begin
-// lSession := fStartGameUse.Execute;//  fSession := aSession;
-//end;
+constructor TConsoleApplication.Create(const aStartGameUseCase: IStartGameUseCase);
+begin
+  fSession := aStartGameUseCase.Execute;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleApplication.Execute;
+var
+  lInput: string;
 begin
-  Writeln('Running');
-  Readln;
+  var vocab := Container.Resolve<IVocabRegistrar>; // todo - remove after testing
+
+  while fSession.IsRunning do
+  begin
+    Write('> ');
+
+    Readln(lInput);
+
+    lInput := Trim(lInput);
+
+    if Length(lInput) = 0 then continue;
+
+    if SameText(lInput, 'quit') then Break;
+
+    var termOpt := vocab.ResolveTerm(lInput);
+
+    if termOpt.IsSome then
+      Writeln(termOpt.Value.Value);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -98,6 +127,14 @@ begin
   aContainer.Add<IVocabRegistrar, TVocabRegistrar>(Singleton);
 end;
 
+{ TUseCaseModule }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TUseCaseModule.RegisterServices(const aContainer: TContainer);
+begin
+  aContainer.Add<IStartGameUseCase, TStartGameUseCase>(Transient);
+end;
+
 { TConsoleModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -105,6 +142,7 @@ procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.AddModule(TConsoleServiceModule.Create);
   aContainer.AddModule(TConsoleDataServicesModule.Create);
+  aContainer.AddModule(TUseCaseModule.Create);
 end;
 
 end.
