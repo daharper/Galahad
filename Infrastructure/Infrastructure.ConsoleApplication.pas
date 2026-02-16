@@ -87,14 +87,16 @@ begin
 
     lInput := Trim(lInput);
 
-    if Length(lInput) = 0 then continue;
+    if lInput = '' then continue;
 
     if SameText(lInput, 'quit') then Break;
 
     var termOpt := vocab.ResolveTerm(lInput);
 
     if termOpt.IsSome then
-      Writeln(termOpt.Value.Value);
+      Writeln(termOpt.Value.Value)
+    else
+      Writeln('(unknown term)');
   end;
 end;
 
