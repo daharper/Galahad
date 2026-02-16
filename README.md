@@ -21,7 +21,7 @@ This is for the application, hardening, and polishing of the base types in the i
 
 **Project.groupproj** opens both projects; for individual projects open **Galahad.dproj** or **Escape.dproj**.
 
-Once Escape is finished, I'll separate the two repositories - but for now, with Escape currently driving ongoing refactoring of the initial version of Galahad, I'll keep them together temporarily. And, once the dust settles, I'll provide documentation.
+Once Escape is finished, I'll separate the two repositories - but for now, with Escape currently driving ongoing refactoring of the initial version of Galahad, I'll keep them together temporarily. Once the dust settles, I'll provide documentation.
 
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
