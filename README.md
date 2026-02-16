@@ -19,7 +19,7 @@ The second phase has just begun which is a basic application (named **Escape**) 
 
 This is for the application, hardening, and polishing of the base types in the initial version 0.1 release.
 
-Project.groupproj opens both projects; for individual projects open Galahad.dproj or Escape.dproj.
+Project.groupproj opens both projects; for individual projects open Galahad.dproj or Escape.dproj. Once Escape is finished, I'll separate the two repositories, but with Escape currently forcing ongoing refactoring of the initial version of Galahad, I'll keep them together temporarily.
 
 Once the dust settles, I'll provide documentation.
 
