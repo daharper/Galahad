@@ -16,8 +16,6 @@ type
     function DatabasePath: string;
   end;
 
-
-
 implementation
 
 end.

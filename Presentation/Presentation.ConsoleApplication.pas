@@ -1,4 +1,4 @@
-unit Infrastructure.ConsoleApplication;
+unit Presentation.ConsoleApplication;
 
 interface
 
@@ -9,9 +9,26 @@ uses
   Domain.Terms,
   Application.Contracts,
   Application.Language,
+  Application.Parsing,
   Application.UseCases.StartGame;
 
 type
+  /// <summary>
+  ///  The console application.
+  /// </summary>
+  TConsoleApplication = class(TSingleton, IApplication)
+  private
+    fParser: ITextParser;
+    fSession: IGameSession;
+  public
+    procedure Welcome;
+    procedure Execute;
+
+    constructor Create(
+      const aParser: ITextParser;
+      const aStartGameUseCase: IStartGameUseCase);
+  end;
+
   /// <summary>
   ///  Registers console modules with the service container.
   /// </summary>
@@ -24,6 +41,14 @@ type
   ///  Registers console services with the application builder.
   /// </summary>
   TConsoleServiceModule = class(TTransient, IContainerModule)
+  public
+    procedure RegisterServices(const aContainer: TContainer);
+  end;
+
+  /// <summary>
+  ///  Registers console services with the application builder.
+  /// </summary>
+  TConsoleParsingModule = class(TTransient, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -44,19 +69,6 @@ type
     procedure RegisterServices(const aContainer: TContainer);
   end;
 
-  /// <summary>
-  ///  The console application.
-  /// </summary>
-  TConsoleApplication = class(TSingleton, IApplication)
-  private
-    fSession: IGameSession;
-  public
-    procedure Welcome;
-    procedure Execute;
-
-    constructor Create(const aStartGameUseCase: IStartGameUseCase);
-  end;
-
 implementation
 
 uses
@@ -68,8 +80,12 @@ uses
 { TConsole }
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TConsoleApplication.Create(const aStartGameUseCase: IStartGameUseCase);
+constructor TConsoleApplication.Create(
+  const aParser: ITextParser;
+  const aStartGameUseCase: IStartGameUseCase
+);
 begin
+  fParser := aParser;
   fSession := aStartGameUseCase.Execute;
 end;
 
@@ -78,8 +94,6 @@ procedure TConsoleApplication.Execute;
 var
   lInput: string;
 begin
-  var vocab := Container.Resolve<IVocabRegistrar>; // todo - remove after testing
-
   while fSession.IsRunning do
   begin
     Write('> ');
@@ -89,15 +103,47 @@ begin
     lInput := Trim(lInput);
 
     if lInput = '' then continue;
-
     if SameText(lInput, 'quit') then Break;
 
-    var termOpt := vocab.ResolveTerm(lInput);
+    var tokens := fParser.Execute(lInput);
 
-    if termOpt.IsSome then
-      Writeln(termOpt.Value.Value)
-    else
-      Writeln('(unknown term)');
+    try
+      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
+
+      for var token in tokens do
+      begin
+        Writeln('Text: ' + token.Text);
+        Write('Kind: ');
+
+        case token.Kind of
+          ttUnknown:      Writeln('Unknown');
+          ttText:         Writeln('Text');
+          ttNumber:       Writeln('Number');
+          ttQuotedString: Writeln('QuotedString');
+        end;
+
+        if token.IsWord then
+          Writeln('Word: ' + token.Word.Value);
+
+        if token.IsTerm then
+          Writeln('Term: ' + token.Term.Value);
+
+        Writeln;
+      end;
+
+      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
+    finally
+      tokens.Free;
+    end;
+
+
+
+//    var termOpt := vocab.ResolveTerm(lInput);
+//
+//    if termOpt.IsSome then
+//      Writeln(termOpt.Value.Value)
+//    else
+//      Writeln('(unknown term)');
   end;
 end;
 
@@ -125,9 +171,6 @@ begin
   aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);
   aContainer.Add<IWordRepository, TWordRepository>(Transient);
-  aContainer.Add<IWordRegistry, TWordRegistry>(Singleton);
-  aContainer.Add<ITermRegistry, TTermRegistry>(Singleton);
-  aContainer.Add<IVocabRegistrar, TVocabRegistrar>(Singleton);
 end;
 
 { TUseCaseModule }
@@ -138,6 +181,20 @@ begin
   aContainer.Add<IStartGameUseCase, TStartGameUseCase>(Transient);
 end;
 
+{ TConsoleParsingModule }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TConsoleParsingModule.RegisterServices(const aContainer: TContainer);
+begin
+  aContainer.Add<IWordRegistry, TWordRegistry>(Singleton);
+  aContainer.Add<ITermRegistry, TTermRegistry>(Singleton);
+  aContainer.Add<ITextSanitizer, TTextSanitizer>(Singleton);
+  aContainer.Add<ITextTokenizer, TTextTokenizer>(Singleton);
+  aContainer.Add<IWordResolver, TWordResolver>(Singleton);
+  aContainer.Add<ITermResolver, TTermResolver>(Singleton);
+  aContainer.Add<ITextParser, TTextParser>(Singleton);
+end;
+
 { TConsoleModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -145,6 +202,7 @@ procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.AddModule(TConsoleServiceModule.Create);
   aContainer.AddModule(TConsoleDataServicesModule.Create);
+  aContainer.AddModule(TConsoleParsingModule.Create);
   aContainer.AddModule(TUseCaseModule.Create);
 end;
 

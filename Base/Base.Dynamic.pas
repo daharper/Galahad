@@ -11,6 +11,8 @@ unit Base.Dynamic;
 
 interface
 
+{$IFDEF MSWINDOWS}
+
 uses
   System.SysUtils,
   System.Variants,
@@ -276,7 +278,11 @@ type
   /// </summary>
   function DynamicCache: TDynamicCache;
 
+{$ENDIF}
+
 implementation
+
+{$IFDEF MSWINDOWS}
 
 uses
   System.TypInfo,
@@ -1234,6 +1240,8 @@ class destructor TDynamicCache.Destroy;
 begin
   FreeAndNil(fInstance);
 end;
+
+{$ENDIF}
 
 end.
 

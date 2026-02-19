@@ -55,18 +55,20 @@ type
     property KindId: integer read GetKindId write SetKindId;
   end;
 
+  TTerms = TList<ITerm>;
+
   ITermRepository = IRepository<ITerm, TTerm>;
 
   ITermRegistry = interface
     ['{DCCA3483-0883-4E1F-A4AC-D1B3FAB37082}']
-    function GetTerm(const aId: integer): TMaybe<ITerm>;
+    function GetTerm(const aId: integer): ITerm;
   end;
 
   TTermRegistry = class(TSingleton, ITermRegistry)
   private
     fIndex: TDictionary<integer, ITerm>;
   public
-    function GetTerm(const aId: integer): TMaybe<ITerm>;
+    function GetTerm(const aId: integer): ITerm;
 
     constructor Create(const aRepository: ITermRepository);
     destructor Destroy; override;
@@ -119,14 +121,15 @@ end;
 { TTermRegistry }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TTermRegistry.GetTerm(const aId: integer): TMaybe<ITerm>;
+function TTermRegistry.GetTerm(const aId: integer): ITerm;
+const
+  ERR = 'Unknown term id: %d';
 var
   term: ITerm;
 begin
-  if fIndex.TryGetValue(aId, term) then
-    Result.SetSome(term)
-  else
-    Result.SetNone;
+  Ensure.IsTrue(fIndex.TryGetValue(aId, term), Format(ERR, [aId]));
+
+  Result := term
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -261,7 +261,11 @@ type
   end;
 
   /// <summary>Represents an XML Element</summary>
+{$IFDEF MSWINDOWS}
   TBvElement = class(TDynamicObject, IBvElement)
+{$ELSE}
+  TBvElement = class(TTransient, IBvElement)
+{$ENDIF}
   private
     fElems: TList<IBvElement>;
     fAttrs: TList<TBvAttribute>;
@@ -350,7 +354,10 @@ type
     procedure ClearElems;
     function Elems: TEnumerable<IBvElement>;
     function ElemAt(const aIndex: integer): IBvElement;
+
+{$IFDEF MSWINDOWS}
     function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; override;
+{$ENDIF}
 
     constructor Create; overload;
     constructor Create(const aName: string; const aValue: string = ''); overload;
@@ -1246,6 +1253,8 @@ begin
   Result := LastElem;
 end;
 
+{$IFDEF MSWINDOWS}
+
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
@@ -1280,6 +1289,8 @@ begin
       e.Attr(aArgs[0]).Value := aArgs[1];
   end;
 end;
+
+{$ENDIF}
 
 /// <summary>
 ///  Adds a child element to fElems (side-effect only).
