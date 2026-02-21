@@ -16,7 +16,7 @@ type
   /// <summary>
   ///  The console application.
   /// </summary>
-  TConsoleApplication = class(TSingleton, IApplication)
+  TConsoleApplication = class(TInterfacedObject, IApplication)
   private
     fParser: ITextParser;
     fSession: IGameSession;
@@ -32,7 +32,7 @@ type
   /// <summary>
   ///  Registers console modules with the service container.
   /// </summary>
-  TConsoleModule = class(TTransient, IContainerModule)
+  TConsoleModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -40,7 +40,7 @@ type
   /// <summary>
   ///  Registers console services with the application builder.
   /// </summary>
-  TConsoleServiceModule = class(TTransient, IContainerModule)
+  TConsoleServiceModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -48,7 +48,7 @@ type
   /// <summary>
   ///  Registers console services with the application builder.
   /// </summary>
-  TConsoleParsingModule = class(TTransient, IContainerModule)
+  TConsoleParsingModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -56,7 +56,7 @@ type
   /// <summary>
   ///  Registers data services with the application builder.
   /// </summary>
-  TConsoleDataServicesModule = class(TTransient, IContainerModule)
+  TConsoleDataServicesModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -64,7 +64,7 @@ type
   /// <summary>
   ///  Registers use cases with the application builder.
   /// </summary>
-  TUseCaseModule = class(TTransient, IContainerModule)
+  TUseCaseModule = class(TInterfacedObject, IContainerModule)
   public
     procedure RegisterServices(const aContainer: TContainer);
   end;
@@ -103,7 +103,13 @@ begin
     lInput := Trim(lInput);
 
     if lInput = '' then continue;
-    if SameText(lInput, 'quit') then Break;
+
+    if SameText(lInput, 'quit') then
+    begin
+      fSession.State := gsFinished;
+      continue;
+    end;
+
 
     var tokens := fParser.Execute(lInput);
 
@@ -135,15 +141,6 @@ begin
     finally
       tokens.Free;
     end;
-
-
-
-//    var termOpt := vocab.ResolveTerm(lInput);
-//
-//    if termOpt.IsSome then
-//      Writeln(termOpt.Value.Value)
-//    else
-//      Writeln('(unknown term)');
   end;
 end;
 
@@ -159,7 +156,7 @@ end;
 procedure TConsoleServiceModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.Add<IGameSession, TGameSession>(Singleton);
-  aContainer.Add<IApplication, TConsoleApplication>(Singleton);
+  aContainer.Add<IApplication, TConsoleApplication>(Transient);
 end;
 
 { TDataServicesModule }
@@ -200,10 +197,10 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
-  aContainer.AddModule(TConsoleServiceModule.Create);
-  aContainer.AddModule(TConsoleDataServicesModule.Create);
-  aContainer.AddModule(TConsoleParsingModule.Create);
-  aContainer.AddModule(TUseCaseModule.Create);
+  aContainer.AddModule<TConsoleServiceModule>;
+  aContainer.AddModule<TConsoleDataServicesModule>;
+  aContainer.AddModule<TConsoleParsingModule>;
+  aContainer.AddModule<TUseCaseModule>;
 end;
 
 end.

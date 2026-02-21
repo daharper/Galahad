@@ -25,8 +25,8 @@ type
   TBool = Boolean;
 
   { semantic abstractions for interface management }
-  TSingleton = class(TNoRefCountObject);
-  TTransient = class(TInterfacedObject);
+//  TSingleton = class(TNoRefCountObject);
+//  TTransient = class(TInterfacedObject);
 
   { predicates }
   TRefPredicate<T> = reference to function(const [ref] aItem: T): Boolean;

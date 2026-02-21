@@ -222,6 +222,8 @@ type
     /// </remarks>
     procedure AddModule(const aModule: IContainerModule); overload;
 
+    procedure AddModule<T: IContainerModule, class, constructor>; overload;
+
     /// <summary>
     /// Applies multiple modules (grouped registrations) to this container in order.
     /// </summary>
@@ -731,11 +733,12 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.Add<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
+const
+  ERR = 'Add<TService,TImpl>: TService must be an interface';
 var
   Reg: TRegistration;
 begin
-  Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface,
-    'AddType<TService,TImpl>: TService must be an interface');
+  Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface, ERR);
 
   var key := TServiceKey.Create(TypeInfo(TService), aName);
 
@@ -770,6 +773,18 @@ begin
   Reg.OwnsInstance := False;
 
   fRegistry.Add(Reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule<T>;
+begin
+  var module := T.Create;
+  try
+    module.RegisterServices(Self);
+  finally
+    module.Free;
+  end;
+
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -845,6 +860,8 @@ begin
     if m.Visibility <> mvPublic then continue;
 
     var params := m.GetParameters;
+
+    { todo - first check params are interface or class, if not continue }
     SetLength(lCandidateArgs, Length(params));
 
     var ok := True;
@@ -913,6 +930,15 @@ begin
         if not Self.TryResolveByTypeInfo(info, lIntf, '') then exit(false);
 
         TValue.Make(@lIntf, info, aValue);
+
+//        var key := TServiceKey.Create(info, '');
+//
+//        if (fRegistry.TryGet(key, lReg) and (lReg.Lifetime = Singleton)) then
+//        begin
+//          lObj := TObject(PPointer(lIntf)^);
+//          fSingletons.PutObject(key, lObj, true);
+//        end;
+
         exit(true);
       end;
 
@@ -1155,11 +1181,6 @@ begin
   fRegistry.Add(reg);
 end;
 
-{----------------------------------------------------------------------------------------------------------------------}
-class constructor TContainer.Create;
-begin
-  fContext := TRttiContext.Create;
-end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TContainer.Create;
@@ -1179,6 +1200,12 @@ begin
   fRegistry.Free;
 
   inherited;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class constructor TContainer.Create;
+begin
+  fContext := TRttiContext.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

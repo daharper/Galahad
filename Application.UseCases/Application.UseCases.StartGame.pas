@@ -12,7 +12,7 @@ type
     function Execute: IGameSession;
   end;
 
-  TStartGameUseCase = class(TTransient, IStartGameUseCase)
+  TStartGameUseCase = class(TInterfacedObject, IStartGameUseCase)
   private
     fSession: IGameSession;
   public

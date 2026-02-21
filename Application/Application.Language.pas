@@ -48,13 +48,7 @@ type
     function GetWord(const aText: string): TMaybe<IWord>;
   end;
 
-//  IVocabRegistrar = interface
-//    ['{BD599A48-B640-45F6-AD50-8E506A6AED7B}']
-//    function ResolveTerm(const aWord: string): TMaybe<ITerm>; overload;
-//    function ResolveTerm(const aWord: IWord): ITerm; overload;
-//  end;
-
-  TWordRegistry = class(TSingleton, IWordRegistry)
+  TWordRegistry = class(TInterfacedObject, IWordRegistry)
   private
     fIndex: TDictionary<string, IWord>;
   public
@@ -64,18 +58,6 @@ type
     constructor Create(const aRepository:IWordRepository);
     destructor Destroy; override;
   end;
-
-//  TVocabRegistrar = class(TSingleton, IVocabRegistrar)
-//  private
-//    fWords: IWordRegistry;
-//    fTerms: ITermRegistry;
-//  public
-//    function ResolveTerm(const aWord: string): TMaybe<ITerm>; overload;
-//    function ResolveTerm(const aWord: IWord): ITerm; overload;
-//
-//    constructor Create(const aWords: IWordRegistry; const aTerms: ITermRegistry);
-//    destructor Destroy; override;
-//  end;
 
 implementation
 
@@ -149,41 +131,5 @@ begin
   else
     Result.SetNone;
 end;
-
-{ TVocabRegistrar }
-
-{----------------------------------------------------------------------------------------------------------------------}
-//function TVocabRegistrar.ResolveTerm(const aWord: string): TMaybe<ITerm>;
-//begin
-//  var getIdOpt := fWords.GetTermId(aWord);
-//
-//  if getIdOpt.IsNone then exit(Result.None);
-//
-//  var term := fTerms.GetTerm(getIdOpt.Value);
-//
-//  Result.SetSome(term);
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//function TVocabRegistrar.ResolveTerm(const aWord: IWord): ITerm;
-//begin
-//  Result := fTerms.GetTerm(aWord.TermId);
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//constructor TVocabRegistrar.Create(const aWords: IWordRegistry; const aTerms: ITermRegistry);
-//begin
-//  fWords := aWords;
-//  fTerms := aTerms;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//destructor TVocabRegistrar.Destroy;
-//begin
-//  fWords := nil;
-//  fTerms := nil;
-//
-//  inherited;
-//end;
 
 end.

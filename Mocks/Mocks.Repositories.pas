@@ -36,7 +36,7 @@ type
     function GetEnumerator: TEnumerator<TSale>;
   end;
 
-  TCustomerRepository = class(TSingleton, ICustomerRepository)
+  TCustomerRepository = class(TInterfacedObject, ICustomerRepository)
   private
     fCustomers: TCustomerList;
 
@@ -54,7 +54,7 @@ type
     destructor Destroy; override;
   end;
 
-  TSaleRepository = class(TTransient, ISaleRepository)
+  TSaleRepository = class(TInterfacedObject, ISaleRepository)
   private
     fSales: TSalesList;
 
@@ -72,7 +72,7 @@ type
     destructor Destroy; override;
   end;
 
-  TCarSaleRepository = class(TTransient, ICarSaleRepository)
+  TCarSaleRepository = class(TInterfacedObject, ICarSaleRepository)
   private
     fSales: TSalesList;
 

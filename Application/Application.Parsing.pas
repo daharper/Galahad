@@ -61,12 +61,12 @@ type
     function Execute(const aInput: string): TTokens;
   end;
 
-  TTextSanitizer = class(TSingleton, ITextSanitizer)
+  TTextSanitizer = class(TInterfacedObject, ITextSanitizer)
   public
     function Execute(const aInput: string): string;
   end;
 
-  TTextTokenizer = class(TSingleton, ITextTokenizer)
+  TTextTokenizer = class(TInterfacedObject, ITextTokenizer)
   private
     fInput:    string;
     fPosition: Integer;
@@ -80,7 +80,7 @@ type
     function Execute(const aInput: string): TTokens;
   end;
 
-  TWordResolver = class(TSingleton, IWordResolver)
+  TWordResolver = class(TInterfacedObject, IWordResolver)
   private
     fRegistry: IWordRegistry;
   public
@@ -88,7 +88,7 @@ type
     constructor Create(const aRegistry: IWordRegistry);
   end;
 
-  TTermResolver = class(TSingleton, ITermResolver)
+  TTermResolver = class(TInterfacedObject, ITermResolver)
   private
     fRegistry: ITermRegistry;
   public
@@ -96,9 +96,9 @@ type
     constructor Create(const aRegistry: ITermRegistry);
   end;
 
-  TTextParser = class(TSingleton, ITextParser)
+  TTextParser = class(TInterfacedObject, ITextParser)
   private
-    fTextTokenizer: TTextTokenizer;
+    fTextTokenizer: ITextTokenizer;
     fTextSanitizer: ITextSanitizer;
     fWordResolver:  IWordResolver;
     fTermResolver:  ITermResolver;
@@ -107,9 +107,11 @@ type
 
     constructor Create(
       const aTextSanitizer: ITextSanitizer;
-      const aTextTokenizer: TTextTokenizer;
+      const aTextTokenizer: ITextTokenizer;
       const aWordResolver:  IWordResolver;
       const aTermResolver:  ITermResolver);
+
+    destructor Destroy; override;
   end;
 
 implementation
@@ -119,6 +121,12 @@ uses
   System.Character;
 
 { TTextParser }
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TTextParser.Destroy;
+begin
+  inherited;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TTextParser.Execute(const aInput: string): TTokens;
@@ -135,7 +143,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TTextParser.Create(
   const aTextSanitizer: ITextSanitizer;
-  const aTextTokenizer: TTextTokenizer;
+  const aTextTokenizer: ITextTokenizer;
   const aWordResolver:  IWordResolver;
   const aTermResolver:  ITermResolver);
 begin

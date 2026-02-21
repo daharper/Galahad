@@ -1,0 +1,116 @@
+﻿<Lexicon>
+
+  <!-- ========================= -->
+  <!-- TERMS (Canonical Forms)  -->
+  <!-- ========================= -->
+
+  <Terms>
+
+    <!-- Noise -->
+    <Term Value="NOISE" Kind="Noise"/>
+
+    <!-- Prepositions -->
+    <Term Value="WITH" Kind="Prep"/>
+    <Term Value="TO" Kind="Prep"/>
+    <Term Value="FROM" Kind="Prep"/>
+    <Term Value="IN" Kind="Prep"/>
+    <Term Value="ON" Kind="Prep"/>
+    <Term Value="UNDER" Kind="Prep"/>
+    <Term Value="AT" Kind="Prep"/>
+    <Term Value="THROUGH" Kind="Prep"/>
+
+    <!-- Directions -->
+    <Term Value="NORTH" Kind="Direction"/>
+    <Term Value="SOUTH" Kind="Direction"/>
+    <Term Value="EAST" Kind="Direction"/>
+    <Term Value="WEST" Kind="Direction"/>
+    <Term Value="UP" Kind="Direction"/>
+    <Term Value="DOWN" Kind="Direction"/>
+
+    <!-- Core Actions -->
+    <Term Value="GO" Kind="Action"/>
+    <Term Value="LOOK" Kind="Action"/>
+    <Term Value="TAKE" Kind="Action"/>
+    <Term Value="DROP" Kind="Action"/>
+    <Term Value="USE" Kind="Action"/>
+    <Term Value="OPEN" Kind="Action"/>
+    <Term Value="CLOSE" Kind="Action"/>
+    <Term Value="ATTACK" Kind="Action"/>
+    <Term Value="INVENTORY" Kind="Action"/>
+    <Term Value="EXAMINE" Kind="Action"/>
+
+    <!-- Adverbs / Manner -->
+    <Term Value="QUICKLY" Kind="Manner"/>
+    <Term Value="CAREFULLY" Kind="Manner"/>
+    <Term Value="SLOWLY" Kind="Manner"/>
+
+    <!-- Quantifiers -->
+    <Term Value="ALL" Kind="Quantity"/>
+    <Term Value="ONE" Kind="Quantity"/>
+    <Term Value="TWO" Kind="Quantity"/>
+
+  </Terms>
+
+
+  <!-- ========================= -->
+  <!-- WORDS (User Input Forms) -->
+  <!-- ========================= -->
+
+  <Words>
+
+    <!-- Noise -->
+    <Word Value="the" Term="NOISE"/>
+    <Word Value="a" Term="NOISE"/>
+    <Word Value="an" Term="NOISE"/>
+    <Word Value="please" Term="NOISE"/>
+    <Word Value="kindly" Term="NOISE"/>
+    <Word Value="just" Term="NOISE"/>
+
+    <!-- Preposition Synonyms -->
+    <Word Value="inside" Term="IN"/>
+    <Word Value="into" Term="IN"/>
+    <Word Value="within" Term="IN"/>
+    <Word Value="onto" Term="ON"/>
+    <Word Value="beneath" Term="UNDER"/>
+    <Word Value="below" Term="UNDER"/>
+
+    <!-- Direction Synonyms -->
+    <Word Value="n" Term="NORTH"/>
+    <Word Value="s" Term="SOUTH"/>
+    <Word Value="e" Term="EAST"/>
+    <Word Value="w" Term="WEST"/>
+    <Word Value="u" Term="UP"/>
+    <Word Value="d" Term="DOWN"/>
+
+    <!-- Action Synonyms -->
+    <Word Value="walk" Term="GO"/>
+    <Word Value="move" Term="GO"/>
+    <Word Value="run" Term="GO"/>
+
+    <Word Value="inspect" Term="LOOK"/>
+    <Word Value="view" Term="LOOK"/>
+    <Word Value="see" Term="LOOK"/>
+
+    <Word Value="get" Term="TAKE"/>
+    <Word Value="grab" Term="TAKE"/>
+    <Word Value="pick" Term="TAKE"/>
+
+    <Word Value="leave" Term="DROP"/>
+
+    <Word Value="unlock" Term="OPEN"/>
+    <Word Value="shut" Term="CLOSE"/>
+
+    <Word Value="inv" Term="INVENTORY"/>
+    <Word Value="i" Term="INVENTORY"/>
+
+    <Word Value="examine" Term="EXAMINE"/>
+    <Word Value="x" Term="EXAMINE"/>
+
+    <!-- Adverb Synonyms -->
+    <Word Value="fast" Term="QUICKLY"/>
+    <Word Value="slow" Term="SLOWLY"/>
+
+  </Words>
+
+</Lexicon>
+

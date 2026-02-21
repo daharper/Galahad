@@ -6,6 +6,7 @@ program Escape;
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Base.Collections in 'Base\Base.Collections.pas',
   Base.Container in 'Base\Base.Container.pas',
   Base.Conversions in 'Base\Base.Conversions.pas',
@@ -35,7 +36,7 @@ uses
 begin
   ReportMemoryLeaksOnShutdown := true;
 
-  ApplicationBuilder.Services.AddModule(TConsoleModule.Create);
+  ApplicationBuilder.Services.AddModule<TConsoleModule>;
 
   var app := ApplicationBuilder.Build;
 

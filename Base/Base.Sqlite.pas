@@ -32,14 +32,21 @@ uses
   Base.Core;
 
 type
-  TSqliteDatabase = class(TSingleton)
+  TSqliteDatabase = class(TInterfacedObject)
+  private
+    fExists: boolean;
+    fPath: string;
   protected
     fDriver: TFDPhysSQLiteDriverLink;
     fConnection: TFDConnection;
     fQuery: TFDQuery;
 
+    property Exists: boolean read fExists write fExists;
+    property Path: string read fPath write fPath;
+
     constructor Create(const aPath: string);
   public
+
     function Connection: TFDConnection;
     function Query: TFDQuery;
 
@@ -48,12 +55,30 @@ type
 
 implementation
 
+uses
+  System.IOUtils;
+
 { TSqliteDatabase }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteDatabase.Connection: TFDConnection;
+begin
+  Result := fConnection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteDatabase.Query: TFDQuery;
+begin
+  Result := fQuery;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TSqliteDatabase.Create(const aPath: string);
 begin
+  fPath   := aPath;
+  fExists := TFile.Exists(aPath);
   fDriver := TFDPhysSQLiteDriverLink.Create(nil);
+
   fDriver.DriverID := 'SQLiteDriver';
 
   fConnection := TFDConnection.Create(nil);
@@ -62,7 +87,7 @@ begin
 
   fConnection.Params.Clear;
   fConnection.Params.DriverID := 'SQLiteDriver';
-  fConnection.Params.Database := aPath;
+  fConnection.Params.Database := fPath;
   fConnection.Params.Values['BusyTimeout'] := '500';
 
   fConnection.Connected := True;
@@ -81,23 +106,10 @@ begin
   fQuery.Close;
 
   fConnection.Connected := false;
-  fConnection.ExecSQL('PRAGMA wal_checkpoint(TRUNCATE);');
 
+  fQuery.Free;
   fConnection.Free;
   fDriver.Free;
-  fQuery.Free;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TSqliteDatabase.Connection: TFDConnection;
-begin
-  Result := fConnection;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TSqliteDatabase.Query: TFDQuery;
-begin
-  Result := fQuery;
 end;
 
 end.
