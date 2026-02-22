@@ -444,7 +444,7 @@ type
       /// </remarks>
       function GroupBy<TKey>(
         const aKeySelector: TConstFunc<T, TKey>;
-        const aEquality: IEqualityComparer<TKey> = nil): TDictionary<TKey, TList<T>>;
+        const aEquality: IEqualityComparer<TKey> = nil): TDictionary<TKey, TList<T>>; overload;
 
       /// <summary>
       ///  Splits the stream into two lists based on <paramref name="aPredicate"/>.

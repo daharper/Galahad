@@ -23,8 +23,8 @@ uses
   Base.Core,
   Base.Integrity,
   Base.Dynamic,
-  Base.Specifications,
-  Base.Stream;
+  Base.Specifications;
+//  Base.Stream;
 
 type
   /// <summary>
@@ -86,6 +86,13 @@ type
 
     function Connection: TFDConnection;
     function Query: TFDQuery;
+    function GetDatabaseVersion: integer;
+
+    procedure SetDatabaseVersion(const aVersion: integer);
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+    procedure Cleanup;
   end;
 
   /// <summary>
@@ -161,6 +168,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Defaults,
   Base.Reflection;
 

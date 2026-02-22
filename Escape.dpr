@@ -32,16 +32,16 @@ uses
   Application.Parsing in 'Application\Application.Parsing.pas',
   Console.Application in 'Console\Console.Application.pas',
   Console.Composition in 'Console\Console.Composition.pas',
-  Application.Builder in 'Application\Application.Builder.pas';
+  Application.Builder in 'Application\Application.Builder.pas',
+  Infrastructure.Migrations in 'Infrastructure\Infrastructure.Migrations.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;
 
-  ApplicationBuilder.Services.AddModule<TConsoleModule>;
-
-  var app := ApplicationBuilder.Build;
-
   try
+    ApplicationBuilder.Services.AddModule<TConsoleModule>;
+    var app := ApplicationBuilder.Build;
+
     app.Welcome;
     app.Execute;
   except

@@ -8,7 +8,8 @@ uses
   Application.Contracts,
   Application.Language,
   Application.Parsing,
-  Application.UseCases.StartGame;
+  Application.UseCases.StartGame,
+  Infrastructure.Migrations;
 
 type
 
@@ -21,6 +22,7 @@ type
     procedure Execute;
 
     constructor Create(
+      const aMigrator: IMigrationManager;
       const aParser: ITextParser;
       const aStartGameUseCase: IStartGameUseCase);
   end;
@@ -34,6 +36,7 @@ uses
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TConsoleApplication.Create(
+  const aMigrator: IMigrationManager;
   const aParser: ITextParser;
   const aStartGameUseCase: IStartGameUseCase
 );

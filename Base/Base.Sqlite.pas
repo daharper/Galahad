@@ -29,6 +29,7 @@ uses
   Data.DB,
   FireDAC.Comp.DataSet,
   FireDAC.Comp.Client,
+  Base.Data,
   Base.Core;
 
 type
@@ -46,9 +47,15 @@ type
 
     constructor Create(const aPath: string);
   public
-
     function Connection: TFDConnection;
     function Query: TFDQuery;
+    function GetDatabaseVersion: integer;
+
+    procedure SetDatabaseVersion(const aVersion: integer);
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+    procedure CleanUp;
 
     destructor Destroy; override;
   end;
@@ -56,7 +63,8 @@ type
 implementation
 
 uses
-  System.IOUtils;
+  System.IOUtils,
+  System.Variants;
 
 { TSqliteDatabase }
 
@@ -70,6 +78,46 @@ end;
 function TSqliteDatabase.Query: TFDQuery;
 begin
   Result := fQuery;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteDatabase.StartTransaction;
+begin
+  fConnection.StartTransaction
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteDatabase.CleanUp;
+begin
+  fConnection.ExecSQL('PRAGMA wal_checkpoint(TRUNCATE);');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteDatabase.Commit;
+begin
+  fConnection.Commit;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteDatabase.Rollback;
+begin
+  fConnection.Rollback;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteDatabase.GetDatabaseVersion: integer;
+begin
+  if not fExists then exit(0);
+
+  Result := fConnection.ExecSQLScalar('PRAGMA user_version');
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteDatabase.SetDatabaseVersion(const aVersion: integer);
+begin
+  fConnection.ExecSQL('PRAGMA user_version = ' + IntToStr(aVersion));
+
+  fExists := true;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -95,6 +143,8 @@ begin
   fConnection.ExecSQL('PRAGMA foreign_keys = ON;');
   fConnection.ExecSQL('PRAGMA journal_mode = WAL;');
   fConnection.ExecSQL('PRAGMA synchronous = NORMAL;');
+
+  if fExists then CleanUp;
 
   fQuery := TFDQuery.Create(nil);
   fQuery.Connection := fConnection;

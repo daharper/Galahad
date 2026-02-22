@@ -3,6 +3,7 @@ unit Console.Composition;
 interface
 
 uses
+  Base.Integrity,
   Base.Container;
 
 type
@@ -49,6 +50,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Base.Data,
   Domain.Game,
   Domain.Terms,
@@ -58,6 +60,7 @@ uses
   Application.UseCases.StartGame,
   Infrastructure.Files,
   Infrastructure.Data,
+  Infrastructure.Migrations,
   Console.Application;
 
 { TConsoleModule }
@@ -87,6 +90,7 @@ procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContain
 begin
   aContainer.Add<IFileService, TFileService>(Singleton);
   aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
+  aContainer.Add<IMigrationManager, TMigrationManager>(Transient);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);
   aContainer.Add<IWordRepository, TWordRepository>(Transient);
 end;
