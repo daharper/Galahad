@@ -1,34 +1,11 @@
-unit Presentation.ConsoleApplication;
+unit Console.Composition;
 
 interface
 
 uses
-  Base.Core,
-  Base.Container,
-  Domain.Game,
-  Domain.Terms,
-  Application.Contracts,
-  Application.Language,
-  Application.Parsing,
-  Application.UseCases.StartGame;
+  Base.Container;
 
 type
-  /// <summary>
-  ///  The console application.
-  /// </summary>
-  TConsoleApplication = class(TInterfacedObject, IApplication)
-  private
-    fParser: ITextParser;
-    fSession: IGameSession;
-  public
-    procedure Welcome;
-    procedure Execute;
-
-    constructor Create(
-      const aParser: ITextParser;
-      const aStartGameUseCase: IStartGameUseCase);
-  end;
-
   /// <summary>
   ///  Registers console modules with the service container.
   /// </summary>
@@ -72,82 +49,26 @@ type
 implementation
 
 uses
-  System.SysUtils,
   Base.Data,
+  Domain.Game,
+  Domain.Terms,
+  Application.Contracts,
+  Application.Language,
+  Application.Parsing,
+  Application.UseCases.StartGame,
   Infrastructure.Files,
-  Infrastructure.Data;
+  Infrastructure.Data,
+  Console.Application;
 
-{ TConsole }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TConsoleApplication.Create(
-  const aParser: ITextParser;
-  const aStartGameUseCase: IStartGameUseCase
-);
-begin
-  fParser := aParser;
-  fSession := aStartGameUseCase.Execute;
-end;
+{ TConsoleModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleApplication.Execute;
-var
-  lInput: string;
+procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
 begin
-  while fSession.IsRunning do
-  begin
-    Write('> ');
-
-    Readln(lInput);
-
-    lInput := Trim(lInput);
-
-    if lInput = '' then continue;
-
-    if SameText(lInput, 'quit') then
-    begin
-      fSession.State := gsFinished;
-      continue;
-    end;
-
-
-    var tokens := fParser.Execute(lInput);
-
-    try
-      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
-
-      for var token in tokens do
-      begin
-        Writeln('Text: ' + token.Text);
-        Write('Kind: ');
-
-        case token.Kind of
-          ttUnknown:      Writeln('Unknown');
-          ttText:         Writeln('Text');
-          ttNumber:       Writeln('Number');
-          ttQuotedString: Writeln('QuotedString');
-        end;
-
-        if token.IsWord then
-          Writeln('Word: ' + token.Word.Value);
-
-        if token.IsTerm then
-          Writeln('Term: ' + token.Term.Value);
-
-        Writeln;
-      end;
-
-      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
-    finally
-      tokens.Free;
-    end;
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleApplication.Welcome;
-begin
-  Writeln('Press enter to quit...');
+  aContainer.AddModule<TConsoleServiceModule>;
+  aContainer.AddModule<TConsoleDataServicesModule>;
+  aContainer.AddModule<TConsoleParsingModule>;
+  aContainer.AddModule<TUseCaseModule>;
 end;
 
 { TConsoleServiceModule }
@@ -190,17 +111,6 @@ begin
   aContainer.Add<IWordResolver, TWordResolver>(Singleton);
   aContainer.Add<ITermResolver, TTermResolver>(Singleton);
   aContainer.Add<ITextParser, TTextParser>(Singleton);
-end;
-
-{ TConsoleModule }
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
-begin
-  aContainer.AddModule<TConsoleServiceModule>;
-  aContainer.AddModule<TConsoleDataServicesModule>;
-  aContainer.AddModule<TConsoleParsingModule>;
-  aContainer.AddModule<TUseCaseModule>;
 end;
 
 end.

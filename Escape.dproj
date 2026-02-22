@@ -213,7 +213,6 @@
         <DCCReference Include="Domain\Domain.Game.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Data.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Files.pas"/>
-        <DCCReference Include="Presentation\Presentation.ConsoleApplication.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.ApplicationBuilder.pas"/>
         <DCCReference Include="Base\Base.Data.pas"/>
         <DCCReference Include="Application.UseCases\Application.UseCases.StartGame.pas"/>
@@ -221,6 +220,8 @@
         <DCCReference Include="Application\Application.Contracts.pas"/>
         <DCCReference Include="Application\Application.Language.pas"/>
         <DCCReference Include="Application\Application.Parsing.pas"/>
+        <DCCReference Include="Console\Console.Application.pas"/>
+        <DCCReference Include="Console\Console.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

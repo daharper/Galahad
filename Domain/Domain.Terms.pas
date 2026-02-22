@@ -12,13 +12,14 @@ type
 
   TTermKind = (
     tkUnknown,     // fallback
-    tkAction,      // CONSUME, UNLOCK, GO
-    tkSubstance,   // KEY, DOOR, GOBLIN
-    tkQuality,     // GOLDEN, IRON, RUSTY
-    tkDirection,   // NORTH, UP, DOWN
-    tkManner,      // QUICKLY, CAREFULLY
+    tkNoise,
     tkPrep,        // WITH, TO, ON
-    tkQuantity     // ONE, TWO, ALL
+    tkDirection,   // NORTH, UP, DOWN
+    tkAction,      // CONSUME, UNLOCK, GO
+    tkManner,      // QUICKLY, CAREFULLY
+    tkQuantity,    // ONE, TWO, ALL
+    tkSubstance,   // KEY, DOOR, GOBLIN
+    tkQuality      // GOLDEN, IRON, RUSTY
   );
 
   ITerm = interface(IEntity)
