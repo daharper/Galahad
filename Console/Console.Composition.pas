@@ -90,6 +90,7 @@ procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContain
 begin
   aContainer.Add<IFileService, TFileService>(Singleton);
   aContainer.Add<IDatabaseService, TDatabaseService>(Singleton);
+  aContainer.Add<IMigrationRegistrar, TMigrationRegistrar>(Transient);
   aContainer.Add<IMigrationManager, TMigrationManager>(Transient);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);
   aContainer.Add<IWordRepository, TWordRepository>(Transient);

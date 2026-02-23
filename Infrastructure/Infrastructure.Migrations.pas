@@ -8,57 +8,26 @@ uses
   Base.Integrity;
 
 type
-  TMigration = class
-  private
-    fVersion: integer;
-    fSequence: integer;
-    fDescription: string;
-  protected
-    constructor Create(const aVersion: integer; const aSequence: integer; const aDescription: string);
+  TMigrationRegistrar = class(TInterfacedObject, IMigrationRegistrar)
   public
-    property Version: integer read fVersion;
-    property Sequence: integer read fSequence;
-    property Description: string read fDescription;
-
-    procedure Execute(const aDatabase: IDatabaseService); virtual;
+    procedure Configure(const m: IMigrationManager);
   end;
 
-  IMigrationManager = interface
-    ['{902A60CA-F419-4CEC-A4D3-7A1C1A2D37AA}']
-  end;
+  { version 1 migrations }
 
-  TMigrationManager = class(TInterfacedObject, IMigrationManager)
-  private
-    fMigrations: TObjectList<TMigration>;
-    fDatabase: IDatabaseService;
-
-    procedure Add<T:TMigration, constructor>;
-    procedure AddMigrations;
-    procedure Execute;
-  public
-    constructor Create(const aDatabase: IDatabaseService);
-    destructor Destroy; override;
-  end;
-
-  // migration 1.1
   TCreateDatabaseMigration = class(TMigration)
   public
     procedure Execute(const aDatabase: IDatabaseService); override;
-    constructor Create;
   end;
 
-  // migration 1.2
   TSeedTermsMigration = class(TMigration)
   public
     procedure Execute(const aDatabase: IDatabaseService); override;
-    constructor Create;
   end;
 
-  // migration 1.3
   TSeedWordsMigration = class(TMigration)
   public
     procedure Execute(const aDatabase: IDatabaseService); override;
-    constructor Create;
   end;
 
 implementation
@@ -69,21 +38,17 @@ uses
   System.Math,
   Base.Stream;
 
+{ TMigrationRegistrar }
+
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMigrationManager.AddMigrations;
+procedure TMigrationRegistrar.Configure(const m: IMigrationManager);
 begin
-  Add<TCreateDatabaseMigration>;
-  Add<TSeedTermsMigration>;
-  Add<TSeedWordsMigration>;
+  m.Add(1, 1, TCreateDatabaseMigration, 'Create the initial schema');
+  m.Add(1, 2, TSeedTermsMigration,      'Seeding intial term list');
+  m.Add(1, 3, TSeedWordsMigration,      'Seeding intial word list');
 end;
 
 {$region '1.1 TCreateDatabaseMigration' }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TCreateDatabaseMigration.Create;
-begin
-  inherited Create(1, 1, 'Create the initial schema');
-end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TCreateDatabaseMigration.Execute(const aDatabase: IDatabaseService);
@@ -112,12 +77,6 @@ end;
 {$endregion}
 
 {$region '1.2 TSeedTermsMigration' }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TSeedTermsMigration.Create;
-begin
-  inherited Create(1, 2, 'Seeding intial term list');
-end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSeedTermsMigration.Execute(const aDatabase: IDatabaseService);
@@ -176,12 +135,6 @@ end;
 {$endregion}
 
 {$region '1.3 TSeedWordsMigration' }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TSeedWordsMigration.Create;
-begin
-  inherited Create(1, 3, 'Seeding intial word list');
-end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSeedWordsMigration.Execute(const aDatabase: IDatabaseService);
@@ -243,113 +196,6 @@ begin
   inherited;
 
   aDatabase.Connection.ExecSQL(SQL);
-end;
-
-{$endregion}
-
-{$region 'mechanics'}
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMigrationManager.Execute;
-var
-  scope: TScope;
-begin
-  var version := fDatabase.GetDatabaseVersion;
-  var max := 0;
-
-  for var m in fMigrations do
-    if m.Version > max then
-      max := m.Version;
-
-  if max = version then exit;
-
-  var migrations := Stream.From<TMigration>(fMigrations.ToArray)
-    .Filter(function(const m: TMigration): Boolean
-        begin
-          Result := m.Version > version;
-        end)
-    .Sort(TComparer<TMigration>.Construct(function(const l, r: TMigration): integer
-        begin
-          if l.Version <> r.Version then
-            Result := Ord(CompareValue(l.Version, r.Version))
-          else
-            Result := Ord(CompareValue(l.Sequence, r.Sequence));
-        end))
-    .GroupBy<integer>(function(const m: TMigration): integer
-        begin
-          Result := m.Version;
-        end);
-
-  scope.Owns(migrations);
-  scope.Defer(procedure begin for var item in migrations do item.Value.Free; end);
-
-  Inc(version);
-
-  for var v in [version..max] do
-  begin
-    fDatabase.StartTransaction;
-
-    for var m in migrations[v] do
-    try
-      m.Execute(fDatabase);
-
-      fDatabase.SetDatabaseVersion(v);
-      fDatabase.Commit;
-    except
-      on E:Exception do
-      begin
-        fDatabase.Rollback;
-
-        var msg := Format('Migration Error (%d.%d - %s): %s]', [v, m.Sequence, m.Description, E.Message]);
-        raise Exception.Create(msg);
-      end;
-    end;
-  end;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMigrationManager.Add<T>;
-var
-  m: T;
-begin
-  m := T.Create;
-  fMigrations.Add(m)
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TMigrationManager.Create(const aDatabase: IDatabaseService);
-begin
-  fDatabase := aDatabase;
-
-  fMigrations := TObjectList<TMigration>.Create(true);
-
-  AddMigrations;
-
-  Execute;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-destructor TMigrationManager.Destroy;
-begin
-  fMigrations.Free;
-
-  inherited;
-end;
-
-{ TMigration }
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TMigration.Execute(const aDatabase: IDatabaseService);
-begin
-  Writeln(Format('Applying migration (%d.%d): %s', [fVersion, fSequence, fDescription]));
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TMigration.Create(const aVersion: integer; const aSequence: integer; const aDescription: string);
-begin
-  fVersion     := aVersion;
-  fSequence    := aSequence;
-  fDescription := aDescription;
 end;
 
 {$endregion}

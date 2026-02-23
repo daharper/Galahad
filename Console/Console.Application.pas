@@ -3,6 +3,7 @@
 interface
 
 uses
+  Base.Data,
   Domain.Game,
   Domain.Terms,
   Application.Contracts,
