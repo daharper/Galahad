@@ -24,7 +24,6 @@ uses
   Base.Integrity,
   Base.Dynamic,
   Base.Specifications;
-//  Base.Stream;
 
 type
   /// <summary>
@@ -92,7 +91,7 @@ type
     procedure StartTransaction;
     procedure Commit;
     procedure Rollback;
-    procedure Cleanup;
+    procedure Truncate;
   end;
 
   /// <summary>

@@ -931,14 +931,6 @@ begin
 
         TValue.Make(@lIntf, info, aValue);
 
-//        var key := TServiceKey.Create(info, '');
-//
-//        if (fRegistry.TryGet(key, lReg) and (lReg.Lifetime = Singleton)) then
-//        begin
-//          lObj := TObject(PPointer(lIntf)^);
-//          fSingletons.PutObject(key, lObj, true);
-//        end;
-
         exit(true);
       end;
 

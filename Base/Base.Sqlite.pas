@@ -55,7 +55,7 @@ type
     procedure StartTransaction;
     procedure Commit;
     procedure Rollback;
-    procedure CleanUp;
+    procedure Truncate;
 
     destructor Destroy; override;
   end;
@@ -87,7 +87,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSqliteDatabase.CleanUp;
+procedure TSqliteDatabase.Truncate;
 begin
   fConnection.ExecSQL('PRAGMA wal_checkpoint(TRUNCATE);');
 end;
@@ -144,7 +144,7 @@ begin
   fConnection.ExecSQL('PRAGMA journal_mode = WAL;');
   fConnection.ExecSQL('PRAGMA synchronous = NORMAL;');
 
-  if fExists then CleanUp;
+  if fExists then Truncate;
 
   fQuery := TFDQuery.Create(nil);
   fQuery.Connection := fConnection;
