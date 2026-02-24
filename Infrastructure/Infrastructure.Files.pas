@@ -7,7 +7,7 @@ uses
   Application.Contracts;
 
 type
-  TFileService = class(TInterfacedObject, IFileService)
+  TFileService = class(TSingleton, IFileService) // TInterfacedObject, IFileService)
   private
     fStartupPath: string;
     fDatabasePath: string;

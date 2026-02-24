@@ -210,6 +210,23 @@ type
     ///
     ///  The mapping is keyed by (TypeInfo(TService), aName). An empty name means the default registration.
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
+    ///
+    ///  The lifetime is determined by whether the provider implements TSingleton or not.
+    /// </remarks>
+    procedure Add<TService: IInterface; TImpl: class>(const aName: string = ''); overload;
+
+    /// <summary>
+    ///  Registers a type mapping from an interface service type to a concrete implementation class.
+    /// </summary>
+    /// <remarks>
+    ///  This does not construct anything at registration time; it only records that requests for TService
+    ///  should be satisfied by TImpl, subject to the specified lifetime and name.
+    ///
+    ///  Construction and constructor-injection are implemented later (typically using RTTI) once the
+    ///  ServiceLocator is available to find missing dependencies.
+    ///
+    ///  The mapping is keyed by (TypeInfo(TService), aName). An empty name means the default registration.
+    ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
     procedure Add<TService: IInterface; TImpl: class>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
 
@@ -732,24 +749,44 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.Add<TService, TImpl>(const aName: string);
+var
+  inferred: TServiceLifetime;
+begin
+  // Infer from implementation type
+  if TImpl.InheritsFrom(TSingleton) then
+    inferred := Singleton
+  else
+    inferred := Transient;
+
+  // Delegate to explicit overload (keeps all validation/registration logic in one place)
+  Add<TService, TImpl>(inferred, aName);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.Add<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
 const
   ERR = 'Add<TService,TImpl>: TService must be an interface';
+  E_SINGLE = 'Add<%s,%s>: %s inherits from TSingleton and cannot be registered as Transient';
 var
   Reg: TRegistration;
 begin
   Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface, ERR);
 
+  if TImpl.InheritsFrom(TSingleton) then
+    Ensure.IsFalse(aLifetime = Transient, Format(E_SINGLE, [TypeNameOf(TypeInfo(TService)), TImpl.ClassName, TImpl.ClassName]));
+
   var key := TServiceKey.Create(TypeInfo(TService), aName);
 
   FillChar(Reg, SizeOf(Reg), 0);
-  Reg.Key := Key;
+  Reg.Key := key;
   Reg.Kind := TypeMap;
   Reg.Lifetime := aLifetime;
   Reg.ImplClass := TImpl;
   Reg.FactoryIntf := nil;
   Reg.FactoryObj := nil;
   Reg.OwnsInstance := False;
+  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TService));
 
   fRegistry.Add(Reg);
 end;
@@ -970,10 +1007,24 @@ begin
   // cached singleton?
   if (lReg.Lifetime = Singleton) then
   begin
-    if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+    if fSingletons.TryGet(key, lValue) then
     begin
-      aIntf := lValue.Intf;
-      exit(true);
+      if (not lValue.IsObject) and Assigned(lValue.Intf) then
+      begin
+        aIntf := lValue.Intf;
+        Exit(true);
+      end;
+
+      if lValue.IsObject and Assigned(lValue.Obj) then
+      begin
+        var guid := GetTypeData(aServiceType)^.Guid;
+
+        if Supports(lValue.Obj, guid, aIntf) and Assigned(aIntf) then
+          exit(true);
+
+        // If we cached an object but it doesn't support the interface, treat as config error.
+        exit(false);
+      end;
     end;
   end;
 
@@ -1020,12 +1071,18 @@ begin
           exit(false);
         end;
 
-        // If singleton, cache by interface (preferred) — avoids object ownership issues
         if lReg.Lifetime = Singleton then
-          fSingletons.PutInterface(key, aIntf);
+        begin
+          if lObj.InheritsFrom(TSingleton) then
+            // container-owned deterministic singleton
+            fSingletons.PutObject(key, lObj, True)
+          else
+            // IMPORTANT: do not free Obj; interface ref now owns it via refcounting
+            // refcount-pinned singleton (best effort)
+            fSingletons.PutInterface(key, aIntf);
+        end;
 
-        // IMPORTANT: do not free Obj; interface ref now owns it via refcounting
-        exit(True);
+        exit(true);
       end;
   else
     exit(false);
@@ -1122,30 +1179,33 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.EnsureAutoRegisteredClass(const aServiceType: PTypeInfo);
 begin
-  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then  exit;
-  if fRegistry.Contains(TServiceKey.Create(aServiceType, '')) then exit;
+  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then Exit;
+  if fRegistry.Contains(TServiceKey.Create(aServiceType, '')) then Exit;
 
   // PTypeInfo for tkClass contains ClassType
   var td := GetTypeData(aServiceType);
   Ensure.IsAssigned(td, 'Auto-register: missing type data');
+  Ensure.IsAssigned(td.ClassType, 'Auto-register: ClassType is nil');
+
+  // Infer lifetime from base type
+  var inferredLifetime: TServiceLifetime := Transient;
+  if td.ClassType.InheritsFrom(TSingleton) then
+    inferredLifetime := Singleton;
 
   // Create a "self type-map" registration (T -> T)
   var key := TServiceKey.Create(aServiceType, '');
 
   var reg: TRegistration;
-
-  FillChar(reg, SizeOf(Reg), 0);
+  FillChar(reg, SizeOf(reg), 0);
 
   reg.Key := key;
   reg.Kind := TypeMap;
-  reg.Lifetime := Transient;
+  reg.Lifetime := inferredLifetime;
   reg.ImplClass := td.ClassType;
   reg.FactoryIntf := nil;
   reg.FactoryObj := nil;
   reg.OwnsInstance := False;
   reg.ServiceTypeName := TypeNameOf(aServiceType);
-
-  Ensure.IsAssigned(reg.ImplClass, 'Auto-register: ClassType is nil');
 
   fRegistry.Add(reg);
 end;

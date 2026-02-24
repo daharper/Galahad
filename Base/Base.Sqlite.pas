@@ -33,7 +33,7 @@ uses
   Base.Core;
 
 type
-  TSqliteDatabase = class(TInterfacedObject)
+  TSqliteDatabase = class(TSingleton) //TInterfacedObject)
   private
     fExists: boolean;
     fPath: string;
