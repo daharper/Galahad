@@ -453,7 +453,7 @@ begin
     end);
 
   var paramType := GetCtorParamType(TBasicParamHost, 'aSvc');
-  Ensure.IsAssigned(paramType, 'Param RTTI missing');
+  Ensure.IsTrue(Assigned(paramType), 'Param RTTI missing');
 
   Assert.IsTrue(container.TryResolveParam(paramType, v));
   Assert.IsTrue(v.IsType<IBasicService0>);
@@ -471,7 +471,7 @@ begin
   container.AddClassType<TBasicDep0>(Transient);
 
   var paramType := GetCtorParamType(TBasicParamHost, 'aDep');
-  Ensure.IsAssigned(paramType, 'Param RTTI missing');
+  Ensure.IsTrue(Assigned(paramType), 'Param RTTI missing');
 
   Assert.IsTrue(container.TryResolveParam(paramType, v));
 
@@ -493,7 +493,7 @@ begin
   container := scope.Owns(TContainer.Create);
 
   paramType := GetCtorParamType(TCtorWithUnregisteredArg, 'aDep');
-  Ensure.IsAssigned(paramType);
+  Ensure.IsTrue(Assigned(paramType));
 
   Assert.IsTrue(container.TryResolveParam(paramType, v));
   Assert.IsTrue(v.IsObject);
@@ -512,7 +512,7 @@ var
 begin
   T := ctx.GetType(AClass);
 
-  Ensure.IsAssigned(T, 'RTTI missing for class');
+  Ensure.IsTrue(Assigned(T), 'RTTI missing for class');
 
   for M in T.GetMethods do
     if M.IsConstructor and SameText(M.Name, 'Create') then

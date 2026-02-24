@@ -163,14 +163,14 @@ implementation
 {----------------------------------------------------------------------------------------------------------------------}
 function TSpecification<T>.AndAlso(const aOther: ISpecification<T>): ISpecification<T>;
 begin
-  Ensure.IsAssigned(aOther, 'Other specification is nil');
+  Ensure.IsTrue(Assigned(aOther), 'Other specification is nil');
   Result := TAndSpecification<T>.Create(ISpecification<T>(Self), aOther);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TSpecification<T>.OrElse(const aOther: ISpecification<T>): ISpecification<T>;
 begin
-  Ensure.IsAssigned(aOther, 'Other specification is nil');
+  Ensure.IsTrue(Assigned(aOther), 'Other specification is nil');
   Result := TOrSpecification<T>.Create(ISpecification<T>(Self), aOther);
 end;
 
@@ -183,7 +183,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TSpecification<T>.FromPredicate(const aPredicate: TConstPredicate<T>): ISpecification<T>;
 begin
-  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   Result := TPredicateSpecification<T>.Create(APredicate);
 end;
@@ -195,8 +195,8 @@ constructor TAndSpecification<T>.Create(const aLeft, aRight: ISpecification<T>);
 begin
   inherited Create;
 
-  Ensure.IsAssigned(aLeft,  'Left specification is nil')
-        .IsAssigned(aRight, 'Right specification is nil');
+  Ensure.IsTrue(Assigned(aLeft),  'Left specification is nil')
+        .IsTrue(Assigned(aRight), 'Right specification is nil');
 
   fLeft  := aLeft;
   fRight := aRight;
@@ -227,8 +227,8 @@ constructor TOrSpecification<T>.Create(const aLeft, aRight: ISpecification<T>);
 begin
   inherited Create;
 
-  Ensure.IsAssigned(aLeft, 'Left specification is nil')
-        .IsAssigned(aRight, 'Right specification is nil');
+  Ensure.IsTrue(Assigned(aLeft), 'Left specification is nil')
+        .IsTrue(Assigned(aRight), 'Right specification is nil');
 
   fLeft  := aLeft;
   fRight := aRight;
@@ -259,7 +259,7 @@ constructor TNotSpecification<T>.Create(const aInner: ISpecification<T>);
 begin
   inherited Create;
 
-  Ensure.IsAssigned(aInner, 'Inner specification is nil');
+  Ensure.IsTrue(Assigned(aInner), 'Inner specification is nil');
 
   fInner := aInner;
 end;
@@ -283,7 +283,7 @@ constructor TPredicateSpecification<T>.Create(const aPredicate: TConstPredicate<
 begin
   inherited Create;
 
-  Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   fPredicate := aPredicate;
 end;
@@ -367,8 +367,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSpecSqlBuilder<T>.RegisterAdapter(const aSpecClass: TClass; const aAdapter: ISpecSqlAdapter<T>);
 begin
-  Ensure.IsAssigned(aSpecClass, 'SpecClass is nil')
-        .IsAssigned(aAdapter, 'Adapter is nil');
+  Ensure.IsTrue(Assigned(aSpecClass), 'SpecClass is nil')
+        .IsTrue(Assigned(aAdapter), 'Adapter is nil');
 
   FAdapters.AddOrSetValue(aSpecClass, aAdapter);
 end;
@@ -392,7 +392,7 @@ var
   adapter: ISpecSqlAdapter<T>;
   leafSql: string;
 begin
-  Ensure.IsAssigned(aSpec, 'Spec is nil');
+  Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
   // Composite nodes
   if Supports(aSpec, IAndSpecification<T>, andSpec) then
@@ -419,7 +419,7 @@ function TSpecSqlBuilder<T>.BuildWhere(const aSpec: ISpecification<T>): TSqlWher
 var
   ctx: TSqlBuildContext;
 begin
-  Ensure.IsAssigned(aSpec, 'Spec is nil');
+  Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
   ctx := TSqlBuildContext.Create(FAlias);
   try

@@ -600,7 +600,7 @@ function Stream.TPipe<T>.AsList: TList<T>;
 begin
   fState.CheckNotConsumed;
 
-  Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+  Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
   Result := if fState.GetOwnsList then fState.List else TList<T>.Create(fState.List);
 
@@ -613,7 +613,7 @@ end;
 function Stream.TPipe<T>.AsArray: TArray<T>;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -631,7 +631,7 @@ end;
 function Stream.TPipe<T>.Count: Integer;
 begin
   try
-    Ensure.IsAssigned(FState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(FState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -652,8 +652,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aKeySelector, 'KeySelector is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aKeySelector), 'KeySelector is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -682,8 +682,8 @@ end;
 function Stream.TPipe<T>.Any(const aPredicate: TConstPredicate<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -705,7 +705,7 @@ end;
 function Stream.TPipe<T>.Any(const aSpec: ISpecification<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(aSpec, 'Spec is nil');
+    Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
     Result := Any(
       function(const item: T): Boolean
@@ -723,8 +723,8 @@ end;
 function Stream.TPipe<T>.All(const aPredicate: TConstPredicate<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -746,7 +746,7 @@ end;
 function Stream.TPipe<T>.All(const aSpec: ISpecification<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(aSpec, 'Spec is nil');
+    Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
     Result := All(
       function(const item: T): Boolean
@@ -763,8 +763,8 @@ end;
 function Stream.TPipe<T>.Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
 begin
   try
-    Ensure.IsAssigned(@aReducer, 'Reducer is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aReducer), 'Reducer is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -784,8 +784,8 @@ end;
 procedure Stream.TPipe<T>.ForEach(const aAction: TConstProc<T>);
 begin
   try
-    Ensure.IsAssigned(@aAction, 'Action is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aAction), 'Action is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -807,7 +807,7 @@ end;
 function Stream.TPipe<T>.FirstOr(const aDefault: T): T;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -831,7 +831,7 @@ end;
 function Stream.TPipe<T>.LastOr(const aDefault: T): T;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -849,7 +849,7 @@ end;
 function Stream.TPipe<T>.IsEmpty: Boolean;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -864,7 +864,7 @@ end;
 function Stream.TPipe<T>.None(const aPredicate: TConstPredicate<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
     Result := not Any(aPredicate);
 
@@ -877,7 +877,7 @@ end;
 function Stream.TPipe<T>.Contains(const aValue: T; const aEquality: IEqualityComparer<T>): Boolean;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -906,8 +906,8 @@ var
   scope: TScope;
   Bucket: TList<T>;
 begin
-  Ensure.IsAssigned(@aKeySelector, 'KeySelector is nil')
-        .IsAssigned(fState.List, 'Stream has no buffer');
+  Ensure.IsTrue(Assigned(aKeySelector), 'KeySelector is nil')
+        .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
   fState.CheckNotConsumed;
 
@@ -948,8 +948,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -982,7 +982,7 @@ end;
 function Stream.TPipe<T>.Partition(const aSpec: ISpecification<T>): TPair<TList<T>, TList<T>>;
 begin
   try
-    Ensure.IsAssigned(aSpec, 'Spec is nil');
+    Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
     Result := Partition(
       function(const item: T): Boolean
@@ -1002,7 +1002,7 @@ var
 begin
   try
     Ensure.IsTrue(aIndex >= 0, 'Index must be >= 0')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -1039,7 +1039,7 @@ begin
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
 
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     var list := scope.Owns(TList<T>.Create);
     list.Capacity := fState.List.Count;
@@ -1083,8 +1083,8 @@ var
   scope : TScope;
 begin
   try
-    Ensure.IsAssigned(@aKeySelector, 'KeySelector is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aKeySelector), 'KeySelector is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1128,8 +1128,8 @@ var
   scope : TScope;
 begin
   try
-    Ensure.IsAssigned(@aMapper, 'Mapper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aMapper), 'Mapper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -1162,7 +1162,7 @@ begin
   try
     fState.CheckNotConsumed;
 
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     if aComparer = nil then
       lCmp := TComparer<T>.Default
@@ -1191,7 +1191,7 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -1218,7 +1218,7 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -1246,8 +1246,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(aList, 'List is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aList), 'List is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -1276,8 +1276,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(aEnum, 'Enum is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aEnum), 'Enum is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
 
@@ -1306,7 +1306,7 @@ end;
 function Stream.TPipe<T>.Filter(const aSpec: ISpecification<T>; const aOnDiscard: TConstProc<T>): TPipe<T>;
 begin
   try
-    Ensure.IsAssigned(aSpec, 'Spec is nil');
+    Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
 
     Result := Filter(
       function(const item: T): Boolean
@@ -1327,8 +1327,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1362,8 +1362,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aMapper, 'Mapper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aMapper), 'Mapper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1391,8 +1391,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aMapper, 'Mapper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aMapper), 'Mapper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1422,7 +1422,7 @@ var
 begin
   try
     Ensure.IsTrue(aCount >= 0, 'Count must be >= 0')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     FState.CheckNotConsumed;
     FState.CheckDisposable(aOnDiscard);
@@ -1455,8 +1455,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1493,7 +1493,7 @@ var
 begin
   try
     Ensure.IsTrue(aCount >= 0, 'Count must be >= 0')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1529,7 +1529,7 @@ var
 begin
   try
     Ensure.IsTrue(aCount >= 0, 'Count must be >= 0')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1564,8 +1564,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aPredicate, 'Predicate is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aPredicate), 'Predicate is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1603,7 +1603,7 @@ var
 begin
   try
     Ensure.IsTrue(aCount >= 0, 'Count must be >= 0')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1636,8 +1636,8 @@ end;
 function Stream.TPipe<T>.Peek(const aAction: TConstProc<Integer, T>): TPipe<T>;
 begin
   try
-    Ensure.IsAssigned(@aAction, 'Action is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aAction), 'Action is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
 
@@ -1663,9 +1663,9 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aOther, 'Other is nil')
-          .IsAssigned(@aZipper, 'Zipper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer')
+    Ensure.IsTrue(Assigned(aOther), 'Other is nil')
+          .IsTrue(Assigned(aZipper), 'Zipper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer')
           .IsFalse(Assigned(aOnDiscardOther) and (not aOwnsList), 'OnDiscardOther requires aOwnsList=True');
 
     fState.CheckNotConsumed;
@@ -1704,9 +1704,8 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aOther, 'Other is nil')
-          .IsAssigned(@aZipper, 'Zipper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer');
+    Ensure.IsTrue(Assigned(aZipper), 'Zipper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer');
 
     fState.CheckNotConsumed;
     fState.CheckDisposable(aOnDiscard);
@@ -1742,9 +1741,9 @@ var
   scope: TScope;
 begin
   try
-    Ensure.IsAssigned(@aEnum, 'Enum is nil')
-          .IsAssigned(@aZipper, 'Zipper is nil')
-          .IsAssigned(fState.List, 'Stream has no buffer')
+    Ensure.IsTrue(Assigned(aEnum), 'Enum is nil')
+          .IsTrue(Assigned(aZipper), 'Zipper is nil')
+          .IsTrue(Assigned(fState.List), 'Stream has no buffer')
           .IsFalse(Assigned(aOnDiscardOther) and (not aOwnsEnum), 'OnDiscardOther requires aOwnsEnum=True');
 
     fState.CheckNotConsumed;
@@ -1785,7 +1784,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.From<T>(const aList: TList<T>): TPipe<T>;
 begin
-  Ensure.IsAssigned(aList, 'List is nil');
+  Ensure.IsTrue(Assigned(aList), 'List is nil');
 
   Result := TPipe<T>.CreatePipe(aList, true);
 end;
@@ -1793,7 +1792,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.Borrow<T>(const aList: TList<T>): TPipe<T>;
 begin
-  Ensure.IsAssigned(aList, 'List is nil');
+  Ensure.IsTrue(Assigned(aList), 'List is nil');
 
   Result := TPipe<T>.CreatePipe(aList, false);
 end;
@@ -1809,7 +1808,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.From<T>(aEnum: TEnumerator<T>; aOwnsEnum: Boolean): TPipe<T>;
 begin
-  Ensure.IsAssigned(aEnum, 'Enum is nil');
+  Ensure.IsTrue(Assigned(aEnum), 'Enum is nil');
 
   var list := TList<T>.Create;
 

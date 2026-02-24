@@ -503,7 +503,7 @@ class function TCollect.All<T>(const aSource: TList<T>; const aPredicate: TConst
 var
   i: integer;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for i := 0 to Pred(aSource.Count) do
     if not aPredicate(aSource[i]) then
@@ -517,7 +517,7 @@ class function TCollect.Any<T>(const aSource: TList<T>; const aPredicate: TConst
 var
   i: Integer;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for i := 0 to Pred(aSource.Count) do
     if aPredicate(aSource[i]) then
@@ -531,7 +531,7 @@ class function TCollect.Count<T>(const aSource: TList<T>; const aPredicate: TCon
 var
   i: Integer;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil').IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   Result := 0;
 
@@ -545,8 +545,7 @@ class function TCollect.Filter<T>(const aSource: TList<T>; const aPredicate: TCo
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -568,7 +567,7 @@ class function TCollect.Distinct<T>(const aSource: TList<T>; const aComparer: IE
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil');
 
   var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<T>.Default;
 
@@ -598,8 +597,7 @@ class function TCollect.DistinctBy<T, TKey>(
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aKeySelector, 'KeySelector is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aKeySelector), 'KeySelector is nil');
 
   var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<TKey>.Default;
 
@@ -632,8 +630,7 @@ var
   group: TList<T>;
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aKeySelector, 'KeySelector is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aKeySelector), 'KeySelector is nil');
 
   var cmp := if Assigned(aComparer) then aComparer else TEqualityComparer<TKey>.Default;
   var map := scope.Owns(TDictionary<TKey, TList<T>>.Create(cmp));
@@ -664,8 +661,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Partition<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TPartition<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   Result.TrueList := TList<T>.Create;
   Result.FalseList := TList<T>.Create;
@@ -696,8 +692,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.SplitAt<T>(const aSource: TList<T>; const aIndex: Integer): TSplit<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsTrue(aIndex >= 0, 'Index must be >= 0');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(aIndex >= 0, 'Index must be >= 0');
 
   Result.Left := TList<T>.Create;
   Result.Right := TList<T>.Create;
@@ -728,8 +723,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Span<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TSpan<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   try
     var cut := 0;
@@ -771,7 +765,7 @@ class function TCollect.Flatten<T>(const aSource: TList<TList<T>>): TList<T>;
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil');
 
   var list  := scope.Owns(TList<T>.Create);
   var total := 0;
@@ -825,9 +819,9 @@ class procedure TCollect.FlatMapInto<T, U>(
   const aDest: TList<U>
 );
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aMapper, 'Mapper is nil')
-        .IsAssigned(aDest, 'Dest is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil')
+        .IsTrue(Assigned(aMapper), 'Mapper is nil')
+        .IsTrue(Assigned(aDest), 'Dest is nil');
 
   for var item in aSource do
     aMapper(item, aDest);
@@ -850,8 +844,7 @@ class function TCollect.Map<T, U>(const aSource: TList<T>; const aMapper: TConst
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aMapper, 'Mapper is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aMapper), 'Mapper is nil');
 
   var list := scope.Owns(TList<U>.Create);
 
@@ -1052,8 +1045,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for var item in aSource do
     if aPredicate(item) then
@@ -1068,8 +1060,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for var i := aSource.Count - 1 downto 0 do
     if aPredicate(aSource[i]) then
@@ -1084,8 +1075,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.FirstOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for var item in aSource do
     if aPredicate(item) then
@@ -1103,8 +1093,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.LastOr<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>; const aFallback: T): T;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   for var i := aSource.Count - 1 downto 0 do
     if aPredicate(aSource[i]) then
@@ -1125,8 +1114,7 @@ var
   found: Boolean;
   singleValue: T;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   found := false;
   singleValue := default(T);
@@ -1159,8 +1147,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Reduce<TItem, TAcc>(const aSource: TList<TItem>; const aSeed: TAcc; const aReducer: TConstFunc<TAcc, TItem, TAcc>): TAcc;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aReducer, 'Reducer is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aReducer), 'Reducer is nil');
 
   var lAcc := aSeed;
 
@@ -1175,7 +1162,7 @@ class function TCollect.Sort<T>(const aSource: TList<T>; const aComparer: ICompa
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil');
 
   var list := Scope.Owns(TList<T>.Create);
 
@@ -1195,8 +1182,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.Sort<T>(const aSource: TList<T>; const aComparison: TComparison<T>): TList<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aComparison, 'Comparison is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aComparison), 'Comparison is nil');
 
   Result := Sort<T>(aSource, TComparer<T>.Construct(aComparison));
 end;
@@ -1221,7 +1207,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollect.At<T>(const aSource: TList<T>; const aIndex: Integer): TMaybe<T>;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil');
 
   if (aIndex < 0) or (aIndex >= aSource.Count) then
   begin
@@ -1300,8 +1286,7 @@ class function TCollect.Take<T>(const aSource: TList<T>; const aCount: Integer):
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsTrue(aCount >= 0, 'Count must be >= 0');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(aCount >= 0, 'Count must be >= 0');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1320,8 +1305,7 @@ class function TCollect.TakeWhile<T>(const aSource: TList<T>; const aPredicate: 
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1337,8 +1321,7 @@ class function TCollect.TakeUntil<T>(const aSource: TList<T>; const aPredicate: 
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1356,8 +1339,7 @@ class function TCollect.TakeLast<T>(const aSource: TList<T>; const aCount: Integ
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsTrue(aCount >= 0, 'Count must be >= 0');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(aCount >= 0, 'Count must be >= 0');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1384,8 +1366,7 @@ class function TCollect.Skip<T>(const aSource: TList<T>; const aCount: Integer):
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsTrue(aCount >= 0, 'Count must be >= 0');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(aCount >= 0, 'Count must be >= 0');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1405,8 +1386,7 @@ class function TCollect.SkipWhile<T>(const aSource: TList<T>;const aPredicate: T
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   var list := scope.Owns(TList<T>.Create);
   var startIdx := 0;
@@ -1433,8 +1413,7 @@ class function TCollect.SkipUntil<T>(const aSource: TList<T>; const aPredicate: 
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-        .IsAssigned(@aPredicate, 'Predicate is nil');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
   var list := scope.Owns(TList<T>.Create);
 
@@ -1463,8 +1442,7 @@ class function TCollect.SkipLast<T>(const aSource: TList<T>; const aCount: Integ
 var
   scope: TScope;
 begin
-  Ensure.IsAssigned(aSource, 'Source is nil')
-         .IsTrue(aCount >= 0, 'Count must be >= 0');
+  Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(aCount >= 0, 'Count must be >= 0');
 
   var list := scope.Owns(TList<T>.Create);
 
