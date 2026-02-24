@@ -33,7 +33,25 @@ uses
   Base.Core;
 
 type
-  TSqliteDatabase = class(TSingleton) //TInterfacedObject)
+  // Maps to PRAGMA journal_mode
+  TSqliteJournalMode = (
+    jmWAL,
+    jmDelete,
+    jmTruncate,
+    jmPersist,
+    jmMemory,
+    jmOff
+  );
+
+  // Maps to PRAGMA synchronous
+  TSqliteSynchronous = (
+    syOff,
+    syNormal,
+    syFull,
+    syExtra
+  );
+
+  TSqliteDatabase = class(TSingleton)
   private
     fExists: boolean;
     fPath: string;
@@ -60,11 +78,69 @@ type
     destructor Destroy; override;
   end;
 
+  function SqliteJournalModeToPragma(const aMode: TSqliteJournalMode): string;
+  function SqliteSynchronousToPragma(const aSync: TSqliteSynchronous): string;
+  function TryParseSqliteJournalMode(const aValue: string; out aMode: TSqliteJournalMode): Boolean;
+  function TryParseSqliteSynchronous(const aValue: string; out aSync: TSqliteSynchronous): Boolean;
+
+const
+  CSqliteJournalModeNames: array[TSqliteJournalMode] of string = (
+    'WAL',
+    'DELETE',
+    'TRUNCATE',
+    'PERSIST',
+    'MEMORY',
+    'OFF'
+  );
+
+  CSqliteSynchronousNames: array[TSqliteSynchronous] of string = (
+    'OFF',
+    'NORMAL',
+    'FULL',
+    'EXTRA'
+  );
+
 implementation
 
 uses
+  System.StrUtils,
   System.IOUtils,
   System.Variants;
+
+  {----------------------------------------------------------------------------------------------------------------------}
+function SqliteJournalModeToPragma(const aMode: TSqliteJournalMode): string;
+begin
+  Result := CSqliteJournalModeNames[aMode];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function SqliteSynchronousToPragma(const aSync: TSqliteSynchronous): string;
+begin
+Result := CSqliteSynchronousNames[aSync];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TryParseSqliteJournalMode(const aValue: string; out aMode: TSqliteJournalMode): Boolean;
+begin
+  var idx := IndexText(Trim(aValue), CSqliteJournalModeNames);
+
+  Result := idx >= 0;
+
+  if Result then
+    aMode := TSqliteJournalMode(Idx);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TryParseSqliteSynchronous(const aValue: string; out aSync: TSqliteSynchronous): Boolean;
+begin
+  var idx := IndexText(Trim(aValue), CSqliteSynchronousNames);
+
+  Result := idx >= 0;
+
+  if Result then
+    aSync := TSqliteSynchronous(idx);
+end;
+
 
 { TSqliteDatabase }
 

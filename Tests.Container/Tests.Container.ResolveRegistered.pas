@@ -112,7 +112,7 @@ begin
     begin
       S := container.Resolve<ITestSvc>;
     end,
-    EArgumentException);
+    EServiceNotRegistered);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -198,7 +198,7 @@ var scope : TScope;
 begin
   var container := scope.Owns(TContainer.Create);
 
-  Assert.WillRaise(procedure begin container.ResolveClass<TObjectSvc>; end, EArgumentException);
+  Assert.WillRaise(procedure begin container.ResolveClass<TObjectSvc>; end, EServiceNotRegistered);
 end;
 
 initialization

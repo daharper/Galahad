@@ -859,12 +859,17 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TContainer.Resolve<T>(const aName: string): T;
+function TContainer.Resolve<T>(const aName: string = ''): T;
 const
-  ERR = 'Service not registered: %s (Name="%s")';
+  ERR_NOT_REGISTERED = 'Service not registered: %s (Name="%s")';
+  ERR_NOT_RESOLVED   = 'Service registered but could not be resolved: %s (Name="%s")';
 begin
-  if not TryResolve<T>(Result, aName) then
-    raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
+  if TryResolve<T>(Result, aName) then exit;
+
+  if not IsRegistered<T>(aName) then
+    raise EServiceNotRegistered.CreateFmt(ERR_NOT_REGISTERED, [TypeNameOf(TypeInfo(T)), aName]);
+
+  raise EArgumentException.CreateFmt(ERR_NOT_RESOLVED, [TypeNameOf(TypeInfo(T)), aName]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -883,12 +888,18 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TContainer.ResolveClass<T>(const aName: string): T;
+function TContainer.ResolveClass<T>(const aName: string = ''): T;
 const
-  ERR = 'Service not registered: %s (Name="%s")';
+  ERR_NOT_REGISTERED = 'Service not registered: %s (Name="%s")';
+  ERR_NOT_RESOLVED   = 'Service registered but could not be resolved: %s (Name="%s")';
 begin
-  if not TryResolveClass<T>(Result, aName) then
-    raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
+  if TryResolveClass<T>(Result, aName) then
+    Exit;
+
+  if not IsRegistered<T>(aName) then
+    raise EServiceNotRegistered.CreateFmt(ERR_NOT_REGISTERED, [TypeNameOf(TypeInfo(T)), aName]);
+
+  raise EArgumentException.CreateFmt(ERR_NOT_RESOLVED, [TypeNameOf(TypeInfo(T)), aName]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
