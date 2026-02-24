@@ -89,6 +89,7 @@ type
     procedure Clear;
     procedure Add(const aReg: TRegistration);
 
+    function TryAdd(const aReg: TRegistration): Boolean;
     function TryGet(const aKey: TServiceKey; out aReg: TRegistration): Boolean;
     function Contains(const aKey: TServiceKey): Boolean;
 
@@ -433,6 +434,21 @@ begin
     Ensure.IsFalse(fMap.ContainsKey(aReg.Key), Format(MSG, [aReg.ServiceTypeName, NameOrDefault(aReg.Key.Name)]));
 
     fMap.Add(aReg.Key, aReg);
+  finally
+    TMonitor.Exit(fLock);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TServiceRegistry.TryAdd(const aReg: TRegistration): Boolean;
+begin
+  TMonitor.Enter(fLock);
+  try
+    if fMap.ContainsKey(aReg.Key) then
+      Exit(False);
+
+    fMap.Add(aReg.Key, aReg);
+    Exit(True);
   finally
     TMonitor.Exit(fLock);
   end;
@@ -1210,21 +1226,21 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.EnsureAutoRegisteredClass(const aServiceType: PTypeInfo);
 begin
-  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then Exit;
-  if fRegistry.Contains(TServiceKey.Create(aServiceType, '')) then Exit;
+  if (aServiceType = nil) or (aServiceType^.Kind <> tkClass) then exit;
 
-  // PTypeInfo for tkClass contains ClassType
+  var key := TServiceKey.Create(aServiceType, '');
+
+  // Best-effort: build a registration candidate
   var td := GetTypeData(aServiceType);
-  Ensure.IsAssigned(td, 'Auto-register: missing type data');
-  Ensure.IsAssigned(td.ClassType, 'Auto-register: ClassType is nil');
+  if (td = nil) or (td.ClassType = nil) then
+    Exit;
+
+  var implClass := td.ClassType;
 
   // Infer lifetime from base type
   var inferredLifetime: TServiceLifetime := Transient;
-  if td.ClassType.InheritsFrom(TSingleton) then
+  if implClass.InheritsFrom(TSingleton) then
     inferredLifetime := Singleton;
-
-  // Create a "self type-map" registration (T -> T)
-  var key := TServiceKey.Create(aServiceType, '');
 
   var reg: TRegistration;
   FillChar(reg, SizeOf(reg), 0);
@@ -1232,13 +1248,14 @@ begin
   reg.Key := key;
   reg.Kind := TypeMap;
   reg.Lifetime := inferredLifetime;
-  reg.ImplClass := td.ClassType;
+  reg.ImplClass := implClass;
   reg.FactoryIntf := nil;
   reg.FactoryObj := nil;
   reg.OwnsInstance := False;
   reg.ServiceTypeName := TypeNameOf(aServiceType);
 
-  fRegistry.Add(reg);
+  // Atomic add: if someone else registered it first, just ignore.
+  fRegistry.TryAdd(reg);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
