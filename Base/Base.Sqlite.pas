@@ -101,6 +101,44 @@ type
     constructor Create(const aOptions: TSqliteOptions);
   end;
 
+  IDbSession = interface
+    ['{FC69B63A-0EA7-4C27-9641-202F66B2FE4A}']
+    function Connection: TFDConnection;
+    function NewQuery: TFDQuery;
+
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+  end;
+
+  IDbSessionFactory = interface
+    ['{A152B6F7-B167-40C1-B70E-083182CDD68D}']
+    function OpenSession(const aCtx: IDbContext): IDbSession;
+  end;
+
+  TSqliteSession = class(TInterfacedObject, IDbSession)
+  private
+    fDriver: TFDPhysSQLiteDriverLink;
+    fConnection: TFDConnection;
+
+    procedure ApplySqlitePolicy(const Ctx: IDbContext);
+  public
+    constructor Create(const Ctx: IDbContext);
+    destructor Destroy; override;
+
+    function Connection: TFDConnection;
+    function NewQuery: TFDQuery;
+
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+  end;
+
+  TSqliteSessionFactory = class(TSingleton, IDbSessionFactory)
+  public
+    function OpenSession(const Ctx: IDbContext): IDbSession;
+  end;
+
   TSqliteDatabase = class(TSingleton)
   private
     fExists: boolean;
@@ -387,7 +425,7 @@ begin
   Result.DatabasePath := '';
   Result.BusyTimeoutMs := 500;
 
-  Result.ForeignKeys := True;
+  Result.ForeignKeys := fkOn;
   Result.JournalMode := jmWAL;
   Result.Synchronous := syNormal;
 end;
@@ -427,7 +465,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TSqliteContext.ForeignKeys: Boolean;
+function TSqliteContext.ForeignKeys: TSqliteForeignKeys;
 begin
   Result := fForeignKeys;
 end;
@@ -452,6 +490,113 @@ begin
   fForeignKeys   := aOptions.ForeignKeys;
   fJournalMode   := aOptions.JournalMode;
   fSynchronous   := aOptions.Synchronous;
+end;
+
+{ TSqliteSession }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteSession.ApplySqlitePolicy(const Ctx: IDbContext);
+var
+  str: string;
+begin
+  // Foreign keys
+  if Ctx.ForeignKeys <> fkUnset then
+  begin
+    str := SqliteForeignKeysToPragma(Ctx.ForeignKeys); // 'ON' / 'OFF'
+    fConnection.ExecSQL('PRAGMA foreign_keys = ' + str + ';');
+  end;
+
+  // Journal mode
+  if Ctx.JournalMode <> jmUnset then
+  begin
+    str := SqliteJournalModeToPragma(Ctx.JournalMode); // 'WAL', 'DELETE', ...
+    fConnection.ExecSQL('PRAGMA journal_mode = ' + str + ';');
+  end;
+
+  // Synchronous
+  if Ctx.Synchronous <> syUnset then
+  begin
+    str := SqliteSynchronousToPragma(Ctx.Synchronous); // 'NORMAL', 'FULL', ...
+    fConnection.ExecSQL('PRAGMA synchronous = ' + str + ';');
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteSession.Connection: TFDConnection;
+begin
+  Result := fConnection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteSession.NewQuery: TFDQuery;
+begin
+  Result := TFDQuery.Create(nil);
+  Result.Connection := fConnection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteSession.StartTransaction;
+begin
+  fConnection.StartTransaction;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteSession.Commit;
+begin
+  fConnection.Commit;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteSession.Rollback;
+begin
+  fConnection.Rollback;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TSqliteSession.Create(const Ctx: IDbContext);
+begin
+  inherited Create;
+
+  if Ctx = nil then
+    raise EArgumentNilException.Create('Ctx');
+
+  fDriver := TFDPhysSQLiteDriverLink.Create(nil);
+  fDriver.DriverID := 'SQLite';
+
+  fConnection := TFDConnection.Create(nil);
+  fConnection.LoginPrompt := False;
+
+  fConnection.Params.Clear;
+  fConnection.Params.DriverID := 'SQLite';
+  fConnection.Params.Database := Ctx.DatabasePath;
+
+  if Ctx.BusyTimeoutMs > 0 then
+    fConnection.Params.Values['BusyTimeout'] := IntToStr(Ctx.BusyTimeoutMs);
+
+  fConnection.Connected := True;
+
+  ApplySqlitePolicy(Ctx);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TSqliteSession.Destroy;
+begin
+  if Assigned(fConnection) then
+    fConnection.Connected := False;
+
+  fConnection.Free;
+  fDriver.Free;
+
+  inherited;
+end;
+
+
+
+{ TSqliteSessionFactory }
+
+function TSqliteSessionFactory.OpenSession(const Ctx: IDbContext): IDbSession;
+begin
+  Result := TSqliteSession.Create(Ctx);
 end;
 
 end.
