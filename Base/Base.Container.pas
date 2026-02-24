@@ -315,7 +315,7 @@ type
     ///  Raises EArgumentException if an identical key is already registered (via Ensure).
     /// </remarks>
     procedure AddClassType<T: class>(aLifetime: TServiceLifetime; const aName: string = '');  overload;
-    procedure AddClassType<TBase: class; TImpl:TBase>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
+    procedure AddClassType<TBase: class; TImpl:class>(aLifetime: TServiceLifetime; const aName: string = ''); overload;
 
     /// <summary>
     /// Attempts to resolve a class instance by type and optional name.
@@ -578,13 +578,6 @@ end;
 { TContainer }
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TContainer.TypeNameOf(aTypeInfo: PTypeInfo): string;
-begin
-  if aTypeInfo = nil then exit('<nil>');
-  Result := GetTypeName(aTypeInfo);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.AddSingleton<T>(const aInstance: T; const aName: string);
 var
   lKey: TServiceKey;
@@ -662,11 +655,14 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.AddClassFactory<T>(aLifetime: TServiceLifetime; const aFactory: TConstFunc<T>; const aName: string);
+const
+  E_SINGLE = 'AddClassFactory<%s>: %s inherits from TSingleton and cannot be registered as Transient';
 var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(@aFactory, 'AddClass<T: class>: factory is nil');
+  Ensure.IsAssigned(@aFactory, 'AddClass<T: class>: factory is nil')
+        .IsFalse(T.InheritsFrom(TSingleton) and (aLifetime = Transient), Format(E_SINGLE, [T.ClassName, T.ClassName]));
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
@@ -685,6 +681,134 @@ begin
     end;
 
   fRegistry.Add(lReg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.Add<TService, TImpl>(const aName: string);
+var
+  inferred: TServiceLifetime;
+begin
+  // Infer from implementation type
+  if TImpl.InheritsFrom(TSingleton) then
+    inferred := Singleton
+  else
+    inferred := Transient;
+
+  // Delegate to explicit overload (keeps all validation/registration logic in one place)
+  Add<TService, TImpl>(inferred, aName);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.Add<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
+const
+  ERR = 'Add<TService,TImpl>: TService must be an interface';
+  E_SINGLE = 'Add<%s,%s>: %s inherits from TSingleton and cannot be registered as Transient';
+var
+  Reg: TRegistration;
+begin
+  Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface, ERR);
+
+  if TImpl.InheritsFrom(TSingleton) then
+    Ensure.IsFalse(aLifetime = Transient, Format(E_SINGLE, [TypeNameOf(TypeInfo(TService)), TImpl.ClassName, TImpl.ClassName]));
+
+  var key := TServiceKey.Create(TypeInfo(TService), aName);
+
+  FillChar(Reg, SizeOf(Reg), 0);
+  Reg.Key := key;
+  Reg.Kind := TypeMap;
+  Reg.Lifetime := aLifetime;
+  Reg.ImplClass := TImpl;
+  Reg.FactoryIntf := nil;
+  Reg.FactoryObj := nil;
+  Reg.OwnsInstance := False;
+  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TService));
+
+  fRegistry.Add(Reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddClassType<T>(aLifetime: TServiceLifetime; const aName: string);
+const
+  E_SINGLE = 'AddClassType<%s>: %s inherits from TSingleton and cannot be registered as Transient';
+var
+  Reg: TRegistration;
+begin
+  Ensure.IsTrue(T.InheritsFrom(TObject), 'AddClassType<T>: T must be a class')
+        .IsFalse(T.InheritsFrom(TSingleton) and (aLifetime = Transient), Format(E_SINGLE, [T.ClassName, T.ClassName]));
+
+  var key := TServiceKey.Create(TypeInfo(T), aName);
+
+  FillChar(Reg, SizeOf(Reg), 0);
+  Reg.Key := Key;
+  Reg.Kind := TypeMap;
+  Reg.Lifetime := aLifetime;
+  Reg.ImplClass := T;
+  Reg.FactoryIntf := nil;
+  Reg.FactoryObj := nil;
+  Reg.OwnsInstance := False;
+
+  fRegistry.Add(Reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddClassType<TBase, TImpl>(aLifetime: TServiceLifetime; const aName: string);
+const
+  E_SINGLE = 'AddClassType<%s,%s>: %s inherits from TSingleton and cannot be registered as Transient';
+var
+  reg: TRegistration;
+begin
+  Ensure.IsFalse(TImpl.InheritsFrom(TSingleton) and (aLifetime = Transient),
+    Format(E_SINGLE, [TBase.ClassName, TImpl.ClassName, TImpl.ClassName]));
+
+  var key := TServiceKey.Create(TypeInfo(TBase), aName);
+
+  FillChar(Reg, SizeOf(Reg), 0);
+  Reg.Key := Key;
+  Reg.Kind := TypeMap;
+  Reg.Lifetime := aLifetime;
+  Reg.ImplClass := TImpl;
+  Reg.FactoryIntf := nil;
+  Reg.FactoryObj := nil;
+  Reg.OwnsInstance := False;
+  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TBase));
+
+  fRegistry.Add(reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule<T>;
+begin
+  var module := T.Create;
+  try
+    module.RegisterServices(Self);
+  finally
+    module.Free;
+  end;
+
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule(const aModule: IContainerModule);
+begin
+  Ensure.IsAssigned(aModule, 'AddModule: module is nil');
+  aModule.RegisterServices(Self);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddModule(const aModules: array of IContainerModule);
+begin
+  for var i := 0 to High(aModules) do
+  begin
+    Ensure.IsAssigned(aModules[i], Format('AddModule: module[%d] is nil', [i]));
+    aModules[i].RegisterServices(Self);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TContainer.TypeNameOf(aTypeInfo: PTypeInfo): string;
+begin
+  if aTypeInfo = nil then exit('<nil>');
+  Result := GetTypeName(aTypeInfo);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -746,99 +870,6 @@ const
 begin
   if not TryResolveClass<T>(Result, aName) then
     raise EArgumentException.CreateFmt(ERR, [TypeNameOf(TypeInfo(T)), aName]);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.Add<TService, TImpl>(const aName: string);
-var
-  inferred: TServiceLifetime;
-begin
-  // Infer from implementation type
-  if TImpl.InheritsFrom(TSingleton) then
-    inferred := Singleton
-  else
-    inferred := Transient;
-
-  // Delegate to explicit overload (keeps all validation/registration logic in one place)
-  Add<TService, TImpl>(inferred, aName);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.Add<TService, TImpl>(aLifetime: TServiceLifetime; const aName: string);
-const
-  ERR = 'Add<TService,TImpl>: TService must be an interface';
-  E_SINGLE = 'Add<%s,%s>: %s inherits from TSingleton and cannot be registered as Transient';
-var
-  Reg: TRegistration;
-begin
-  Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface, ERR);
-
-  if TImpl.InheritsFrom(TSingleton) then
-    Ensure.IsFalse(aLifetime = Transient, Format(E_SINGLE, [TypeNameOf(TypeInfo(TService)), TImpl.ClassName, TImpl.ClassName]));
-
-  var key := TServiceKey.Create(TypeInfo(TService), aName);
-
-  FillChar(Reg, SizeOf(Reg), 0);
-  Reg.Key := key;
-  Reg.Kind := TypeMap;
-  Reg.Lifetime := aLifetime;
-  Reg.ImplClass := TImpl;
-  Reg.FactoryIntf := nil;
-  Reg.FactoryObj := nil;
-  Reg.OwnsInstance := False;
-  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TService));
-
-  fRegistry.Add(Reg);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddClassType<T>(aLifetime: TServiceLifetime; const aName: string);
-var
-  Reg: TRegistration;
-begin
-  Ensure.IsTrue(T.InheritsFrom(TObject), 'AddClassType<T>: T must be a class');
-
-  var key := TServiceKey.Create(TypeInfo(T), aName);
-
-  FillChar(Reg, SizeOf(Reg), 0);
-  Reg.Key := Key;
-  Reg.Kind := TypeMap;
-  Reg.Lifetime := aLifetime;
-  Reg.ImplClass := T;
-  Reg.FactoryIntf := nil;
-  Reg.FactoryObj := nil;
-  Reg.OwnsInstance := False;
-
-  fRegistry.Add(Reg);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddModule<T>;
-begin
-  var module := T.Create;
-  try
-    module.RegisterServices(Self);
-  finally
-    module.Free;
-  end;
-
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddModule(const aModule: IContainerModule);
-begin
-  Ensure.IsAssigned(aModule, 'AddModule: module is nil');
-  aModule.RegisterServices(Self);
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddModule(const aModules: array of IContainerModule);
-begin
-  for var i := 0 to High(aModules) do
-  begin
-    Ensure.IsAssigned(aModules[i], Format('AddModule: module[%d] is nil', [i]));
-    aModules[i].RegisterServices(Self);
-  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1209,30 +1240,6 @@ begin
 
   fRegistry.Add(reg);
 end;
-
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TContainer.AddClassType<TBase, TImpl>(aLifetime: TServiceLifetime; const aName: string);
-const
-  ERR = 'AddClassType<%s,%s>: %s does not inherit from %s';
-var
-  reg: TRegistration;
-begin
-  var key := TServiceKey.Create(TypeInfo(TBase), aName);
-
-  FillChar(Reg, SizeOf(Reg), 0);
-  Reg.Key := Key;
-  Reg.Kind := TypeMap;
-  Reg.Lifetime := aLifetime;
-  Reg.ImplClass := TImpl;
-  Reg.FactoryIntf := nil;
-  Reg.FactoryObj := nil;
-  Reg.OwnsInstance := False;
-  Reg.ServiceTypeName := TypeNameOf(TypeInfo(TBase));
-
-  fRegistry.Add(reg);
-end;
-
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TContainer.Create;
