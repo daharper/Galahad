@@ -148,6 +148,7 @@ type
   private
     fRegistry: TServiceRegistry;
     fSingletons: TSingletonRegistry;
+    fSingletonCreateLock: TObject;
 
     class var fContext: TRttiContext;
 
@@ -601,7 +602,7 @@ var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(aInstance, 'Add<T: IInterface>: instance is nil');
+  Ensure.IsTrue(Assigned(aInstance), 'Add<T: IInterface>: instance is nil');
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
@@ -624,7 +625,7 @@ var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(aInstance, 'AddClass<T: class>: instance is nil');
+  Ensure.IsTrue(Assigned(aInstance), 'AddClass<T: class>: instance is nil');
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
@@ -647,7 +648,7 @@ var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(@aFactory, 'Add<T: IInterface>: factory is nil');
+  Ensure.IsTrue(Assigned(aFactory), 'Add<T: IInterface>: factory is nil');
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
 
@@ -679,7 +680,7 @@ var
   lKey: TServiceKey;
   lReg: TRegistration;
 begin
-  Ensure.IsAssigned(@aFactory, 'AddClass<T: class>: factory is nil')
+  Ensure.IsTrue(Assigned(aFactory), 'AddClass<T: class>: factory is nil')
         .IsFalse(T.InheritsFrom(TSingleton) and (aLifetime = Transient), Format(E_SINGLE, [T.ClassName, T.ClassName]));
 
   lKey := TServiceKey.Create(TypeInfo(T), aName);
@@ -808,7 +809,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.AddModule(const aModule: IContainerModule);
 begin
-  Ensure.IsAssigned(aModule, 'AddModule: module is nil');
+  Ensure.IsTrue(Assigned(aModule), 'AddModule: module is nil');
   aModule.RegisterServices(Self);
 end;
 
@@ -817,7 +818,7 @@ procedure TContainer.AddModule(const aModules: array of IContainerModule);
 begin
   for var i := 0 to High(aModules) do
   begin
-    Ensure.IsAssigned(aModules[i], Format('AddModule: module[%d] is nil', [i]));
+    Ensure.IsTrue(Assigned(aModules[i]), Format('AddModule: module[%d] is nil', [i]));
     aModules[i].RegisterServices(Self);
   end;
 end;
@@ -917,6 +918,13 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TContainer.FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
+  procedure DisposeResolvedArgs(const Args: TArray<TValue>);
+  begin
+    for var j := 0 to High(Args) do
+      if Args[j].IsObject and (Args[j].AsObject <> nil) then
+        Args[j].AsObject.Free;
+  end;
+
 begin
   aCtor := nil;
   SetLength(aArgs, 0);
@@ -930,9 +938,7 @@ begin
 
   if instanceType = nil then exit(false);
 
-  // -------------------------
   // Phase 1: select constructor (no resolving / no object creation)
-  // -------------------------
   var bestCtor: TRttiMethod := nil;
   var bestCount: Integer := -1;
 
@@ -965,16 +971,14 @@ begin
       if m.IsConstructor and (m.Visibility = mvPublic) and (Length(m.GetParameters) = 0) then
       begin
         bestCtor := m;
-        Break;
+        break;
       end;
     end;
   end;
 
   if bestCtor = nil then exit(false);
 
-  // -------------------------
   // Phase 2: resolve args only for the chosen constructor
-  // -------------------------
   var params := bestCtor.GetParameters;
   SetLength(aArgs, Length(params));
 
@@ -986,6 +990,7 @@ begin
     begin
       // We did not create speculative objects anymore, so nothing to dispose here.
       // If you later introduce scoped tracking, this is where you'd roll back.
+      DisposeResolvedArgs(aArgs);
       aCtor := nil;
       SetLength(aArgs, 0);
       exit(false);
@@ -1054,9 +1059,8 @@ begin
 
   var key := TServiceKey.Create(aServiceType, aName);
 
-  if not fRegistry.TryGet(key, lReg) then exit(False);
+  if not fRegistry.TryGet(key, lReg) then exit(false);
 
-  // cached singleton?
   if (lReg.Lifetime = Singleton) then
   begin
     if fSingletons.TryGet(key, lValue) then
@@ -1064,31 +1068,112 @@ begin
       if (not lValue.IsObject) and Assigned(lValue.Intf) then
       begin
         aIntf := lValue.Intf;
-        Exit(true);
+        exit(true);
       end;
 
       if lValue.IsObject and Assigned(lValue.Obj) then
       begin
         var guid := GetTypeData(aServiceType)^.Guid;
+        if Supports(lValue.Obj, guid, aIntf) and Assigned(aIntf) then exit(true);
 
-        if Supports(lValue.Obj, guid, aIntf) and Assigned(aIntf) then
-          exit(true);
-
-        // If we cached an object but it doesn't support the interface, treat as config error.
-        exit(false);
+        exit(false); // cached object does not support requested interface => config error
       end;
     end;
   end;
 
-  // instance/factory/typemap
+  if (lReg.Lifetime = Singleton) then
+  begin
+    TMonitor.Enter(fSingletonCreateLock);
+    try
+      // Re-check inside lock (double-checked locking pattern)
+      if fSingletons.TryGet(key, lValue) then
+      begin
+        if (not lValue.IsObject) and Assigned(lValue.Intf) then
+        begin
+          aIntf := lValue.Intf;
+          exit(true);
+        end;
+
+        if lValue.IsObject and Assigned(lValue.Obj) then
+        begin
+          var guid := GetTypeData(aServiceType)^.Guid;
+          if Supports(lValue.Obj, guid, aIntf) and Assigned(aIntf) then exit(true);
+
+          exit(false);
+        end;
+      end;
+
+      // Not cached: create once, cache once
+      case lReg.Kind of
+
+        Instance:
+          begin
+            // Interface instances should have been placed in singleton registry by AddSingleton<T>(instance)
+            if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
+            begin
+              aIntf := lValue.Intf;
+              exit(true);
+            end;
+
+            exit(false);
+          end;
+
+        Factory:
+          begin
+            Ensure.IsTrue(Assigned(lReg.FactoryIntf), 'TryResolveByTypeInfo: FactoryIntf is nil');
+
+            aIntf := lReg.FactoryIntf();
+            if not Assigned(aIntf) then exit(false);
+
+            // Interface factory singletons remain interface-rooted
+            fSingletons.PutInterface(key, aIntf);
+            exit(true);
+          end;
+
+        TypeMap:
+          begin
+            if lReg.ImplClass = nil then exit(false);
+
+            // Build object and cast to requested interface
+            if not BuildObject(lReg.ImplClass, lObj) then exit(false);
+
+            var guid := GetTypeData(aServiceType)^.Guid;
+
+            if not Supports(lObj, guid, aIntf) then
+            begin
+              lObj.Free;
+              exit(false);
+            end;
+
+            // Cache singleton:
+            // - If impl is TSingleton => object-rooted, container-owned deterministic singleton
+            // - Else => interface-rooted (refcount-pinned)
+            if lObj.InheritsFrom(TSingleton) then
+              fSingletons.PutObject(key, lObj, True)
+            else
+              fSingletons.PutInterface(key, aIntf);
+
+            exit(true);
+          end;
+
+      else
+        exit(false);
+      end;
+
+    finally
+      TMonitor.exit(fSingletonCreateLock);
+    end;
+  end;
+
   case lReg.Kind of
+
     Instance:
       begin
-        // Interface instances should have been placed in singleton registry by Add<T>(instance)
+        // For interfaces, Instance registrations should be stored in singleton registry
         if fSingletons.TryGet(key, lValue) and (not lValue.IsObject) and Assigned(lValue.Intf) then
         begin
           aIntf := lValue.Intf;
-          Exit(true);
+          exit(true);
         end;
 
         exit(false);
@@ -1096,24 +1181,17 @@ begin
 
     Factory:
       begin
-        Ensure.IsAssigned(lReg.FactoryIntf, 'TryResolveByTypeInfo: FactoryIntf is nil');
+        Ensure.IsTrue(Assigned(lReg.FactoryIntf), 'TryResolveByTypeInfo: FactoryIntf is nil');
 
         aIntf := lReg.FactoryIntf();
-
-        if not Assigned(aIntf) then exit(false);
-
-        if lReg.Lifetime = Singleton then
-          fSingletons.PutInterface(key, aIntf);
-
-        exit(true);
+        exit(Assigned(aIntf));
       end;
 
     TypeMap:
       begin
         if lReg.ImplClass = nil then exit(false);
 
-        // Build the object and cast to requested interface
-        if not BuildObject(lReg.ImplClass, lObj) then exit(False);
+        if not BuildObject(lReg.ImplClass, lObj) then exit(false);
 
         var guid := GetTypeData(aServiceType)^.Guid;
 
@@ -1123,19 +1201,10 @@ begin
           exit(false);
         end;
 
-        if lReg.Lifetime = Singleton then
-        begin
-          if lObj.InheritsFrom(TSingleton) then
-            // container-owned deterministic singleton
-            fSingletons.PutObject(key, lObj, True)
-          else
-            // IMPORTANT: do not free Obj; interface ref now owns it via refcounting
-            // refcount-pinned singleton (best effort)
-            fSingletons.PutInterface(key, aIntf);
-        end;
-
+        // Transient interface resolution: interface ref now owns object via refcounting
         exit(true);
       end;
+
   else
     exit(false);
   end;
@@ -1156,17 +1225,85 @@ begin
 
   if not fRegistry.TryGet(key, lReg) then exit(False);
 
-  // cached singleton?
   if (lReg.Lifetime = Singleton) then
   begin
     if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
     begin
       aObj := lValue.Obj;
-      exit(true);
+      exit(True);
+    end;
+  end;
+
+  if (lReg.Lifetime = Singleton) then
+  begin
+    TMonitor.Enter(fSingletonCreateLock);
+    try
+      // Re-check inside lock (double-checked locking)
+      if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+      begin
+        aObj := lValue.Obj;
+        exit(true);
+      end;
+
+      // Not cached: create once, cache once
+      case lReg.Kind of
+
+        Instance:
+          begin
+            if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
+            begin
+              aObj := lValue.Obj;
+              exit(true);
+            end;
+
+            exit(false);
+          end;
+
+        Factory:
+          begin
+            Ensure.IsTrue(Assigned(lReg.FactoryObj), 'TryResolveClassByTypeInfo: FactoryObj is nil');
+
+            lCreated := lReg.FactoryObj();
+            if not Assigned(lCreated) then exit(false);
+
+            // Singleton created by container via factory: container owns by default
+            fSingletons.PutObject(key, lCreated, true);
+
+            aObj := lCreated;
+            exit(true);
+          end;
+
+        TypeMap:
+          begin
+            if lReg.ImplClass = nil then exit(false);
+
+            if not BuildObject(lReg.ImplClass, lCreated) then exit(false);
+
+            // Ensure assignable to requested service class
+            if not lCreated.InheritsFrom(GetTypeData(aServiceType)^.ClassType) then
+            begin
+              lCreated.Free;
+              exit(false);
+            end;
+
+            // Singleton created by container via typemap: container owns
+            fSingletons.PutObject(key, lCreated, True);
+
+            aObj := lCreated;
+            exit(true);
+          end;
+
+      else
+        exit(false);
+      end;
+
+    finally
+      TMonitor.Exit(fSingletonCreateLock);
     end;
   end;
 
   case lReg.Kind of
+
     Instance:
       begin
         if fSingletons.TryGet(key, lValue) and lValue.IsObject and Assigned(lValue.Obj) then
@@ -1180,21 +1317,12 @@ begin
 
     Factory:
       begin
-        Ensure.IsAssigned(@lReg.FactoryObj, 'TryResolveClassByTypeInfo: FactoryObj is nil');
+        Ensure.IsTrue(Assigned(lReg.FactoryObj), 'TryResolveClassByTypeInfo: FactoryObj is nil');
 
         lCreated := lReg.FactoryObj();
-
         if not Assigned(lCreated) then exit(false);
 
-        // For singleton factory: cache and container owns by default
-        if lReg.Lifetime = Singleton then
-        begin
-          fSingletons.PutObject(key, lCreated, True);
-          aObj := lCreated;
-          exit(true);
-        end;
-
-        // Transient: caller owns
+        // Transient objects are caller-owned
         aObj := lCreated;
         exit(true);
       end;
@@ -1203,26 +1331,19 @@ begin
       begin
         if lReg.ImplClass = nil then exit(false);
 
-        // Build the implementation
         if not BuildObject(lReg.ImplClass, lCreated) then exit(false);
 
-        // Ensure assignable to requested service class
         if not lCreated.InheritsFrom(GetTypeData(aServiceType)^.ClassType) then
         begin
           lCreated.Free;
           exit(false);
         end;
 
-        if lReg.Lifetime = Singleton then
-        begin
-          fSingletons.PutObject(key, lCreated, True);
-          aObj := lCreated;
-          exit(true);
-        end;
-
+        // Transient objects are caller-owned
         aObj := lCreated;
         exit(true);
       end;
+
   else
     exit(false);
   end;
@@ -1323,6 +1444,7 @@ begin
 
   // Use same key comparer logic as the registry.
   fSingletons := TSingletonRegistry.Create(TServiceRegistry.TKeyComparer.Create);
+  fSingletonCreateLock := TObject.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1330,6 +1452,7 @@ destructor TContainer.Destroy;
 begin
   fSingletons.Free;
   fRegistry.Free;
+  fSingletonCreateLock.Free;
 
   inherited;
 end;
