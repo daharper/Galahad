@@ -153,6 +153,8 @@ type
 
     procedure EnsureAutoRegisteredClass(const aServiceType: PTypeInfo);
 
+    function AllParamsAreInjectableAndResolvable(const aCtor: TRttiMethod): Boolean;
+
 {$IFNDEF TESTINSIGHT}
     function TryResolveByTypeInfo(aServiceType: PTypeInfo; out aIntf: IInterface; const aName: string = ''): Boolean;
     function TryResolveClassByTypeInfo(aServiceType: PTypeInfo; out aObj: TObject; const aName: string = ''): Boolean;
@@ -915,82 +917,85 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TContainer.FindBestConstructor(const aImplClass: TClass; out aCtor: TRttiMethod; out aArgs: TArray<TValue>): Boolean;
-var
-  lType: TRttiType;
-  lCandidateArgs: TArray<TValue>;
-  lBestCount: Integer;
-  lValue: TValue;
-
-  procedure DisposeCandidateArgs(const Args: TArray<TValue>);
-  begin
-    for var j := 0 to High(Args) do
-      if Args[j].IsObject and (Args[j].AsObject <> nil) then
-        Args[j].AsObject.Free;
-  end;
-
 begin
   aCtor := nil;
   SetLength(aArgs, 0);
-  lBestCount := -1;
 
-  lType := fContext.GetType(aImplClass);
+  Result := false;
 
+  if aImplClass = nil then exit;
+
+  var lType := fContext.GetType(aImplClass);
   var instanceType := lType.AsInstance;
-  if instanceType = nil then Exit(False);
+
+  if instanceType = nil then exit(false);
+
+  // -------------------------
+  // Phase 1: select constructor (no resolving / no object creation)
+  // -------------------------
+  var bestCtor: TRttiMethod := nil;
+  var bestCount: Integer := -1;
 
   for var m in instanceType.GetMethods do
   begin
     if not m.IsConstructor then continue;
     if m.Visibility <> mvPublic then continue;
 
-    var params := m.GetParameters;
+    // Only consider constructors declared on this class (not inherited)
+    if m.Parent <> instanceType then continue;
 
-    { todo - first check params are interface or class, if not continue }
-    SetLength(lCandidateArgs, Length(params));
+    // Only consider ctors where params are injectable and resolvable by policy
+    if not AllParamsAreInjectableAndResolvable(m) then continue;
 
-    var ok := True;
+    var paramCount := Length(m.GetParameters);
 
-    // zero out candidate args so we can safely dispose partial fills
-    for var k := 0 to High(lCandidateArgs) do
-      lCandidateArgs[k] := TValue.Empty;
-
-    for var i := 0 to High(params) do
+    // Prefer the ctor with the most parameters
+    if paramCount > bestCount then
     begin
-      if not TryResolveParam(params[i].ParamType, lValue) then
-      begin
-        ok := False;
-        Break;
-      end;
-
-      lCandidateArgs[i] := lValue;
-    end;
-
-    if not ok then
-    begin
-      // Candidate rejected: dispose any transient objects already created.
-      DisposeCandidateArgs(lCandidateArgs);
-      Continue;
-    end;
-
-    if Length(params) > lBestCount then
-    begin
-      // We are replacing the previous best: dispose the previous best args
-      DisposeCandidateArgs(aArgs);
-
-      lBestCount := Length(params);
-      aCtor := m;
-      aArgs := Copy(lCandidateArgs);
-
-      SetLength(lCandidateArgs, 0);
-    end
-    else
-    begin
-      // Candidate is valid but not best: dispose its created args
-      DisposeCandidateArgs(lCandidateArgs);
+      bestCount := paramCount;
+      bestCtor := m;
     end;
   end;
 
-  Result := Assigned(aCtor);
+  // Fallback: any public parameterless constructor (including inherited)
+  if bestCtor = nil then
+  begin
+    for var m in instanceType.GetMethods do
+    begin
+      if m.IsConstructor and (m.Visibility = mvPublic) and (Length(m.GetParameters) = 0) then
+      begin
+        bestCtor := m;
+        Break;
+      end;
+    end;
+  end;
+
+  if bestCtor = nil then exit(false);
+
+  // -------------------------
+  // Phase 2: resolve args only for the chosen constructor
+  // -------------------------
+  var params := bestCtor.GetParameters;
+  SetLength(aArgs, Length(params));
+
+  for var i := 0 to High(params) do
+  begin
+    var v: TValue := TValue.Empty;
+
+    if not TryResolveParam(params[i].ParamType, v) then
+    begin
+      // We did not create speculative objects anymore, so nothing to dispose here.
+      // If you later introduce scoped tracking, this is where you'd roll back.
+      aCtor := nil;
+      SetLength(aArgs, 0);
+      exit(false);
+    end;
+
+    aArgs[i] := v;
+  end;
+
+  aCtor := bestCtor;
+  Result := true;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1256,6 +1261,57 @@ begin
 
   // Atomic add: if someone else registered it first, just ignore.
   fRegistry.TryAdd(reg);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.AllParamsAreInjectableAndResolvable(const aCtor: TRttiMethod): Boolean;
+begin
+  Result := False;
+
+  if not Assigned(aCtor) then exit;
+
+  var params := aCtor.GetParameters;
+
+  for var i := 0 to High(params) do
+  begin
+    var paramType := params[i].ParamType;
+    if paramType = nil then exit(False);
+
+    var info := paramType.Handle;
+    if info = nil then exit(False);
+
+    case info^.Kind of
+
+      tkInterface:
+        begin
+          // Interfaces must be explicitly registered.
+          if not fRegistry.Contains(TServiceKey.Create(info, '')) then exit(False);
+        end;
+
+      tkClass:
+        begin
+          // Classes are allowed if:
+          //   - already registered
+          //   - OR can be auto-registered later (ClassType exists)
+
+          if not fRegistry.Contains(TServiceKey.Create(info, '')) then
+          begin
+            var td := GetTypeData(info);
+
+            if (td = nil) or (td.ClassType = nil) then
+              exit(false);
+
+            // We don't auto-register here — just confirm it *can* be.
+          end;
+        end;
+
+    else
+      // We do not inject value types in v1
+      exit(false);
+    end;
+  end;
+
+  Result := true;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
