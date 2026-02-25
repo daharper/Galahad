@@ -50,7 +50,9 @@ uses
   Tests.Core.Xml in 'Tests.Core\Tests.Core.Xml.pas',
   Base.Json in 'Base\Base.Json.pas',
   Base.Sqlite in 'Base\Base.Sqlite.pas',
-  Base.Data in 'Base\Base.Data.pas';
+  Base.Data in 'Base\Base.Data.pas',
+  Base.Files in 'Base\Base.Files.pas',
+  Base.Settings in 'Base\Base.Settings.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

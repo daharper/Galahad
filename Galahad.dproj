@@ -178,6 +178,8 @@
         <DCCReference Include="Base\Base.Json.pas"/>
         <DCCReference Include="Base\Base.Sqlite.pas"/>
         <DCCReference Include="Base\Base.Data.pas"/>
+        <DCCReference Include="Base\Base.Files.pas"/>
+        <DCCReference Include="Base\Base.Settings.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
