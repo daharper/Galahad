@@ -12,8 +12,12 @@ unit Base.Application;
 interface
 
 uses
+  System.SysUtils,
   Base.Core,
+  Base.Integrity,
   Base.Data,
+  Base.Settings,
+  Base.Files,
   Base.Container;
 
 type
@@ -22,14 +26,28 @@ type
     procedure Execute;
   end;
 
+  TApplicationBase = class(TTransient, IApplication)
+  protected
+    procedure Run; virtual; abstract;
+    procedure HandleException(const E: Exception); virtual;
+  public
+    procedure Execute;
+  end;
+
   TApplicationBuilder = class
   private
+    fDatabaseConfigured: boolean;
+
     class var fInstance: TApplicationBuilder;
   public
     function Services: TContainer;
     function Build: IApplication;
+    function LoadSettings: ISettings;
 
-    procedure ConfigureDatabase(const aCtx: IDbContext);
+    procedure ConfigureDatabase(const aCtx: IDbContext); overload;
+    procedure ConfigureDatabase; overload;
+
+    procedure PerformMigrations;
 
     class constructor Create;
     class destructor Destroy;
@@ -40,7 +58,7 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  Base.Xml;
 
 { Functions }
 
@@ -60,17 +78,59 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TApplicationBuilder.ConfigureDatabase(const aCtx: IDbContext);
+const
+  CONFIG_ERR = 'Database has already been configured.';
+  CONTEXT_ERR = 'Database context is required';
 begin
+  Ensure.IsFalse(fDatabaseConfigured, CONFIG_ERR).IsTrue(Assigned(aCtx), CONTEXT_ERR);
+
   Services.AddSingleton<IDbContext>(aCtx);
 
   Services.Add<IDbAmbientInstaller, TDbAmbientInstaller>;
   Services.Resolve<IDbAmbientInstaller>; // ensure ambient installed now (main thread)
+
+  fDatabaseConfigured := True;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TApplicationBuilder.ConfigureDatabase;
+begin
+  var settings := Services.Resolve<ISettings>;
+  var ctx := Services.Resolve<IDbContextFactory>.BuildFromSettings(settings);
+
+  ConfigureDatabase(ctx);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TApplicationBuilder.PerformMigrations;
+const
+  ERR = 'Please configure the database before performing migrations.';
+begin
+  Ensure.IsTrue(fDatabaseConfigured, ERR);
+
+  var migrator := Services.Resolve<IMigrationManager>;
+  migrator.Execute;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TApplicationBuilder.Services: TContainer;
 begin
   Result := Container;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TApplicationBuilder.LoadSettings: ISettings;
+begin
+  var files := Services.Resolve<IFileService>;
+  var settingsRes := TXml.Load(files.SettingsPath);
+
+  Ensure.IsTrue(settingsRes.IsOk, 'Error loading the settings file: ' + files.SettingsPath);
+
+  var xml := settingsRes.Value;
+
+  Services.AddSingleton<ISettings>(TSettings.Create(xml));
+
+  Result := Services.Resolve<ISettings>;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -83,6 +143,28 @@ end;
 class destructor TApplicationBuilder.Destroy;
 begin
   FreeAndNil(fInstance);
+end;
+
+{ TApplicationBase }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TApplicationBase.Execute;
+begin
+  try
+    Run;
+  except
+    on E: Exception do
+    begin
+      HandleException(E);
+      ExitCode := 1;
+    end;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TApplicationBase.HandleException(const E: Exception);
+begin
+  Writeln(E.ClassName, ': ', E.Message);
 end;
 
 end.

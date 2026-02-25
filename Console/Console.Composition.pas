@@ -54,13 +54,12 @@ uses
   System.SysUtils,
   Base.Data,
   Base.Sqlite,
+  Base.Files,
   Domain.Game,
   Domain.Terms,
-  Application.Contracts,
   Application.Language,
   Application.Parsing,
   Application.UseCases.StartGame,
-  Infrastructure.Files,
   Infrastructure.Data,
   Infrastructure.Migrations,
   Console.Application;
@@ -81,8 +80,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TConsoleServiceModule.RegisterServices(const aContainer: TContainer);
 begin
-  aContainer.Add<IGameSession, TGameSession>(Singleton);
-  aContainer.Add<IApplication, TConsoleApplication>(Transient);
+  aContainer.Add<IGameSession, TGameSession>; //(Singleton);
+  aContainer.Add<IApplication, TConsoleApplication>; //(Transient);
 end;
 
 { TDataServicesModule }
@@ -91,6 +90,8 @@ end;
 procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.Add<IFileService, TFileService>;
+  aContainer.Add<IDbContextProvider, TSqliteContextProvider>('sqlite');
+  aContainer.Add<IDbContextFactory, TDbContextFactory>;
   aContainer.Add<IDbSessionFactory, TSqliteSessionFactory>;
   aContainer.Add<IDbSessionManager, TDbSessionManager>;
   aContainer.Add<IMigrationRegistrar, TMigrationRegistrar>(Transient);

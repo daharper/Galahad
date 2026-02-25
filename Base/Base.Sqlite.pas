@@ -30,7 +30,9 @@ uses
   FireDAC.Comp.DataSet,
   FireDAC.Comp.Client,
   Base.Data,
-  Base.Core;
+  Base.Core,
+  Base.Files,
+  Base.Settings;
 
 type
   // Maps to PRAGMA journal_mode
@@ -98,6 +100,12 @@ type
     function ProviderId: string;
     function Name: string;
     function Payload: IInterface;
+  end;
+
+  TSqliteContextProvider = class(TSingleton, IDbContextProvider)
+  public
+    function ProviderId: string; // e.g. 'sqlite'
+    function BuildContext(const aFileService: IFileService; const Settings: ISettings): IDbContext;
   end;
 
   TSqliteSession = class(TTransient, IDbSession)
@@ -183,7 +191,8 @@ implementation
 uses
   System.StrUtils,
   System.IOUtils,
-  System.Variants;
+  System.Variants,
+  Base.Integrity;
 
   {----------------------------------------------------------------------------------------------------------------------}
 function SqliteJournalModeToPragma(const aMode: TSqliteJournalMode): string;
@@ -500,6 +509,66 @@ begin
 
   fName := aName;
   fPayload := TSqliteContextPayload.Create(aOptions);
+end;
+
+{ TSqliteContextProvider }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteContextProvider.ProviderId: string;
+begin
+  Result := 'sqlite';
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqliteContextProvider.BuildContext(const aFileService: IFileService; const Settings: ISettings): IDbContext;
+var
+  opt: TSqliteOptions;
+begin
+  opt := Default(TSqliteOptions);
+
+  var database := Settings.Database;
+  var sqlite   := database.Elem('Sqlite');
+
+  var fileName := sqlite.Attr('fileName').AsString;
+
+  Ensure.IsNotBlank(fileName, 'missing Sqlite filename');
+
+  opt.DatabasePath := aFileService.GetDatabasePath(fileName);
+
+  var timeout := sqlite.Attr('busyTimeoutMs', '-1').AsInteger;
+
+  if timeout <> -1 then
+    opt.BusyTimeoutMs := timeout;
+
+  var foreignKeys := sqlite.Attr('foreignKeys', '').AsString;
+
+  case IndexText(foreignKeys, ['', 'OFF', 'ON']) of
+    1: opt.ForeignKeys := fkOff;
+    2: opt.ForeignKeys := fkOn;
+  end;
+
+  var journalMode := sqlite.Attr('journalMode', '').AsString;
+
+  case IndexText(journalMode, ['', 'WAL', 'DELETE', 'TRUNCATE', 'PERSIST', 'MEMORY', 'OFF']) of
+    1: opt.JournalMode := jmWAL;
+    2: opt.JournalMode := jmDelete;
+    3: opt.JournalMode := jmPersist;
+    4: opt.JournalMode := jmMemory;
+    5: opt.JournalMode := jmOff;
+  end;
+
+  var synchronous := sqlite.Attr('synchronous', '').AsString;
+
+   case IndexText(synchronous, [ '', 'OFF', 'NORMAL', 'FULL', 'EXTRA']) of
+    1: opt.Synchronous := syOff;
+    2: opt.Synchronous := syNormal;
+    3: opt.Synchronous := syFull;
+    4: opt.Synchronous := syExtra;
+  end;
+
+  opt.Validate;
+
+  Result := TSqliteContext.Create(opt);
 end;
 
 end.

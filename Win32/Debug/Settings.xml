@@ -1,0 +1,9 @@
+﻿<Settings>
+  <Database provider="sqlite" name="default">
+    <Sqlite fileName="escape.db"
+            busyTimeoutMs="500"
+            foreignKeys="on"
+            journalMode="wal"
+            synchronous="normal" />
+  </Database>
+</Settings>

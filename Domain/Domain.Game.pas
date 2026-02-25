@@ -18,7 +18,7 @@ type
     property State: TGameState read GetState write SetState;
   end;
 
-  TGameSession = class(TInterfacedObject, IGameSession)
+  TGameSession = class(TSingleton, IGameSession)
   private
     fState: TGameState;
   public

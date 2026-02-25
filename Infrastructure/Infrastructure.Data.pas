@@ -9,7 +9,6 @@ uses
   Base.Data,
   Base.Sqlite,
   Domain.Terms,
-  Application.Contracts,
   Application.Language;
 
 type

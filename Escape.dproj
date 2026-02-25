@@ -166,6 +166,8 @@
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
         <UWP_DelphiLogo44>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png</UWP_DelphiLogo44>
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
+        <PostBuildEvent><![CDATA[copy /Y "$(ProjectDir)\Settings.xml" "$(OutputDir)"
+$(PostBuildEvent)]]></PostBuildEvent>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_UsePackage>FireDACIBDriver;vclwinx;dxComnRS37;fmx;dxDockingRS37;vclie;DbxCommonDriver;bindengine;IndyIPCommon;VCLRESTComponents;FireDACCommonODBC;dxCoreRS37;dxServerModeRS37;cxPivotGridRS37;IndyProtocols;vclx;dxPScxTLLnkRS37;dbxcds;vcledge;dxSpreadSheetConditionalFormattingDialogsRS37;dxEMFRS37;FmxTeeUI;dxPSCoreRS37;dxPSPrVwRibbonRS37;cxIBXAdaptersRS37;dxRichEditDocumentModelRS37;FireDACSqliteDriver;DbxClientDriver;lmdrtdesign;dxPSdxDBTVLnkRS37;soapmidas;TeeUI;dxPScxExtCommonRS37;dbexpress;inet;vcltouch;cxSchedulerWebServiceStorageRS37;fmxdae;dxTabbedMDIRS37;CustomIPTransport;dxFireDACEMFRS37;EssentialsDR;cxGridRS37;dxSpellCheckerRS37;lmdrtide;cxFireDACAdaptersRS37;dxorgcRS37;IndySystem;lmdrtl;dxBarRS37;dxCloudServiceLibraryRS37;lmdrtinspector;dxPScxPCProdRS37;ibxbindings;dxPSRichEditControlLnkRS37;dxGDIPlusRS37;EsVclCore;vclFireDAC;cxADOAdaptersRS37;FireDACCommon;IcsFmxNewRun;dxBarDBNavRS37;dxPDFViewerRS37;dxmdsRS37;dxPSdxOCLnkRS37;bindcompdbx;lmdrtdocking;lmdrtdialog;rtl;FireDACMySQLDriver;TextEditor.Delphi.Runtime;dxADOEMFRS37;DBXSqliteDriver;IcsCommonNewRun;VirtualTreesDR;dxPSdxDBOCLnkRS37;cxSchedulerTreeBrowserRS37;dxChartControlRS37;cxGridEMFRS37;vclimg;inetdbxpress;FireDAC;dxNavBarRS37;xmlrtl;dxSpreadSheetCoreConditionalFormattingDialogsRS37;dxADOServerModeRS37;ibxpress;dxWizardControlRS37;dxPScxGridLnkRS37;dsnap;lmdrtprint;dxPScxSchedulerLnkRS37;vclib;dxHttpIndyRequestRS37;fmxobj;bindcompvclsmp;lmdrtscript;dxTileControlRS37;dxSpreadSheetReportDesignerRS37;dxGaugeControlRS37;dxOrgChartAdvancedCustomizeFormRS37;dxPSdxMapControlLnkRS37;cxVerticalGridRS37;dxBarExtItemsRS37;cxLibraryRS37;dxdborRS37;dxSpreadSheetRS37;cxSchedulerGridRS37;dxFlowChartAdvancedCustomizeFormRS37;dxPSDBTeeChartRS37;lmdrtscriptimp;dxPSdxLCLnkRS37;FireDACCommonDriver;RadiantShapesFmx_Design;IndyIPClient;bindcompvclwinx;dxPSLnksRS37;EsVclComponents;dxPSTeeChartRS37;bindcompfmx;cxTreeListRS37;dxFlowChartRS37;inetdb;ibmonitor;cxPivotGridChartRS37;dxFireDACServerModeRS37;Tee;vclactnband;dxMapControlRS37;fmxFireDAC;lmdrtspell;DBXMySQLDriver;EsCore;VclSmp;fmxase;cxSchedulerRibbonStyleEventEditorRS37;dbrtl;dxPScxCommonRS37;dxPSdxSpreadSheetLnkRS37;dxPSdxChartControlLnkRS37;TeeDB;FireDACMSAccDriver;dxRichEditControlRS37;AbbreviaVCLD;dxPsPrVwAdvRS37;dxPSdxPDFViewerLnkRS37;dxDBXServerModeRS37;cxSchedulerRS37;cxExportRS37;vcldsnap;DBXInterBaseDriver;dxRichEditControlCoreRS37;RadiantShapesFmx;Skia.Package.VCL;lmdrtsyntax;dxPScxPivotGridLnkRS37;vcldb;dxBarExtDBItemsRS37;SynEditDR;dxPSdxFCLnkRS37;bindcomp;inetstn;dxFlowChartLayoutsRS37;IndyCore;RESTBackendComponents;dxRibbonRS37;dxSpreadSheetCoreRS37;dxGanttControlRS37;dxPScxVGridLnkRS37;dxPSdxGaugeControlLnkRS37;FireDACADSDriver;RaizeComponentsVclDb;RESTComponents;IndyIPServer;vcl;dsnapxml;adortl;dsnapcon;dxSkinsCoreRS37;dxdbtrRS37;IcsVclNewRun;dxRichEditCoreRS37;cxTreeListdxBarPopupMenuRS37;FireDACPgDriver;dxRibbonCustomizationFormRS37;tethering;dxtrmdRS37;bindcompvcl;cxPivotGridOLAPRS37;dxFlowChartDesignerRS37;CloudService;lmdrtrtlx;FMXTee;soaprtl;RaizeComponentsVcl;soapserver;$(DCC_UsePackage)</DCC_UsePackage>
@@ -185,6 +187,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <Manifest_File>(None)</Manifest_File>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -212,17 +217,18 @@
         <DCCReference Include="Base\Base.Xml.pas"/>
         <DCCReference Include="Domain\Domain.Game.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Data.pas"/>
-        <DCCReference Include="Infrastructure\Infrastructure.Files.pas"/>
+        <DCCReference Include="Base\Base.Files.pas"/>
         <DCCReference Include="Base\Base.Data.pas"/>
         <DCCReference Include="Application.UseCases\Application.UseCases.StartGame.pas"/>
         <DCCReference Include="Domain\Domain.Terms.pas"/>
-        <DCCReference Include="Application\Application.Contracts.pas"/>
         <DCCReference Include="Application\Application.Language.pas"/>
         <DCCReference Include="Application\Application.Parsing.pas"/>
         <DCCReference Include="Console\Console.Application.pas"/>
         <DCCReference Include="Console\Console.Composition.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Migrations.pas"/>
         <DCCReference Include="Base\Base.Application.pas"/>
+        <DCCReference Include="Base\Base.Settings.pas"/>
+        <None Include="Settings.xml"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -243,6 +249,10 @@
                 <Source>
                     <Source Name="MainSource">Escape.dpr</Source>
                 </Source>
+                <Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k370.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp370.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+                </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="5">
                 <DeployFile LocalName="$(BDS)\Redist\iossimulator\libcgunwind.1.0.dylib" Class="DependencyModule">
@@ -257,6 +267,12 @@
                 </DeployFile>
                 <DeployFile LocalName="$(BDS)\Redist\osx32\libcgunwind.1.0.dylib" Class="DependencyModule">
                     <Platform Name="OSX32">
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="Untitled1.xml" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -1233,4 +1249,20 @@
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
     <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
     <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
+    <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win32'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>copy /Y &quot;$(ProjectDir)\Settings.xml&quot; &quot;$(OutputDir)&quot;</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
+        <PreBuildEvent/>
+        <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
+        <PreLinkEvent/>
+        <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
+        <PostBuildEvent>copy /Y &quot;$(ProjectDir)\Settings.xml&quot; &quot;$(OutputDir)&quot;</PostBuildEvent>
+        <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
+    </PropertyGroup>
 </Project>

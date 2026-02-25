@@ -7,7 +7,6 @@ uses
   Base.Application,
   Domain.Game,
   Domain.Terms,
-  Application.Contracts,
   Application.Language,
   Application.Parsing,
   Application.UseCases.StartGame,
@@ -15,15 +14,14 @@ uses
 
 type
 
-  TConsoleApplication = class(TInterfacedObject, IApplication)
+  TConsoleApplication = class(TApplicationBase)
   private
     fParser: ITextParser;
     fSession: IGameSession;
   public
-    procedure Execute;
+    procedure Run; override;
 
     constructor Create(
-      const aMigrator: IMigrationManager;
       const aParser: ITextParser;
       const aStartGameUseCase: IStartGameUseCase);
   end;
@@ -37,7 +35,6 @@ uses
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TConsoleApplication.Create(
-  const aMigrator: IMigrationManager;
   const aParser: ITextParser;
   const aStartGameUseCase: IStartGameUseCase
 );
@@ -47,7 +44,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleApplication.Execute;
+procedure TConsoleApplication.Run;
 var
   lInput: string;
 begin

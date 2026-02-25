@@ -21,9 +21,11 @@ uses
   FireDAC.Comp.Client,
   FireDAC.Stan.Param,
   Base.Core,
+  Base.Files,
   Base.Integrity,
   Base.Dynamic,
-  Base.Specifications;
+  Base.Specifications,
+  Base.Settings;
 
 type
   IDbContextFingerprint = interface
@@ -36,6 +38,25 @@ type
     function ProviderId: string;   // e.g. 'sqlite'
     function Name: string;         // e.g. 'default'
     function Payload: IInterface;  // provider-specific, strongly-typed via interface cast
+  end;
+
+  IDbContextProvider = interface
+    ['{7D9A8D2C-8E7D-4C11-9F4E-7C6D7E4B9A10}']
+    function ProviderId: string; // e.g. 'sqlite'
+    function BuildContext(const aFileService: IFileService; const Settings: ISettings): IDbContext;
+  end;
+
+  IDbContextFactory = interface
+    ['{B9A7D1A2-2D5B-4A92-8E1E-0C4B1C6D9A33}']
+    function BuildFromSettings(const Settings: ISettings): IDbContext;
+  end;
+
+  TDbContextFactory = class(TSingleton, IDbContextFactory)
+  private
+    fFileService: IFileService;
+  public
+    function BuildFromSettings(const Settings: ISettings): IDbContext;
+    constructor Create(const aFileService: IFileService);
   end;
 
   IDbSession = interface
@@ -321,7 +342,8 @@ uses
   System.Math,
   System.Generics.Defaults,
   Base.Reflection,
-  Base.Stream;
+  Base.Stream,
+  Base.Container;
 
 { TEntity }
 
@@ -633,8 +655,6 @@ begin
   fMigrations := TObjectList<TMigration>.Create(true);
 
   aRegistrar.Configure(Self);
-
-  Execute;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -789,6 +809,28 @@ begin
   fGuard := nil;
 
   inherited;
+end;
+
+{ TDbContextFactory }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbContextFactory.BuildFromSettings(const Settings: ISettings): IDbContext;
+begin
+  Ensure.IsTrue(Assigned(Settings), 'Settings is required');
+
+  var database   := Settings.Database;
+  var providerId := database.Attr('provider', 'sqlite').AsString;
+  var provider   := Container.Resolve<IDbContextProvider>(providerId);
+
+  Ensure.IsTrue(Assigned(provider), 'Database provider not registerd: ' + providerId);
+
+  Result := Provider.BuildContext(fFileService, Settings);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TDbContextFactory.Create(const aFileService: IFileService);
+begin
+  fFileService := aFileService;
 end;
 
 end.

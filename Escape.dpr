@@ -23,43 +23,28 @@ uses
   Base.Xml in 'Base\Base.Xml.pas',
   Domain.Game in 'Domain\Domain.Game.pas',
   Infrastructure.Data in 'Infrastructure\Infrastructure.Data.pas',
-  Infrastructure.Files in 'Infrastructure\Infrastructure.Files.pas',
+  Base.Files in 'Base\Base.Files.pas',
   Base.Data in 'Base\Base.Data.pas',
   Application.UseCases.StartGame in 'Application.UseCases\Application.UseCases.StartGame.pas',
   Domain.Terms in 'Domain\Domain.Terms.pas',
-  Application.Contracts in 'Application\Application.Contracts.pas',
   Application.Language in 'Application\Application.Language.pas',
   Application.Parsing in 'Application\Application.Parsing.pas',
   Console.Application in 'Console\Console.Application.pas',
   Console.Composition in 'Console\Console.Composition.pas',
   Infrastructure.Migrations in 'Infrastructure\Infrastructure.Migrations.pas',
-  Base.Application in 'Base\Base.Application.pas';
+  Base.Application in 'Base\Base.Application.pas',
+  Base.Settings in 'Base\Base.Settings.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;
 
-  try
-    ApplicationBuilder.Services.AddModule<TConsoleModule>;
+  ApplicationBuilder.Services.AddModule<TConsoleModule>;
+  ApplicationBuilder.LoadSettings;
 
-    var files := ApplicationBuilder.Services.Resolve<IFileService>;
+  ApplicationBuilder.ConfigureDatabase;
+  ApplicationBuilder.PerformMigrations;
 
-    var ctx := BuildSqliteContext(
-      files.DatabasePath,
-      procedure(var Opt: TSqliteOptions)
-      begin
-        Opt.BusyTimeoutMs := 500;
-        Opt.ForeignKeys := fkOn;
-        Opt.JournalMode := jmWAL;
-        Opt.Synchronous := syNormal;
-      end);
+  var app := ApplicationBuilder.Build;
 
-    ApplicationBuilder.ConfigureDatabase(ctx);
-
-    var app := ApplicationBuilder.Build;
-
-    app.Execute;
-  except
-    on E: Exception do
-      Writeln(E.ClassName, ': ', E.Message);
-  end;
+  app.Execute;
 end.
