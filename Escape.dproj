@@ -221,8 +221,8 @@
         <DCCReference Include="Application\Application.Parsing.pas"/>
         <DCCReference Include="Console\Console.Application.pas"/>
         <DCCReference Include="Console\Console.Composition.pas"/>
-        <DCCReference Include="Application\Application.Builder.pas"/>
         <DCCReference Include="Infrastructure\Infrastructure.Migrations.pas"/>
+        <DCCReference Include="Base\Base.Application.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

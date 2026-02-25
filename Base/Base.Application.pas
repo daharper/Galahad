@@ -1,19 +1,26 @@
-unit Application.Builder;
+unit Base.Application;
 
 interface
 
 uses
   Base.Core,
-  Base.Container,
-  Application.Contracts;
+  Base.Data,
+  Base.Container;
 
 type
+  IApplication = interface
+    ['{F0FA85F4-CD6E-454B-8D45-798D5BFDF580}']
+    procedure Execute;
+  end;
+
   TApplicationBuilder = class
   private
     class var fInstance: TApplicationBuilder;
   public
     function Services: TContainer;
     function Build: IApplication;
+
+    procedure ConfigureDatabase(const aCtx: IDbContext);
 
     class constructor Create;
     class destructor Destroy;
@@ -40,6 +47,15 @@ end;
 function TApplicationBuilder.Build: IApplication;
 begin
   Result := Container.Resolve<IApplication>;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TApplicationBuilder.ConfigureDatabase(const aCtx: IDbContext);
+begin
+  Services.AddSingleton<IDbContext>(aCtx);
+
+  Services.Add<IDbAmbientInstaller, TDbAmbientInstaller>;
+  Services.Resolve<IDbAmbientInstaller>; // ensure ambient installed now (main thread)
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

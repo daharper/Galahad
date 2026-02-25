@@ -26,6 +26,120 @@ uses
   Base.Specifications;
 
 type
+  IDbContextFingerprint = interface
+    ['{A16A68A9-A17F-4975-B975-597C28DBB3F8}']
+    function Fingerprint: string;
+  end;
+
+  IDbContext = interface
+    ['{5A8FA1CA-DF84-4371-935A-2E0385F3CE04}']
+    function ProviderId: string;   // e.g. 'sqlite'
+    function Name: string;         // e.g. 'default'
+    function Payload: IInterface;  // provider-specific, strongly-typed via interface cast
+  end;
+
+  IDbSession = interface
+    ['{FC69B63A-0EA7-4C27-9641-202F66B2FE4A}']
+    function Connection: TFDConnection;
+    function NewQuery: TFDQuery;
+
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+
+    // Transitional: schema/user version for migrations
+    function GetSchemaVersion: Integer;
+    procedure SetSchemaVersion(const Value: Integer);
+  end;
+
+  IDbSessionFactory = interface
+    ['{A152B6F7-B167-40C1-B70E-083182CDD68D}']
+    function OpenSession(const aCtx: IDbContext): IDbSession;
+  end;
+
+  IDbSessionManager = interface
+    ['{7C695785-EA4A-452F-9B89-67198A4CB873}']
+    // Install context for the *current thread* (important for Tasks). Guard restores previous state.
+    function UseContext(const aCtx: IDbContext): IInterface;
+
+    // Returns the "current" session:
+    // - active transactional session if inside InTransaction
+    // - otherwise per-thread cached session (lazy)
+    function CurrentSession: IDbSession;
+
+    // Runs Proc inside a transaction on the current thread.
+    procedure InTransaction(const aProc: TProc);
+
+    // Optional: clear per-thread cached session (useful for tests or context changes)
+    procedure ClearThreadSession;
+  end;
+
+  TDbSessionManager = class(TSingleton, IDbSessionManager)
+  private
+    fFactory: IDbSessionFactory;
+
+    class threadvar tCtx: IDbContext;
+    class threadvar tActive: IDbSession;
+
+    // per-thread cached session (lazy)
+    class threadvar tThreadSession: IDbSession;
+    class threadvar tThreadSessionFingerprint: string;
+
+    function Fingerprint(const aCtx: IDbContext): string;
+    function EnsureThreadSession(const aCtx: IDbContext): IDbSession;
+  public
+    constructor Create(const aFactory: IDbSessionFactory);
+
+    function UseContext(const aCtx: IDbContext): IInterface;
+    function CurrentSession: IDbSession;
+
+    procedure InTransaction(const aProc: TProc);
+    procedure ClearThreadSession;
+  end;
+
+  /// <summary>
+  ///  Task/threadpool threads do not inherit the ambient DB context (it is stored in TLS).
+  ///  Therefore, every TTask must install the context explicitly and keep the guard alive
+  ///  for the full duration of the task body.
+  ///
+  ///  Pattern:
+  ///
+  ///   TTask.Run(
+  ///     procedure
+  ///     var
+  ///       G: IInterface;
+  ///       DbMgr: IDbSessionManager;
+  ///     begin
+  ///       DbMgr := Container.Resolve<IDbSessionManager>;  // or capture it
+  ///       G := DbMgr.UseContext(Ctx);                     // Ctx is immutable, safe to capture
+  ///
+  ///       // do DB work here (repos will resolve DbMgr.CurrentSession)
+  ///     end
+  ///   );
+  ///
+  ///  Do not store G anywhere global; it must be released on the same thread that installed it.
+  ///  </summary>
+  TDbAmbientGuard = class(TTransient)
+  private
+    fPrevCtx: IDbContext;
+    fPrevActive: IDbSession;
+  public
+    constructor Create(const aPrevCtx: IDbContext; const aPrevActive: IDbSession);
+    destructor Destroy; override;
+  end;
+
+  IDbAmbientInstaller = interface
+    ['{11C84219-66C7-4096-A54D-744546298759}']
+  end;
+
+  TDbAmbientInstaller = class(TSingleton, IDbAmbientInstaller)
+  private
+    fGuard: IInterface;
+  public
+    constructor Create(const aDbMgr: IDbSessionManager; const aCtx: IDbContext);
+    destructor Destroy; override;
+  end;
+
   /// <summary>
   ///  Apply to non-persisted entity fields.
   /// </summary>
@@ -80,19 +194,19 @@ type
   /// <summary>
   ///  An interface for essential database functionality.
   /// </summary>
-  IDatabaseService = interface
-    ['{957F3224-AE99-4870-A2B9-11B11881FDE3}']
-
-    function Connection: TFDConnection;
-    function Query: TFDQuery;
-    function GetDatabaseVersion: integer;
-
-    procedure SetDatabaseVersion(const aVersion: integer);
-    procedure StartTransaction;
-    procedure Commit;
-    procedure Rollback;
-    procedure Truncate;
-  end;
+//  IDatabaseService = interface
+//    ['{957F3224-AE99-4870-A2B9-11B11881FDE3}']
+//
+//    function Connection: TFDConnection;
+//    function Query: TFDQuery;
+//    function GetDatabaseVersion: integer;
+//
+//    procedure SetDatabaseVersion(const aVersion: integer);
+//    procedure StartTransaction;
+//    procedure Commit;
+//    procedure Rollback;
+//    procedure Truncate;
+//  end;
 
   /// <summary>
   ///  Set directives to affect the queries, before the query is executed.
@@ -131,33 +245,32 @@ type
   TRepository<TService: IEntity; T: TEntity, constructor> = class(TTransient, IRepository<TService, T>)
 {$ENDIF}
   private
-    fDatabase: IDatabaseService;
+    fDb: IDbSessionManager;
 
     // data moves around internally in a list (efficient) but returns to the client as an Array (memory safe)
-    fResults: TList<TService>;
+//    fResults: TList<TService>;
 
-    function GetQueryResults:TList<TService>;
+    function GetQueryResults(const aQuery: TFDQuery):TList<TService>;
   protected
     fDirectives: TDictionary<TDirective, string>;
 
-    function Database: IDatabaseService;
+    function Database: IDbSessionManager;
     function Connection: TFDConnection;
-    function Query: TFDQuery;
+    function NewQuery: TFDQuery;
 
     function ExecQuery(const aSql: string):TList<TService>; overload;
-    function ExecQuery:TList<TService>; overload;
+    function ExecQuery(const aQuery: TFDQuery):TList<TService>; overload;
 
     class var fName: string;
     class var fPropertyOrder: TList<string>;
     class var fProperties: TDictionary<string, TRttiProperty>;
-
-    constructor Create(aDatabase: IDatabaseService);
   public
     function TableName: string;
 
     function GetAll: TArray<TService>;
     function GetBy(const aId: integer): TMaybe<TService>;
 
+    constructor Create(const aDb: IDbSessionManager);
     destructor Destroy; override;
 
     class constructor Create;
@@ -174,7 +287,7 @@ type
     property Sequence: integer read fSequence write fSequence;
     property Description: string read fDescription write fDescription;
 
-    procedure Execute(const aDatabase: IDatabaseService); virtual;
+    procedure Execute(const aDb: IDbSessionManager); virtual;
   end;
 
   TMigrationClass = class of TMigration;
@@ -193,12 +306,12 @@ type
   TMigrationManager = class(TInterfacedObject, IMigrationManager)
   private
     fMigrations: TObjectList<TMigration>;
-    fDatabase: IDatabaseService;
+    fDb: IDbSessionManager;
   public
     procedure Add(const aVersion: integer; const aSequence: integer; const aMigration:TMigrationClass; const aDescription: string);
     procedure Execute;
 
-    constructor Create(const aDatabase: IDatabaseService; const aRegistrar: IMigrationRegistrar);
+    constructor Create(const aDb: IDbSessionManager; const aRegistrar: IMigrationRegistrar);
     destructor Destroy; override;
   end;
 
@@ -239,51 +352,51 @@ end;
 { TRepository<TService, T> }
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.Database: IDatabaseService;
+function TRepository<TService, T>.Database: IDbSessionManager;
 begin
-  Result := fDatabase;
+  Result := fDb;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.Connection: TFDConnection;
 begin
-  Result := fDatabase.Connection;
+  Result := fDb.CurrentSession.Connection;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.Query: TFDQuery;
+function TRepository<TService, T>.NewQuery: TFDQuery;
 begin
-  Result := fDatabase.Query;
+  Result := fDb.CurrentSession.NewQuery;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.GetAll: TArray<TService>;
 const
   SQL = 'select * from %s';
+var
+  scope: TScope;
 begin
   var qry := SQL.Format(SQL, [TableName]);
-  Result := ExecQuery(qry).ToArray;
+  var list := scope.Owns(ExecQuery(qry));
+
+  Result := list.ToArray;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.GetBy(const aId: integer): TMaybe<TService>;
 const
-  SQL = 'select * from %s where id = :id';
+  SQL = 'select * from %s where id = %d';
 var
-  lInstance: TService;
+  scope: TScope;
 begin
-  Query.SQL.Text := SQL.Format(SQL, [TableName, aId]);
-  Query.ParamByName('id').AsInteger := aId;
+  var qry := SQL.Format(SQL, [TableName, aId]);
 
-  var list := ExecQuery;
+  var list := scope.Owns(ExecQuery(qry));
 
   if list.IsEmpty then
     Result.SetNone
   else
-  begin
-    lInstance := list[0];
-    Result.SetSome(lInstance);
-  end;
+    Result.SetSome(list[0]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -295,24 +408,29 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TRepository<TService, T>.ExecQuery(const aSql: string):TList<TService>;
 begin
-  Query.SQL.Text := aSQL;
-  Result := ExecQuery;
-end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.ExecQuery: TList<TService>;
-begin
-  Query.Open;
+  var query := NewQuery;
 
   try
-    Result := GetQueryResults;
+    query.SQL.Text := aSQL;
+    Result := ExecQuery(query);
   finally
-    Query.Close;
+    query.Free;
   end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.GetQueryResults: TList<TService>;
+function TRepository<TService, T>.ExecQuery(const aQuery: TFDQuery): TList<TService>;
+begin
+  aQuery.Open;
+  try
+    Result := GetQueryResults(aQuery);
+  finally
+    aQuery.Close;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRepository<TService, T>.GetQueryResults(const aQuery: TFDQuery): TList<TService>;
 const
   ERR = '%s does not support requested interface %s';
 var
@@ -323,15 +441,13 @@ var
   lProperty: TRttiProperty;
   lNamedProperty: TPair<string, TRttiProperty>;
 begin
-  fResults.Clear;
+  Result := TList<TService>.Create;
 
-  Result := fResults;
+  if aQuery.RecordCount = 0 then exit;
 
-  if Query.RecordCount = 0 then exit;
+  aQuery.First;
 
-  Query.First;
-
-  while not Query.Eof do
+  while not aQuery.Eof do
   begin
     lEntity := T.Create;
 
@@ -339,7 +455,7 @@ begin
     begin
       lName     := lNamedProperty.Key;
       lProperty := lNamedProperty.Value;
-      lVariant  := query[lName];
+      lVariant  := aQuery[lName];
 
       if not TReflection.TryVariantToTValue(lVariant, lProperty.PropertyType.Handle, lValue) then
         lValue := TValue.FromVariant(lVariant);
@@ -349,25 +465,22 @@ begin
 
     Result.Add(TReflection.As<TService>(lEntity));
 
-    Query.Next;
+    aQuery.Next;
   end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TRepository<TService, T>.Create(aDatabase: IDatabaseService);
+constructor TRepository<TService, T>.Create(const aDb: IDbSessionManager);
 begin
   inherited Create;
 
-  fDatabase   := aDatabase;
-  fResults    := TList<TService>.Create;
+  fDb := aDb;
   fDirectives := TDictionary<TDirective, string>.Create;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 destructor TRepository<TService, T>.Destroy;
 begin
-  fResults.Clear;
-  fResults.Free;
   fDirectives.Free;
 
   inherited;
@@ -430,7 +543,7 @@ end;
 { TMigration }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMigration.Execute(const aDatabase: IDatabaseService);
+procedure TMigration.Execute(const aDb: IDbSessionManager);
 begin
   Writeln(Format('Applying migration (%d.%d): %s', [fVersion, fSequence, fDescription]));
 end;
@@ -442,7 +555,7 @@ procedure TMigrationManager.Execute;
 var
   scope: TScope;
 begin
-  var version := fDatabase.GetDatabaseVersion;
+  var version := fDb.CurrentSession.GetSchemaVersion;
   var max := 0;
 
   for var m in fMigrations do
@@ -475,18 +588,18 @@ begin
 
   for var v in [version..max] do
   begin
-    fDatabase.StartTransaction;
+    fDb.CurrentSession.StartTransaction;
 
     for var m in migrations[v] do
     try
-      m.Execute(fDatabase);
+      m.Execute(fDb);
 
-      fDatabase.SetDatabaseVersion(v);
-      fDatabase.Commit;
+      fDb.CurrentSession.SetSchemaVersion(v);
+      fDb.CurrentSession.Commit;
     except
       on E:Exception do
       begin
-        fDatabase.Rollback;
+        fDb.CurrentSession.Rollback;
 
         var msg := Format('Migration Error (%d.%d - %s): %s]', [v, m.Sequence, m.Description, E.Message]);
         raise Exception.Create(msg);
@@ -508,9 +621,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TMigrationManager.Create(const aDatabase: IDatabaseService; const aRegistrar: IMigrationRegistrar);
+constructor TMigrationManager.Create(const aDb: IDbSessionManager; const aRegistrar: IMigrationRegistrar);
 begin
-  fDatabase := aDatabase;
+  fDb := aDb;
   fMigrations := TObjectList<TMigration>.Create(true);
 
   aRegistrar.Configure(Self);
@@ -522,6 +635,153 @@ end;
 destructor TMigrationManager.Destroy;
 begin
   fMigrations.Free;
+  inherited;
+end;
+
+{ TDbAmbientGuard }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TDbAmbientGuard.Create(const aPrevCtx: IDbContext; const aPrevActive: IDbSession);
+begin
+  inherited Create;
+
+  fPrevCtx := aPrevCtx;
+  fPrevActive := aPrevActive;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TDbAmbientGuard.Destroy;
+begin
+  TDbSessionManager.tActive := fPrevActive;
+  TDbSessionManager.tCtx := fPrevCtx;
+
+  inherited;
+end;
+
+{ TDbSessionManager }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDbSessionManager.ClearThreadSession;
+begin
+  tThreadSession := nil;
+  tThreadSessionFingerprint := '';
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbSessionManager.CurrentSession: IDbSession;
+begin
+  // If inside an explicit transaction, always return that session.
+  if tActive <> nil then exit(tActive);
+
+  if tCtx = nil then
+    raise Exception.Create('No ambient DB context set for this thread. Call UseContext(...) first.');
+
+  Result := EnsureThreadSession(tCtx);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbSessionManager.EnsureThreadSession(const aCtx: IDbContext): IDbSession;
+begin
+  var fp := Fingerprint(aCtx);
+
+  if (tThreadSession = nil) or (tThreadSessionFingerprint <> fp) then
+  begin
+    tThreadSession := fFactory.OpenSession(aCtx);
+    tThreadSessionFingerprint := fp;
+  end;
+
+  Result := tThreadSession;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbSessionManager.Fingerprint(const aCtx: IDbContext): string;
+var
+  FP: IDbContextFingerprint;
+begin
+  if aCtx = nil then
+    raise EArgumentNilException.Create('aCtx');
+
+  Result := aCtx.ProviderId + '|' + aCtx.Name;
+
+  if Supports(aCtx.Payload, IDbContextFingerprint, FP) then
+    Result := Result + '|' + FP.Fingerprint
+  else
+    // Fallback: if no fingerprint is provided, treat payload changes as "unknown"
+    // and avoid caching by returning something that will not match across calls.
+    Result := Result + '|nocache';
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TDbSessionManager.InTransaction(const aProc: TProc);
+begin
+  if not Assigned(aProc) then
+    raise EArgumentNilException.Create('aProc');
+
+  if tCtx = nil then
+    raise Exception.Create('No ambient DB context set for this thread. Call UseContext(...) first.');
+
+  // Use the per-thread session. (Simple, predictable for v0.1.)
+  var session := EnsureThreadSession(tCtx);
+
+  var prevActive := tActive;
+
+  tActive := session;
+  try
+    session.StartTransaction;
+    try
+      aProc();
+      session.Commit;
+    except
+      session.Rollback;
+      raise;
+    end;
+  finally
+    tActive := prevActive;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbSessionManager.UseContext(const aCtx: IDbContext): IInterface;
+var
+  PrevCtx: IDbContext;
+  PrevActive: IDbSession;
+begin
+  if aCtx = nil then
+    raise EArgumentNilException.Create('aCtx');
+
+  PrevCtx := tCtx;
+  PrevActive := tActive;
+
+  tCtx := aCtx;
+
+  // Note: do NOT create the session here; keep it lazy.
+
+  Result := TDbAmbientGuard.Create(PrevCtx, PrevActive);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TDbSessionManager.Create(const aFactory: IDbSessionFactory);
+begin
+  inherited Create;
+
+  fFactory := aFactory;
+end;
+
+{ TDbAmbientInstaller }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TDbAmbientInstaller.Create(const aDbMgr: IDbSessionManager; const aCtx: IDbContext);
+begin
+  inherited Create;
+
+  fGuard := aDbMgr.UseContext(aCtx);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TDbAmbientInstaller.Destroy;
+begin
+  fGuard := nil;
+
   inherited;
 end;
 

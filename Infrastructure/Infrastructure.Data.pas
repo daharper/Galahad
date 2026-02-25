@@ -6,26 +6,26 @@ uses
   System.Generics.Collections,
   Base.Core,
   Base.Integrity,
-  Base.Sqlite,
   Base.Data,
+  Base.Sqlite,
   Domain.Terms,
   Application.Contracts,
   Application.Language;
 
 type
-  TDatabaseService = class(TSqliteDatabase, IDatabaseService)
-  public
-    constructor Create(aFileService: IFileService);
-  end;
+//  TDatabaseService = class(TSqliteDatabase, IDatabaseService)
+//  public
+//    constructor Create(aFileService: IFileService);
+//  end;
 
   TTermRepository = class(TRepository<ITerm, TTerm>, ITermRepository)
   public
-    constructor Create(const aDatabaseService: IDatabaseService);
+    constructor Create(const aDb: IDbSessionManager);
   end;
 
   TWordRepository = class(TRepository<IWord, TWord>, IWordRepository)
   public
-    constructor Create(const aDatabaseService: IDatabaseService);
+    constructor Create(const aDb: IDbSessionManager);
   end;
 
 
@@ -41,25 +41,25 @@ uses
 { TTermRepository }
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TTermRepository.Create(const aDatabaseService: IDatabaseService);
+constructor TTermRepository.Create(const aDb: IDbSessionManager);
 begin
-  inherited Create(aDatabaseService);
+  inherited Create(aDb);
 end;
 
 { TSynonymRepository }
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TWordRepository.Create(const aDatabaseService: IDatabaseService);
+constructor TWordRepository.Create(const aDb: IDbSessionManager);
 begin
-  inherited Create(aDatabaseService);
+  inherited Create(aDb);
 end;
 
 { TDatabaseService }
-
-{----------------------------------------------------------------------------------------------------------------------}
-constructor TDatabaseService.Create(aFileService: IFileService);
-begin
-  inherited Create(aFileService.DatabasePath);
-end;
+//
+//{----------------------------------------------------------------------------------------------------------------------}
+//constructor TDatabaseService.Create(aFileService: IFileService);
+//begin
+//  inherited Create(aFileService.DatabasePath);
+//end;
 
 end.

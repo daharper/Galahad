@@ -616,6 +616,7 @@ begin
   lReg.ServiceTypeName := TypeNameOf(TypeInfo(T));
 
   fRegistry.Add(lReg);
+
   fSingletons.PutInterface(lKey, aInstance);
 end;
 

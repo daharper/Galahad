@@ -3,6 +3,7 @@ unit Console.Composition;
 interface
 
 uses
+  Base.Application,
   Base.Integrity,
   Base.Container;
 
@@ -52,6 +53,7 @@ implementation
 uses
   System.SysUtils,
   Base.Data,
+  Base.Sqlite,
   Domain.Game,
   Domain.Terms,
   Application.Contracts,
@@ -89,7 +91,14 @@ end;
 procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContainer);
 begin
   aContainer.Add<IFileService, TFileService>;
-  aContainer.Add<IDatabaseService, TDatabaseService>;
+  aContainer.Add<IDbSessionFactory, TSqliteSessionFactory>;
+  aContainer.Add<IDbSessionManager, TDbSessionManager>;
+
+//  aContainer.AddSingleton<IDbContext>(ctx);
+//
+//  aContainer.Add<IDbAmbientInstaller, TDbAmbientInstaller>;
+//  aContainer.Resolve<IDbAmbientInstaller>;
+
   aContainer.Add<IMigrationRegistrar, TMigrationRegistrar>(Transient);
   aContainer.Add<IMigrationManager, TMigrationManager>(Transient);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);

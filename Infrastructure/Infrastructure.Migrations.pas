@@ -17,17 +17,17 @@ type
 
   TCreateDatabaseMigration = class(TMigration)
   public
-    procedure Execute(const aDatabase: IDatabaseService); override;
+    procedure Execute(const aDb: IDbSessionManager); override;
   end;
 
   TSeedTermsMigration = class(TMigration)
   public
-    procedure Execute(const aDatabase: IDatabaseService); override;
+    procedure Execute(const aDb: IDbSessionManager); override;
   end;
 
   TSeedWordsMigration = class(TMigration)
   public
-    procedure Execute(const aDatabase: IDatabaseService); override;
+    procedure Execute(const aDb: IDbSessionManager); override;
   end;
 
 implementation
@@ -51,7 +51,7 @@ end;
 {$region '1.1 TCreateDatabaseMigration' }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TCreateDatabaseMigration.Execute(const aDatabase: IDatabaseService);
+procedure TCreateDatabaseMigration.Execute(const aDb: IDbSessionManager);
 const
   DDL = '''
         create table Term
@@ -71,7 +71,7 @@ const
 begin
   inherited;
 
-  aDatabase.Connection.ExecSQL(DDL);
+  aDb.CurrentSession.Connection.ExecSQL(DDL);
 end;
 
 {$endregion}
@@ -79,7 +79,7 @@ end;
 {$region '1.2 TSeedTermsMigration' }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSeedTermsMigration.Execute(const aDatabase: IDatabaseService);
+procedure TSeedTermsMigration.Execute(const aDb: IDbSessionManager);
 const
   SQL = '''
         INSERT INTO Term (Id, Value, KindId) VALUES
@@ -129,7 +129,7 @@ const
 begin
   inherited;
 
-  aDatabase.Connection.ExecSQL(SQL);
+  aDb.CurrentSession.Connection.ExecSQL(SQL);
 end;
 
 {$endregion}
@@ -137,7 +137,7 @@ end;
 {$region '1.3 TSeedWordsMigration' }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TSeedWordsMigration.Execute(const aDatabase: IDatabaseService);
+procedure TSeedWordsMigration.Execute(const aDb: IDbSessionManager);
 const
   SQL = '''
         INSERT INTO Word (Value, TermId) VALUES
@@ -195,7 +195,7 @@ const
 begin
   inherited;
 
-  aDatabase.Connection.ExecSQL(SQL);
+  aDb.CurrentSession.Connection.ExecSQL(SQL);
 end;
 
 {$endregion}

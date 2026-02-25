@@ -4,6 +4,7 @@ interface
 
 uses
   Base.Data,
+  Base.Application,
   Domain.Game,
   Domain.Terms,
   Application.Contracts,
@@ -19,7 +20,6 @@ type
     fParser: ITextParser;
     fSession: IGameSession;
   public
-    procedure Welcome;
     procedure Execute;
 
     constructor Create(
@@ -51,6 +51,8 @@ procedure TConsoleApplication.Execute;
 var
   lInput: string;
 begin
+  Writeln('Press enter to quit...');
+
   while fSession.IsRunning do
   begin
     Write('> ');
@@ -100,12 +102,5 @@ begin
     end;
   end;
 end;
-
-{----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleApplication.Welcome;
-begin
-  Writeln('Press enter to quit...');
-end;
-
 
 end.
