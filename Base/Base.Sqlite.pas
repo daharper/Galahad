@@ -126,33 +126,6 @@ type
     function OpenSession(const aCtx: IDbContext): IDbSession;
   end;
 
-//  TSqliteDatabase = class(TSingleton)
-//  private
-//    fExists: boolean;
-//    fPath: string;
-//  protected
-//    fDriver: TFDPhysSQLiteDriverLink;
-//    fConnection: TFDConnection;
-//    fQuery: TFDQuery;
-//
-//    property Exists: boolean read fExists write fExists;
-//    property Path: string read fPath write fPath;
-//
-//    constructor Create(const aPath: string);
-//  public
-//    function Connection: TFDConnection;
-//    function Query: TFDQuery;
-//    function GetDatabaseVersion: integer;
-//
-//    procedure SetDatabaseVersion(const aVersion: integer);
-//    procedure StartTransaction;
-//    procedure Commit;
-//    procedure Rollback;
-//    procedure Truncate;
-//
-//    destructor Destroy; override;
-//  end;
-
   function SqliteJournalModeToPragma(const aMode: TSqliteJournalMode): string;
   function SqliteSynchronousToPragma(const aSync: TSqliteSynchronous): string;
   function SqliteForeignKeysToPragma(const aKey: TSqliteForeignKeys): string;
@@ -307,102 +280,6 @@ begin
   Result := TSqliteContext.Create(opt);
 end;
 
-{ TSqliteDatabase }
-
-//{----------------------------------------------------------------------------------------------------------------------}
-//function TSqliteDatabase.Connection: TFDConnection;
-//begin
-//  Result := fConnection;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//function TSqliteDatabase.Query: TFDQuery;
-//begin
-//  Result := fQuery;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//procedure TSqliteDatabase.StartTransaction;
-//begin
-//  fConnection.StartTransaction
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//procedure TSqliteDatabase.Truncate;
-//begin
-//  fConnection.ExecSQL('PRAGMA wal_checkpoint(TRUNCATE);');
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//procedure TSqliteDatabase.Commit;
-//begin
-//  fConnection.Commit;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//procedure TSqliteDatabase.Rollback;
-//begin
-//  fConnection.Rollback;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//function TSqliteDatabase.GetDatabaseVersion: integer;
-//begin
-//  if not fExists then exit(0);
-//
-//  Result := fConnection.ExecSQLScalar('PRAGMA user_version');
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//procedure TSqliteDatabase.SetDatabaseVersion(const aVersion: integer);
-//begin
-//  fConnection.ExecSQL('PRAGMA user_version = ' + IntToStr(aVersion));
-//
-//  fExists := true;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//constructor TSqliteDatabase.Create(const aPath: string);
-//begin
-//  fPath   := aPath;
-//  fExists := TFile.Exists(aPath);
-//  fDriver := TFDPhysSQLiteDriverLink.Create(nil);
-//
-//  fDriver.DriverID := 'SQLiteDriver';
-//
-//  fConnection := TFDConnection.Create(nil);
-//
-//  fConnection.LoginPrompt := False;
-//
-//  fConnection.Params.Clear;
-//  fConnection.Params.DriverID := 'SQLiteDriver';
-//  fConnection.Params.Database := fPath;
-//  fConnection.Params.Values['BusyTimeout'] := '500';
-//
-//  fConnection.Connected := True;
-//
-//  fConnection.ExecSQL('PRAGMA foreign_keys = ON;');
-//  fConnection.ExecSQL('PRAGMA journal_mode = WAL;');
-//  fConnection.ExecSQL('PRAGMA synchronous = NORMAL;');
-//
-//  if fExists then Truncate;
-//
-//  fQuery := TFDQuery.Create(nil);
-//  fQuery.Connection := fConnection;
-//end;
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//destructor TSqliteDatabase.Destroy;
-//begin
-//  fQuery.Close;
-//
-//  fConnection.Connected := false;
-//
-//  fQuery.Free;
-//  fConnection.Free;
-//  fDriver.Free;
-//end;
-
 { TSqliteOptions }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -435,9 +312,6 @@ begin
   if BusyTimeoutMs < 0 then
     raise EArgumentOutOfRangeException.Create('SQLite BusyTimeoutMs must be >= 0.');
 end;
-
-{ TSqliteContext }
-
 
 { TSqliteSession }
 
@@ -584,7 +458,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TSqliteContextPayload.Fingerprint: string;
 begin
- // Stable “config identity” for caching purposes
+ // Stable "config identity" for caching purposes
   Result :=
     fOptions.DatabasePath + '|' +
     IntToStr(fOptions.BusyTimeoutMs) + '|' +

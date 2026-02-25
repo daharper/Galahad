@@ -93,12 +93,6 @@ begin
   aContainer.Add<IFileService, TFileService>;
   aContainer.Add<IDbSessionFactory, TSqliteSessionFactory>;
   aContainer.Add<IDbSessionManager, TDbSessionManager>;
-
-//  aContainer.AddSingleton<IDbContext>(ctx);
-//
-//  aContainer.Add<IDbAmbientInstaller, TDbAmbientInstaller>;
-//  aContainer.Resolve<IDbAmbientInstaller>;
-
   aContainer.Add<IMigrationRegistrar, TMigrationRegistrar>(Transient);
   aContainer.Add<IMigrationManager, TMigrationManager>(Transient);
   aContainer.Add<ITermRepository, TTermRepository>(Transient);

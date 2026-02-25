@@ -1,3 +1,12 @@
+{-----------------------------------------------------------------------------------------------------------------------
+  Project:     Galahad
+  Unit:        Base.Application
+  Author:      David Harper
+  License:     MIT
+  History:     2026-08-02 Initial version 0.1
+  Purpose:     Provides basic application abstraction and builder functionality.
+-----------------------------------------------------------------------------------------------------------------------}
+
 unit Base.Application;
 
 interface
