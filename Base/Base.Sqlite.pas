@@ -129,6 +129,10 @@ type
     procedure SetSchemaVersion(const Value: Integer);
   end;
 
+  TSqliteStartup = class(TSingleton, IDbStartupHook)
+    procedure Execute(const aDb: IDbSessionManager; const aCtx: IDbContext);
+  end;
+
   TSqliteSessionFactory = class(TSingleton, IDbSessionFactory)
   public
     function OpenSession(const aCtx: IDbContext): IDbSession;
@@ -569,6 +573,14 @@ begin
   opt.Validate;
 
   Result := TSqliteContext.Create(opt);
+end;
+
+{ TSqliteStartup }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSqliteStartup.Execute(const aDb: IDbSessionManager; const aCtx: IDbContext);
+begin
+  aDb.CurrentSession.Connection.ExecSQL('PRAGMA wal_checkpoint(FULL);');
 end;
 
 end.

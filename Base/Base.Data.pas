@@ -95,6 +95,11 @@ type
     procedure ClearThreadSession;
   end;
 
+  IDbStartupHook = interface
+    ['{2C01D581-ED3F-4814-94F1-E14F6FF561BA}']
+    procedure Execute(const aDb: IDbSessionManager; const aCtx: IDbContext);
+  end;
+
   TDbSessionManager = class(TSingleton, IDbSessionManager)
   private
     fFactory: IDbSessionFactory;

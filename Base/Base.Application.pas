@@ -81,6 +81,8 @@ procedure TApplicationBuilder.ConfigureDatabase(const aCtx: IDbContext);
 const
   CONFIG_ERR = 'Database has already been configured.';
   CONTEXT_ERR = 'Database context is required';
+var
+  hook: IDbStartupHook;
 begin
   Ensure.IsFalse(fDatabaseConfigured, CONFIG_ERR).IsTrue(Assigned(aCtx), CONTEXT_ERR);
 
@@ -90,6 +92,12 @@ begin
   Services.Resolve<IDbAmbientInstaller>; // ensure ambient installed now (main thread)
 
   fDatabaseConfigured := True;
+
+  if Services.TryResolve<IDbStartupHook>(hook, aCtx.ProviderId) then
+  begin
+    var db := Services.Resolve<IDbSessionManager>;
+    hook.Execute(db, aCtx);
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

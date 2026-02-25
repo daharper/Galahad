@@ -91,6 +91,7 @@ procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContain
 begin
   aContainer.Add<IFileService, TFileService>;
   aContainer.Add<IDbContextProvider, TSqliteContextProvider>('sqlite');
+  aContainer.Add<IDbStartupHook, TSqliteStartup>('sqlite');
   aContainer.Add<IDbContextFactory, TDbContextFactory>;
   aContainer.Add<IDbSessionFactory, TSqliteSessionFactory>;
   aContainer.Add<IDbSessionManager, TDbSessionManager>;
