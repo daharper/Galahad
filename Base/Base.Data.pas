@@ -588,11 +588,13 @@ begin
 
   for var v in [version..max] do
   begin
-    fDb.CurrentSession.StartTransaction;
+    var m: TMigration := nil;
 
-    for var m in migrations[v] do
     try
-      m.Execute(fDb);
+      fDb.CurrentSession.StartTransaction;
+
+      for m in migrations[v] do
+        m.Execute(fDb);
 
       fDb.CurrentSession.SetSchemaVersion(v);
       fDb.CurrentSession.Commit;
@@ -601,7 +603,11 @@ begin
       begin
         fDb.CurrentSession.Rollback;
 
-        var msg := Format('Migration Error (%d.%d - %s): %s]', [v, m.Sequence, m.Description, E.Message]);
+        var msg := if Assigned(m) then
+                     Format('Migration Error (%d.%d - %s): %s', [v, m.Sequence, m.Description, E.Message])
+                   else
+                     Format('Migration Error (%d): %s', [v, E.Message]);
+
         raise Exception.Create(msg);
       end;
     end;
