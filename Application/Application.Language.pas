@@ -48,7 +48,7 @@ type
     function GetWord(const aText: string): TMaybe<IWord>;
   end;
 
-  TWordRegistry = class(TInterfacedObject, IWordRegistry)
+  TWordRegistry = class(TSingleton, IWordRegistry)
   private
     fIndex: TDictionary<string, IWord>;
   public

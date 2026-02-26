@@ -30,6 +30,7 @@ type
     function IsNumber: boolean;
     function IsQuoted: boolean;
     function TermKind: TTermKind;
+    function IsValidTerm: boolean;
 
     constructor Create;
   end;
@@ -56,17 +57,22 @@ type
     procedure Execute(const aTokens: TTokens);
   end;
 
+  INoiseRemover = interface
+    ['{03CA1948-8E5E-48E5-A9F3-8E35B455A09D}']
+    procedure Execute(var aTokens: TTokens);
+  end;
+
   ITextParser = interface
     ['{C661FDB1-B62D-4193-A512-697E7776B1B5}']
     function Execute(const aInput: string): TTokens;
   end;
 
-  TTextSanitizer = class(TInterfacedObject, ITextSanitizer)
+  TTextSanitizer = class(TSingleton, ITextSanitizer)
   public
     function Execute(const aInput: string): string;
   end;
 
-  TTextTokenizer = class(TInterfacedObject, ITextTokenizer)
+  TTextTokenizer = class(TSingleton, ITextTokenizer)
   private
     fInput:    string;
     fPosition: Integer;
@@ -80,7 +86,7 @@ type
     function Execute(const aInput: string): TTokens;
   end;
 
-  TWordResolver = class(TInterfacedObject, IWordResolver)
+  TWordResolver = class(TSingleton, IWordResolver)
   private
     fRegistry: IWordRegistry;
   public
@@ -88,7 +94,7 @@ type
     constructor Create(const aRegistry: IWordRegistry);
   end;
 
-  TTermResolver = class(TInterfacedObject, ITermResolver)
+  TTermResolver = class(TSingleton, ITermResolver)
   private
     fRegistry: ITermRegistry;
   public
@@ -96,12 +102,18 @@ type
     constructor Create(const aRegistry: ITermRegistry);
   end;
 
-  TTextParser = class(TInterfacedObject, ITextParser)
+  TNoiseRemover = class(TSingleton, INoiseRemover)
+  public
+    procedure Execute(var aTokens: TTokens);
+  end;
+
+  TTextParser = class(TSingleton, ITextParser)
   private
     fTextTokenizer: ITextTokenizer;
     fTextSanitizer: ITextSanitizer;
     fWordResolver:  IWordResolver;
     fTermResolver:  ITermResolver;
+    fNoiseRemover:  INoiseRemover;
   public
     function Execute(const aInput: string): TTokens;
 
@@ -109,7 +121,8 @@ type
       const aTextSanitizer: ITextSanitizer;
       const aTextTokenizer: ITextTokenizer;
       const aWordResolver:  IWordResolver;
-      const aTermResolver:  ITermResolver);
+      const aTermResolver:  ITermResolver;
+      const aNoiseRemover:  INoiseRemover);
 
     destructor Destroy; override;
   end;
@@ -118,7 +131,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Character;
+  System.Character,
+  Base.Stream;
 
 { TTextParser }
 
@@ -136,6 +150,7 @@ begin
 
   fWordResolver.Execute(tokens);
   fTermResolver.Execute(tokens);
+  fNoiseRemover.Execute(tokens);
 
   Result := tokens;
 end;
@@ -145,12 +160,14 @@ constructor TTextParser.Create(
   const aTextSanitizer: ITextSanitizer;
   const aTextTokenizer: ITextTokenizer;
   const aWordResolver:  IWordResolver;
-  const aTermResolver:  ITermResolver);
+  const aTermResolver:  ITermResolver;
+  const aNoiseRemover:  INoiseRemover);
 begin
   fTextSanitizer := aTextSanitizer;
   fTextTokenizer := aTextTokenizer;
   fWordResolver  := aWordResolver;
   fTermResolver  := aTermResolver;
+  fNoiseRemover  := aNoiseRemover;
 end;
 
 { TWordResolver }
@@ -355,6 +372,12 @@ begin
   Result := IsText and Assigned(Term);
 end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+function TToken.IsValidTerm: boolean;
+begin
+  Result := TermKind not in [tkUnknown, tkNoise];
+end;
+
 { TTextSanizizer }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -369,6 +392,22 @@ begin
   for ch in aInput do
     if CharInSet(ch, ALLOWED) then
       Result := Result + ch.ToLower;
+end;
+
+{ TNoisePruner }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TNoiseRemover.Execute(var aTokens: TTokens);
+begin
+  var i := Pred(aTokens.Count);
+
+  while i >= 0 do
+  begin
+    if not aTokens[i].IsValidTerm then
+      aTokens.Delete(i);
+
+    Dec(i);
+  end;
 end;
 
 end.

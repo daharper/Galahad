@@ -65,7 +65,7 @@ type
     function GetTerm(const aId: integer): ITerm;
   end;
 
-  TTermRegistry = class(TInterfacedObject, ITermRegistry)
+  TTermRegistry = class(TSingleton, ITermRegistry)
   private
     fIndex: TDictionary<integer, ITerm>;
   public

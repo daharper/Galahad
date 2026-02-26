@@ -218,23 +218,6 @@ type
   end;
 
   /// <summary>
-  ///  An interface for essential database functionality.
-  /// </summary>
-//  IDatabaseService = interface
-//    ['{957F3224-AE99-4870-A2B9-11B11881FDE3}']
-//
-//    function Connection: TFDConnection;
-//    function Query: TFDQuery;
-//    function GetDatabaseVersion: integer;
-//
-//    procedure SetDatabaseVersion(const aVersion: integer);
-//    procedure StartTransaction;
-//    procedure Commit;
-//    procedure Rollback;
-//    procedure Truncate;
-//  end;
-
-  /// <summary>
   ///  Set directives to affect the queries, before the query is executed.
   ///  Directives are cleared after each request.
   /// </summary>
@@ -272,9 +255,6 @@ type
 {$ENDIF}
   private
     fDb: IDbSessionManager;
-
-    // data moves around internally in a list (efficient) but returns to the client as an Array (memory safe)
-//    fResults: TList<TService>;
 
     function GetQueryResults(const aQuery: TFDQuery):TList<TService>;
   protected
@@ -329,7 +309,7 @@ type
     procedure Configure(const m: IMigrationManager);
   end;
 
-  TMigrationManager = class(TInterfacedObject, IMigrationManager)
+  TMigrationManager = class(TTransient, IMigrationManager)
   private
     fMigrations: TObjectList<TMigration>;
     fDb: IDbSessionManager;

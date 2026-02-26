@@ -66,7 +66,6 @@ begin
       continue;
     end;
 
-
     var tokens := fParser.Execute(lInput);
 
     try

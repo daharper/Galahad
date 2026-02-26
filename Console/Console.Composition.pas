@@ -13,7 +13,7 @@ type
   /// </summary>
   TConsoleModule = class(TInterfacedObject, IContainerModule)
   public
-    procedure RegisterServices(const aContainer: TContainer);
+    procedure RegisterServices(const c: TContainer);
   end;
 
   /// <summary>
@@ -21,7 +21,7 @@ type
   /// </summary>
   TConsoleServiceModule = class(TInterfacedObject, IContainerModule)
   public
-    procedure RegisterServices(const aContainer: TContainer);
+    procedure RegisterServices(const c: TContainer);
   end;
 
   /// <summary>
@@ -29,7 +29,7 @@ type
   /// </summary>
   TConsoleParsingModule = class(TInterfacedObject, IContainerModule)
   public
-    procedure RegisterServices(const aContainer: TContainer);
+    procedure RegisterServices(const c: TContainer);
   end;
 
   /// <summary>
@@ -37,7 +37,7 @@ type
   /// </summary>
   TConsoleDataServicesModule = class(TInterfacedObject, IContainerModule)
   public
-    procedure RegisterServices(const aContainer: TContainer);
+    procedure RegisterServices(const c: TContainer);
   end;
 
   /// <summary>
@@ -45,7 +45,7 @@ type
   /// </summary>
   TUseCaseModule = class(TInterfacedObject, IContainerModule)
   public
-    procedure RegisterServices(const aContainer: TContainer);
+    procedure RegisterServices(const c: TContainer);
   end;
 
 implementation
@@ -67,60 +67,61 @@ uses
 { TConsoleModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleModule.RegisterServices(const aContainer: TContainer);
+procedure TConsoleModule.RegisterServices(const c: TContainer);
 begin
-  aContainer.AddModule<TConsoleServiceModule>;
-  aContainer.AddModule<TConsoleDataServicesModule>;
-  aContainer.AddModule<TConsoleParsingModule>;
-  aContainer.AddModule<TUseCaseModule>;
+  c.AddModule<TConsoleServiceModule>;
+  c.AddModule<TConsoleDataServicesModule>;
+  c.AddModule<TConsoleParsingModule>;
+  c.AddModule<TUseCaseModule>;
 end;
 
 { TConsoleServiceModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleServiceModule.RegisterServices(const aContainer: TContainer);
+procedure TConsoleServiceModule.RegisterServices(const c: TContainer);
 begin
-  aContainer.Add<IGameSession, TGameSession>; //(Singleton);
-  aContainer.Add<IApplication, TConsoleApplication>; //(Transient);
+  c.Add<IGameSession, TGameSession>;
+  c.Add<IApplication, TConsoleApplication>;
 end;
 
 { TDataServicesModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleDataServicesModule.RegisterServices(const aContainer: TContainer);
+procedure TConsoleDataServicesModule.RegisterServices(const c: TContainer);
 begin
-  aContainer.Add<IFileService, TFileService>;
-  aContainer.Add<IDbContextProvider, TSqliteContextProvider>('sqlite');
-  aContainer.Add<IDbStartupHook, TSqliteStartup>('sqlite');
-  aContainer.Add<IDbContextFactory, TDbContextFactory>;
-  aContainer.Add<IDbSessionFactory, TSqliteSessionFactory>;
-  aContainer.Add<IDbSessionManager, TDbSessionManager>;
-  aContainer.Add<IMigrationRegistrar, TMigrationRegistrar>(Transient);
-  aContainer.Add<IMigrationManager, TMigrationManager>(Transient);
-  aContainer.Add<ITermRepository, TTermRepository>(Transient);
-  aContainer.Add<IWordRepository, TWordRepository>(Transient);
+  c.Add<IFileService, TFileService>;
+  c.Add<IDbContextProvider, TSqliteContextProvider>('sqlite');
+  c.Add<IDbStartupHook, TSqliteStartup>('sqlite');
+  c.Add<IDbContextFactory, TDbContextFactory>;
+  c.Add<IDbSessionFactory, TSqliteSessionFactory>;
+  c.Add<IDbSessionManager, TDbSessionManager>;
+  c.Add<IMigrationRegistrar, TMigrationRegistrar>;
+  c.Add<IMigrationManager, TMigrationManager>;
+  c.Add<ITermRepository, TTermRepository>;
+  c.Add<IWordRepository, TWordRepository>;
 end;
 
 { TUseCaseModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TUseCaseModule.RegisterServices(const aContainer: TContainer);
+procedure TUseCaseModule.RegisterServices(const c: TContainer);
 begin
-  aContainer.Add<IStartGameUseCase, TStartGameUseCase>(Transient);
+  c.Add<IStartGameUseCase, TStartGameUseCase>(Transient);
 end;
 
 { TConsoleParsingModule }
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TConsoleParsingModule.RegisterServices(const aContainer: TContainer);
+procedure TConsoleParsingModule.RegisterServices(const c: TContainer);
 begin
-  aContainer.Add<IWordRegistry, TWordRegistry>(Singleton);
-  aContainer.Add<ITermRegistry, TTermRegistry>(Singleton);
-  aContainer.Add<ITextSanitizer, TTextSanitizer>(Singleton);
-  aContainer.Add<ITextTokenizer, TTextTokenizer>(Singleton);
-  aContainer.Add<IWordResolver, TWordResolver>(Singleton);
-  aContainer.Add<ITermResolver, TTermResolver>(Singleton);
-  aContainer.Add<ITextParser, TTextParser>(Singleton);
+  c.Add<IWordRegistry, TWordRegistry>;
+  c.Add<ITermRegistry, TTermRegistry>;
+  c.Add<ITextSanitizer, TTextSanitizer>;
+  c.Add<ITextTokenizer, TTextTokenizer>;
+  c.Add<IWordResolver, TWordResolver>;
+  c.Add<ITermResolver, TTermResolver>;
+  c.Add<INoiseRemover, TNoiseRemover>;
+  c.Add<ITextParser, TTextParser>;
 end;
 
 end.

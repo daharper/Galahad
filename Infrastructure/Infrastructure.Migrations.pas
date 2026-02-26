@@ -4,11 +4,12 @@ interface
 
 uses
   System.Generics.Collections,
+  Base.Core,
   Base.Data,
   Base.Integrity;
 
 type
-  TMigrationRegistrar = class(TInterfacedObject, IMigrationRegistrar)
+  TMigrationRegistrar = class(TTransient, IMigrationRegistrar)
   public
     procedure Configure(const m: IMigrationManager);
   end;
@@ -106,7 +107,7 @@ const
 
         -- Actions
         (16, 'GO', 4),
-        (17, 'LOOK', 4),
+
         (18, 'TAKE', 4),
         (19, 'DROP', 4),
         (20, 'USE', 4),
@@ -156,6 +157,14 @@ const
         ('onto', 6),
         ('beneath', 7),
         ('below', 7),
+        ('with', 2),
+        ('to', 3),
+        ('from', 4),
+        ('in', 5),
+        ('on', 6),
+        ('under', 7),
+        ('at', 8),
+        ('through', 9),
 
         -- Direction Synonyms
         ('n', 10),
@@ -164,15 +173,21 @@ const
         ('w', 13),
         ('u', 14),
         ('d', 15),
+        ('north', 10),
+        ('south', 11),
+        ('east', 12),
+        ('west', 13),
+        ('up', 14),
+        ('down', 15),
 
         -- Action Synonyms
         ('walk', 16),
         ('move', 16),
         ('run', 16),
 
-        ('inspect', 17),
-        ('view', 17),
-        ('see', 17),
+        ('inspect', 25),
+        ('view', 25),
+        ('see', 25),
 
         ('get', 18),
         ('grab', 18),
@@ -188,9 +203,28 @@ const
 
         ('x', 25),
 
-        -- Adverb Synonyms
+        ('go', 16),
+        ('look', 25),
+        ('take', 18),
+        ('drop', 19),
+        ('use', 20),
+        ('open', 21),
+        ('close', 22),
+        ('attack', 23),
+        ('inventory', 24),
+        ('examine', 25),
+
+        -- Manner / Adverb Synonyms
         ('fast', 26),
-        ('slow', 28);
+        ('slow', 28),
+        ('quickly', 26),
+        ('carefully', 27),
+        ('slowly', 28),
+
+        -- Quantity
+        ('all', 29),
+        ('one', 30),
+        ('two', 31);
         ''';
 begin
   inherited;
