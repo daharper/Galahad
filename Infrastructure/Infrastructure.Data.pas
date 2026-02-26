@@ -12,11 +12,6 @@ uses
   Application.Language;
 
 type
-//  TDatabaseService = class(TSqliteDatabase, IDatabaseService)
-//  public
-//    constructor Create(aFileService: IFileService);
-//  end;
-
   TTermRepository = class(TRepository<ITerm, TTerm>, ITermRepository)
   public
     constructor Create(const aDb: IDbSessionManager);
@@ -26,7 +21,6 @@ type
   public
     constructor Create(const aDb: IDbSessionManager);
   end;
-
 
 implementation
 
@@ -52,13 +46,5 @@ constructor TWordRepository.Create(const aDb: IDbSessionManager);
 begin
   inherited Create(aDb);
 end;
-
-{ TDatabaseService }
-//
-//{----------------------------------------------------------------------------------------------------------------------}
-//constructor TDatabaseService.Create(aFileService: IFileService);
-//begin
-//  inherited Create(aFileService.DatabasePath);
-//end;
 
 end.
