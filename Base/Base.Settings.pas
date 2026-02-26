@@ -1,3 +1,12 @@
+{-----------------------------------------------------------------------------------------------------------------------
+  Project:     Galahad
+  Unit:        Base.Settings
+  Author:      David Harper
+  License:     MIT
+  History:     2026-08-02 Initial version 0.1
+  Purpose:     Provides basic settings.
+-----------------------------------------------------------------------------------------------------------------------}
+
 unit Base.Settings;
 
 interface
@@ -13,6 +22,8 @@ type
     ['{6AC76463-382B-4D9B-8C8C-E0F86E07ED78}']
     function Database: IBvElement;
   end;
+
+  { todo - TSettings should be moved out of base }
 
   TSettings = class(TBvElement, ISettings)
   public

@@ -4,7 +4,7 @@
   Author:      David Harper
   License:     MIT
   History:     2026-08-02 Initial version 0.1
-  Purpose:     Provides simple data abstractions for the minimal database requirements of Escape.
+  Purpose:     Provides simple data abstractions.
 -----------------------------------------------------------------------------------------------------------------------}
 
 unit Base.Data;

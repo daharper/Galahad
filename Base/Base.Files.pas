@@ -1,3 +1,12 @@
+{-----------------------------------------------------------------------------------------------------------------------
+  Project:     Galahad
+  Unit:        Base.Files
+  Author:      David Harper
+  License:     MIT
+  History:     2026-08-02 Initial version 0.1
+  Purpose:     Provides basic file utility functions.
+-----------------------------------------------------------------------------------------------------------------------}
+
 unit Base.Files;
 
 interface
