@@ -23,7 +23,7 @@ type
     function Database: IBvElement;
   end;
 
-  { todo - TSettings should be moved out of base }
+  { todo - TSettings should be moved out of base - but wait for more pressure first }
 
   TSettings = class(TBvElement, ISettings)
   public
