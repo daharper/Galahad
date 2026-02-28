@@ -8,7 +8,7 @@ uses
 
 type
   [TestFixture]
-  TMaybeFixture = class
+  TOptionFixture = class
   public
     [Test] procedure TestMakeNone;
     [Test] procedure TestMakeSome;
@@ -31,7 +31,7 @@ uses
   System.SysUtils;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestMakeNone;
+procedure TOptionFixture.TestMakeNone;
 begin
   var opt := TOption<integer>.None();
 
@@ -42,7 +42,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestSetNone;
+procedure TOptionFixture.TestSetNone;
 var
   opt: TOption<integer>;
 begin
@@ -55,7 +55,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestMakeSome;
+procedure TOptionFixture.TestMakeSome;
 begin
   var opt := TOption<integer>.Some(7);
 
@@ -68,7 +68,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestSetSome;
+procedure TOptionFixture.TestSetSome;
 var
   opt: TOption<integer>;
 begin
@@ -83,7 +83,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestOrElse;
+procedure TOptionFixture.TestOrElse;
 begin
   var opt := TOption<integer>.None;
   var val := opt.OrElse(3);
@@ -97,7 +97,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestOrElseGet;
+procedure TOptionFixture.TestOrElseGet;
 begin
   var opt := TOption<integer>.None;
   var val := opt.OrElseGet(function():integer begin Result := 3; end);
@@ -111,7 +111,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestTryGet;
+procedure TOptionFixture.TestTryGet;
 begin
   var opt := TOption<integer>.TryGet(function:integer begin Result := 2; end);
 
@@ -124,7 +124,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestIfSome;
+procedure TOptionFixture.TestIfSome;
 var
   lValue: string;
 begin
@@ -142,7 +142,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestFilter;
+procedure TOptionFixture.TestFilter;
 begin
   var opt := TOption<integer>
                 .Some(11)
@@ -159,7 +159,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestTap;
+procedure TOptionFixture.TestTap;
 begin
   var text := '';
 
@@ -173,7 +173,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestIfNone;
+procedure TOptionFixture.TestIfNone;
 var
   lValue: string;
 begin
@@ -191,7 +191,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestMatch;
+procedure TOptionFixture.TestMatch;
 var
   lValue: integer;
 begin
@@ -227,7 +227,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybeFixture.TestImmutability;
+procedure TOptionFixture.TestImmutability;
 var
   no: TOption<integer>;
   ok: TOption<integer>;
@@ -266,6 +266,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TMaybeFixture);
+  TDUnitX.RegisterTestFixture(TOptionFixture);
 
 end.
