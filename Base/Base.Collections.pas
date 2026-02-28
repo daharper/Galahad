@@ -322,13 +322,13 @@ type
     /// Returns the first item in Source that satisfies Predicate, wrapped in Maybe.
     /// If no item matches, returns None.
     /// </summary>
-    class function First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>; static;
+    class function First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TOption<T>; static;
 
     /// <summary>
     /// Returns the last item in Source that satisfies Predicate, wrapped in Maybe.
     /// If no item matches, returns None.
     /// </summary>
-    class function Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>; static;
+    class function Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TOption<T>; static;
 
     /// <summary>
     /// Returns the first item in Source that satisfies Predicate.
@@ -386,7 +386,7 @@ type
     /// Returns Source[Index] wrapped in Maybe.
     /// If Index is out of range (including negative), returns None.
     /// </summary>
-    class function At<T>(const aSource: TList<T>; const aIndex: Integer): TMaybe<T>; static;
+    class function At<T>(const aSource: TList<T>; const aIndex: Integer): TOption<T>; static;
 
     /// <summary>
     /// Fold-left / reduce with seed.
@@ -1043,7 +1043,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TCollect.First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
+class function TCollect.First<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TOption<T>;
 begin
   Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
@@ -1058,7 +1058,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TCollect.Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TMaybe<T>;
+class function TCollect.Last<T>(const aSource: TList<T>; const aPredicate: TConstPredicate<T>): TOption<T>;
 begin
   Ensure.IsTrue(Assigned(aSource), 'Source is nil').IsTrue(Assigned(aPredicate), 'Predicate is nil');
 
@@ -1205,7 +1205,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TCollect.At<T>(const aSource: TList<T>; const aIndex: Integer): TMaybe<T>;
+class function TCollect.At<T>(const aSource: TList<T>; const aIndex: Integer): TOption<T>;
 begin
   Ensure.IsTrue(Assigned(aSource), 'Source is nil');
 

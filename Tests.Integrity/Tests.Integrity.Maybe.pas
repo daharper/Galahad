@@ -33,7 +33,7 @@ uses
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestMakeNone;
 begin
-  var opt := TMaybe<integer>.None();
+  var opt := TOption<integer>.None();
 
   Assert.IsTrue(opt.IsNone, 'Expected none, but got some.');
   Assert.IsFalse(opt.IsSome, 'Expected none, but got some.');
@@ -44,7 +44,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestSetNone;
 var
-  opt: TMaybe<integer>;
+  opt: TOption<integer>;
 begin
   opt.SetNone;
 
@@ -57,7 +57,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestMakeSome;
 begin
-  var opt := TMaybe<integer>.Some(7);
+  var opt := TOption<integer>.Some(7);
 
   Assert.IsTrue(opt.IsSome, 'Expected none, but got some.');
   Assert.IsFalse(opt.IsNone, 'Expected none, but got some.');
@@ -70,7 +70,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestSetSome;
 var
-  opt: TMaybe<integer>;
+  opt: TOption<integer>;
 begin
   opt.SetSome(3);
 
@@ -85,12 +85,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestOrElse;
 begin
-  var opt := TMaybe<integer>.None;
+  var opt := TOption<integer>.None;
   var val := opt.OrElse(3);
 
   Assert.AreEqual(3, val);
 
-  opt := TMaybe<integer>.Some(4);
+  opt := TOption<integer>.Some(4);
   val := opt.OrElse(3);
 
   Assert.AreEqual(4, val);
@@ -99,12 +99,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestOrElseGet;
 begin
-  var opt := TMaybe<integer>.None;
+  var opt := TOption<integer>.None;
   var val := opt.OrElseGet(function():integer begin Result := 3; end);
 
   Assert.AreEqual(3, val);
 
-  opt := TMaybe<integer>.Some(4);
+  opt := TOption<integer>.Some(4);
   val := opt.OrElseGet(function():integer begin Result := 3; end);
 
   Assert.AreEqual(4, val);
@@ -113,12 +113,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestTryGet;
 begin
-  var opt := TMaybe<integer>.TryGet(function:integer begin Result := 2; end);
+  var opt := TOption<integer>.TryGet(function:integer begin Result := 2; end);
 
   Assert.IsTrue(opt.IsSome);
   Assert.AreEqual(2, opt.Value);
 
-  var err := TMaybe<integer>.TryGet(function: integer begin raise Exception.Create('x'); end);
+  var err := TOption<integer>.TryGet(function: integer begin raise Exception.Create('x'); end);
 
   Assert.IsTrue(err.IsNone);
 end;
@@ -130,13 +130,13 @@ var
 begin
   lValue := '';
 
-  var opt := TMaybe<integer>.None;
-  opt.IfSome(procedure(n: integer) begin lValue := IntToStr(n); end);
+  var opt := TOption<integer>.None;
+  opt.IfSome(procedure(const n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('', lValue);
 
-  opt := TMaybe<integer>.Some(1);
-  opt.IfSome(procedure(n: integer) begin lValue := IntToStr(n); end);
+  opt := TOption<integer>.Some(1);
+  opt.IfSome(procedure(const n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('1', lValue);
 end;
@@ -144,15 +144,15 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestFilter;
 begin
-  var opt := TMaybe<integer>
+  var opt := TOption<integer>
                 .Some(11)
-                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+                .Filter(function(const i: Integer):boolean begin Result := I < 10; end);
 
   Assert.IsTrue(opt.IsNone);
 
-  opt := TMaybe<integer>
+  opt := TOption<integer>
                 .Some(7)
-                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+                .Filter(function(const i: Integer):boolean begin Result := I < 10; end);
 
   Assert.IsTrue(opt.IsSome);
   Assert.AreEqual(7, opt.Value);
@@ -163,10 +163,10 @@ procedure TMaybeFixture.TestTap;
 begin
   var text := '';
 
-  var opt := TMaybe<integer>
+  var opt := TOption<integer>
                 .Some(11)
                 .Tap(procedure(i: integer) begin text := IntToStr(i); end)
-                .Filter(function(i: Integer):boolean begin Result := I < 10; end);
+                .Filter(function(const i: Integer):boolean begin Result := I < 10; end);
 
   Assert.IsTrue(opt.IsNone);
   Assert.AreEqual('11', text);
@@ -179,12 +179,12 @@ var
 begin
   lValue := '';
 
-  var opt := TMaybe<integer>.Some(1);
+  var opt := TOption<integer>.Some(1);
   opt.IfNone(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('', lValue);
 
-  opt := TMaybe<integer>.None;
+  opt := TOption<integer>.None;
   opt.IfNone(procedure begin lValue := 'none'; end);
 
   Assert.AreEqual('none', lValue);
@@ -197,30 +197,30 @@ var
 begin
   lValue := 0;
 
-  var opt := TMaybe<integer>.Some(2);
-  opt.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
+  var opt := TOption<integer>.Some(2);
+  opt.Match(procedure(const n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(2, lValue);
 
   lValue := 0;
 
-  opt := TMaybe<integer>.None;
-  opt.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
+  opt := TOption<integer>.None;
+  opt.Match(procedure(const n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(-1, lValue);
 
-  opt := TMaybe<integer>.Some(1);
+  opt := TOption<integer>.Some(1);
 
   var text := opt.Match<string>(
-    function(n:integer): string begin Result := IntToStr(n); end,
+    function(const n:integer): string begin Result := IntToStr(n); end,
     function: string begin Result := '404'; end);
 
   Assert.AreEqual('1', text);
 
-  opt := TMaybe<integer>.None;
+  opt := TOption<integer>.None;
 
   text := opt.Match<string>(
-    function(n:integer): string begin Result := IntToStr(n); end,
+    function(const n:integer): string begin Result := IntToStr(n); end,
     function: string begin Result := '404'; end);
 
   Assert.AreEqual('404', text);
@@ -229,10 +229,10 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TMaybeFixture.TestImmutability;
 var
-  no: TMaybe<integer>;
-  ok: TMaybe<integer>;
+  no: TOption<integer>;
+  ok: TOption<integer>;
 begin
-  var none := TMaybe<integer>.None();
+  var none := TOption<integer>.None();
 
   Assert.WillRaiseWithMessage(
     procedure begin none.SetNone; end, EArgumentException, MON_INIT_ERROR);
@@ -240,7 +240,7 @@ begin
   Assert.WillRaiseWithMessage(
     procedure begin none.SetSome(5); end, EArgumentException, MON_INIT_ERROR);
 
-  var some := TMaybe<integer>.Some(3);
+  var some := TOption<integer>.Some(3);
 
   Assert.WillRaiseWithMessage(
     procedure begin some.SetNone; end, EArgumentException, MON_INIT_ERROR);

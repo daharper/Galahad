@@ -126,12 +126,12 @@ begin
   lValue := '';
 
   var r := TResult<integer>.Err('error');
-  r.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
+  r.IfOk(procedure(const n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('', lValue);
 
   var r2 := TResult<integer>.Ok(4);
-  r2.IfOk(procedure(n: integer) begin lValue := IntToStr(n); end);
+  r2.IfOk(procedure(const n: integer) begin lValue := IntToStr(n); end);
 
   Assert.AreEqual('4', lValue);
 end;
@@ -144,30 +144,30 @@ begin
   lValue := 0;
 
   var r := TResult<integer>.Ok(4);
-  r.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
+  r.Match(procedure(const n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(4, lValue);
 
   lValue := 0;
 
   r := TResult<integer>.Err('error');
-  r.Match(procedure(n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
+  r.Match(procedure(const n: integer) begin lValue := n; end, procedure begin lValue := -1; end);
 
   Assert.AreEqual(-1, lValue);
 
   r := TResult<integer>.Ok(1);
 
   var text := r.Match<string>(
-    function(n:integer): string begin Result := IntToStr(n); end,
-    function(err: string): string begin Result := '404'; end);
+    function(const n:integer): string begin Result := IntToStr(n); end,
+    function(const err: string): string begin Result := '404'; end);
 
   Assert.AreEqual('1', text);
 
   r := TResult<integer>.Err('error');
 
   text := r.Match<string>(
-    function(n:integer): string begin Result := IntToStr(n); end,
-    function(err: string): string begin Result := '404'; end);
+    function(const n:integer): string begin Result := IntToStr(n); end,
+    function(const err: string): string begin Result := '404'; end);
 
   Assert.AreEqual('404', text);
 end;
@@ -179,8 +179,8 @@ begin
 
   var r := TResult<integer>
                 .Ok(11)
-                .Tap(procedure(i: integer) begin text := IntToStr(i); end)
-                .Validate(function(i: Integer):boolean begin Result := I < 10; end, 'out of range');
+                .Tap(procedure(const i: integer) begin text := IntToStr(i); end)
+                .Validate(function(const i: Integer):boolean begin Result := I < 10; end, 'out of range');
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('out of range', r.Error);
@@ -194,7 +194,7 @@ begin
 
   var r := TResult<integer>
                 .Err('out of range')
-                .TapError(procedure(e: string) begin text := 'out of bounds'; end);
+                .TapError(procedure(const e: string) begin text := 'out of bounds'; end);
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('out of range', r.Error);
@@ -248,14 +248,14 @@ procedure TResultFixture.TestValidate;
 begin
   var r := TResult<integer>
               .Ok(4)
-              .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
+              .Validate(function(const n: integer):boolean begin Result := n < 10; end, 'out of range');
 
   Assert.IsTrue(r.IsOk);
   Assert.AreEqual(4, r.Value);
 
   r := TResult<integer>
               .Ok(11)
-              .Validate(function(n: integer):boolean begin Result := n < 10; end, 'out of range');
+              .Validate(function(const n: integer):boolean begin Result := n < 10; end, 'out of range');
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('out of range', r.Error);
@@ -263,8 +263,8 @@ begin
   r := TResult<integer>
               .Ok(7)
               .Validate(
-                  function(n: integer):boolean begin Result := n < 10; end,
-                  function(n: integer):string begin Result := 'out of bounds'; end);
+                  function(const n: integer):boolean begin Result := n < 10; end,
+                  function(const n: integer):string begin Result := 'out of bounds'; end);
 
 
   Assert.IsTrue(r.IsOk);
@@ -273,8 +273,8 @@ begin
   r := TResult<integer>
               .Ok(11)
               .Validate(
-                  function(n: integer):boolean begin Result := n < 10; end,
-                  function(n: integer):string begin Result := 'out of bounds'; end);
+                  function(const n: integer):boolean begin Result := n < 10; end,
+                  function(const n: integer):string begin Result := 'out of bounds'; end);
 
   Assert.IsTrue(r.IsErr);
   Assert.AreEqual('out of bounds', r.Error);

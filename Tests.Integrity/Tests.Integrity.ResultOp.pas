@@ -36,7 +36,7 @@ begin
   var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.Bind<Integer, string>(Res,
-    function (v: Integer): TResult<string>
+    function (const v: Integer): TResult<string>
     begin
       called := True;
       Result := TResult<string>.Ok(v.ToString);
@@ -53,7 +53,7 @@ begin
   var res := TResult<Integer>.Ok(3);
 
   var outRes := TResultOp.Map<Integer, Integer>(res,
-    function (v: Integer): Integer
+    function (const v: Integer): Integer
     begin
       Result := v * v;
     end);
@@ -88,7 +88,7 @@ begin
   var res := TResult<Integer>.Err('boom');
 
   var val := TResultOp.UnwrapOrElse<Integer>(res,
-    function (E: string): Integer
+    function (const E: string): Integer
     begin
       called := True;
       seenError := E;
@@ -107,7 +107,7 @@ begin
   var res := TResult<Integer>.Ok(7);
 
   var val := TResultOp.UnwrapOrElse<Integer>(Res,
-    function (E: string): Integer
+    function (const E: string): Integer
     begin
       called := True;
       Result := 123;
@@ -124,7 +124,7 @@ begin
   var res := TResult<Integer>.Ok(123);
 
   var outRes := TResultOp.MapError<Integer>(Res,
-    function (E: string): string
+    function (const E: string): string
     begin
       called := True;
       Result := 'mapped:' + E;
@@ -141,7 +141,7 @@ begin
   var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.MapError<Integer>(Res,
-    function (E: string): string
+    function (const E: string): string
     begin
       Result := 'context: ' + E;
     end);
@@ -157,7 +157,7 @@ begin
   var res := TResult<Integer>.Ok(7);
 
   var outRes := TResultOp.Recover<Integer>(Res,
-    function (E: string): Integer
+    function (const E: string): Integer
     begin
       Called := True;
       Result := 999;
@@ -177,7 +177,7 @@ begin
   var res := TResult<Integer>.Err('boom');
 
   var outRes := TResultOp.Recover<Integer>(Res,
-    function (E: string): Integer
+    function (const E: string): Integer
     begin
       called := True;
       seenError := E;

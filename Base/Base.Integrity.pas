@@ -25,13 +25,13 @@ const
 type
   PTMethod = ^TMethod;
 
-  TMaybeState = (
-    // initial state, used to enforce immutability, evaluates to msNone
-    msUnknown,
+  TOptionState = (
+    // initial state, used to enforce immutability, evaluates to osNone
+    osUnknown,
     // some value has been set
-    msSome,
+    osSome,
     // none has been set
-    msNone);
+    osNone);
 
   TResultState = (
     // initial state, used to enforce immutability, evaluates to rsErr
@@ -54,9 +54,9 @@ type
   /// <summary>
   ///  Basic implementation of an optional, adapted for Delphi record/memory constraints.
   /// </summary>
-  TMaybe<T> = record
+  TOption<T> = record
   strict private
-    fState: TMaybeState;
+    fState: TOptionState;
     fValue: T;
 
     function GetValue: T;
@@ -67,24 +67,25 @@ type
     function IsNone: Boolean;
 
     function OrElse(const aFallback: T): T;
-    function OrElseGet(const aFunc: TFunc<T>): T;
+    function OrElseGet(const aFunc: TConstFunc<T>): T;
 
-    procedure IfSome(const aProc: TProc<T>);
+    procedure IfSome(const aProc: TConstProc<T>);
     procedure IfNone(const aProc: TProc);
 
-    procedure Match(const aSomeProc: TProc<T>; const aNoneProc: TProc); overload;
-    function Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R; overload;
+    procedure Match(const aSomeProc: TConstProc<T>; const aNoneProc: TProc); overload;
+    function Match<R>(const aSomeFunc: TConstFunc<T, R>; const aNoneFunc: TFunc<R>): R; overload;
 
-    function Filter(const aPredicate: TFunc<T, Boolean>): TMaybe<T>;
-    function Tap(const aProc: TProc<T>): TMaybe<T>;
+    function Filter(const aPredicate: TConstFunc<T, Boolean>): TOption<T>;
+    function Tap(const aProc: TProc<T>): TOption<T>;
 
     procedure SetSome(const aValue: T);
     procedure SetNone;
 
-    class function TryGet(const Func: TFunc<T>): TMaybe<T>; static; inline;
+    class function TryGet(const Func: TConstFunc<T>): TOption<T>; static; inline;
+    function TryGetValue(out aValue: T): boolean; inline;
 
-    class function Some(const aValue: T): TMaybe<T>; static; inline;
-    class function None: TMaybe<T>; static; inline;
+    class function Some(const aValue: T): TOption<T>; static; inline;
+    class function None: TOption<T>; static; inline;
 
     class operator Initialize;
   end;
@@ -158,19 +159,19 @@ type
     function IsOk: Boolean;
 
     function OrElse(const aFallback: T): T;
-    function OrElseGet(const aFunc: TFunc<T>): T;
+    function OrElseGet(const aFunc: TConstFunc<T>): T;
 
-    procedure IfOk(const aProc: TProc<T>);
+    procedure IfOk(const aProc: TConstProc<T>);
     procedure IfErr(const aProc: TProc);
 
-    procedure Match(const aOkProc: TProc<T>; const aErrProc: TProc); overload;
-    function Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R; overload;
+    procedure Match(const aOkProc: TConstProc<T>; const aErrProc: TProc); overload;
+    function Match<R>(const aOkFunc: TConstFunc<T, R>; const aErrFunc: TConstFunc<string, R>): R; overload;
 
-    function Tap(const aProc: TProc<T>): TResult<T>;
-    function TapError(const aProc: TProc<string>): TResult<T>;
+    function Tap(const aProc: TConstProc<T>): TResult<T>;
+    function TapError(const aProc: TConstProc<string>): TResult<T>;
 
-    function Validate(const aPredicate: TFunc<T, Boolean>; const aError: string): TResult<T>; overload;
-    function Validate(const aPredicate: TFunc<T, Boolean>; const aErrorFunc: TFunc<T, string>): TResult<T>; overload;
+    function Validate(const aPredicate: TConstFunc<T, Boolean>; const aError: string): TResult<T>; overload;
+    function Validate(const aPredicate: TConstFunc<T, Boolean>; const aErrorFunc: TConstFunc<T, string>): TResult<T>; overload;
 
     procedure SetOk(const aValue: T);
 
@@ -181,7 +182,7 @@ type
     procedure SetErrEx(const aToken: string; const aDetails: string; const aMessage: string); overload;
     procedure SetErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const); overload;
 
-    class function TryGet(const Func: TFunc<T>): TResult<T>; static; inline;
+    class function TryGet(const Func: TConstFunc<T>): TResult<T>; static; inline;
 
     class function Ok(const aValue: T): TResult<T>; static; inline;
 
@@ -204,14 +205,14 @@ type
     ///  Transforms the success value using <paramref name="aFunc"/> if <paramref name="aRes"/> is Ok.
     ///  Err results are propagated unchanged.
     /// </summary>
-    class function Map<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, U>): TResult<U>; static;
+    class function Map<T, U>(const aRes: TResult<T>; const aFunc: TConstFunc<T, U>): TResult<U>; static;
 
     /// <summary>
     ///  Chains a computation that may fail.
     ///  If aRes is Ok, calls aFunc and returns its result.
     ///  If aRes is Err, propagates the error unchanged.
     /// </summary>
-    class function Bind<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, TResult<U>>): TResult<U>; static;
+    class function Bind<T, U>(const aRes: TResult<T>; const aFunc: TConstFunc<T, TResult<U>>): TResult<U>; static;
 
     /// <summary>
     ///  Returns the contained value if aRes is Ok; otherwise returns aDefault.
@@ -223,17 +224,17 @@ type
     ///  Returns the contained value if aRes is Ok; otherwise computes a fallback from the error.
     ///  Terminal: collapses TResult&lt;T&gt; to T.
     /// </summary>
-    class function UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): T; static;
+    class function UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, T>): T; static;
 
     /// <summary>
     ///  Transforms the error message using aFunc if aRes is Err. Ok is unchanged.
     /// </summary>
-    class function MapError<T>(const aRes: TResult<T>; const aFunc: TFunc<string, string>): TResult<T>; static;
+    class function MapError<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, string>): TResult<T>; static;
 
     /// <summary>
     ///  Converts Err into Ok by producing a fallback value from the error. Ok is unchanged.
     /// </summary>
-    class function Recover<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): TResult<T>; static;
+    class function Recover<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, T>): TResult<T>; static;
   end;
 
   EScopeCleanupError = class(Exception);
@@ -409,122 +410,122 @@ end;
 
 {$endregion}
 
-{$region 'TMaybe<T>'}
+{$region 'TOption<T>'}
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.IsNone: Boolean;
+function TOption<T>.IsNone: Boolean;
 begin
-  Result := fState <> msSome;
+  Result := fState <> osSome;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.IsSome: Boolean;
+function TOption<T>.IsSome: Boolean;
 begin
-  Result := fState = msSome;
+  Result := fState = osSome;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.GetValue: T;
+function TOption<T>.GetValue: T;
 begin
-  Ensure.IsTrue(fState = msSome, MON_ACCESS_ERROR);
+  Ensure.IsTrue(fState = osSome, MON_ACCESS_ERROR);
 
   Result := fValue;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.SetSome(const aValue: T);
+procedure TOption<T>.SetSome(const aValue: T);
 begin
-  Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
+  Ensure.IsTrue(fState = osUnknown, MON_INIT_ERROR);
 
-  fState := msSome;
+  fState := osSome;
   fValue := aValue;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.SetNone;
+procedure TOption<T>.SetNone;
 begin
-  Ensure.IsTrue(fState = msUnknown, MON_INIT_ERROR);
+  Ensure.IsTrue(fState = osUnknown, MON_INIT_ERROR);
 
-  fState := msNone;
+  fState := osNone;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.Filter(const aPredicate: TFunc<T, Boolean>): TMaybe<T>;
+function TOption<T>.Filter(const aPredicate: TConstFunc<T, Boolean>): TOption<T>;
 begin
   Ensure.IsTrue(Assigned(aPredicate), 'Expected (filter) function is missing');
 
-  if fState <> msSome then exit(self);
+  if fState <> osSome then exit(self);
 
   if aPredicate(self.Value) then
     exit(self);
 
-  Result := TMaybe<T>.None;
+  Result := TOption<T>.None;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.OrElse(const aFallback: T): T;
+function TOption<T>.OrElse(const aFallback: T): T;
 begin
-  if fState = msSome then
+  if fState = osSome then
     Result := fValue
   else
     Result := aFallback;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.OrElseGet(const aFunc: TFunc<T>): T;
+function TOption<T>.OrElseGet(const aFunc: TConstFunc<T>): T;
 begin
   Ensure.IsTrue(Assigned(aFunc), 'Expected (else) function is missing');
 
-  if fState = msSome then
+  if fState = osSome then
     Result := fValue
   else
     Result := aFunc;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.Match(const aSomeProc: TProc<T>; const aNoneProc: TProc);
+procedure TOption<T>.Match(const aSomeProc: TConstProc<T>; const aNoneProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aSomeProc), 'Expected (some) procedure is missing')
         .IsTrue(Assigned(aNoneProc), 'Expected (none) procedure is missing');
 
-  if fState = msSome then
+  if fState = osSome then
     aSomeProc(fValue)
   else
     aNoneProc();
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.Match<R>(const aSomeFunc: TFunc<T, R>; const aNoneFunc: TFunc<R>): R;
+function TOption<T>.Match<R>(const aSomeFunc: TConstFunc<T, R>; const aNoneFunc: TFunc<R>): R;
 begin
   Ensure.IsTrue(Assigned(aSomeFunc), 'Expected (some) procedure is missing')
         .IsTrue(Assigned(aNoneFunc), 'Expected (none) procedure is missing');
 
- if fState = msSome then
+ if fState = osSome then
     Result := aSomeFunc(fValue)
   else
     Result := aNoneFunc();
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.IfNone(const aProc: TProc);
+procedure TOption<T>.IfNone(const aProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (none) procedure is missing');
 
-  if fState <> msSome then
+  if fState <> osSome then
     aProc();
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TMaybe<T>.IfSome(const aProc: TProc<T>);
+procedure TOption<T>.IfSome(const aProc: TConstProc<T>);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (some) procedure is missing');
 
-  if fState = msSome then
+  if fState = osSome then
     aProc(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TMaybe<T>.Tap(const aProc: TProc<T>): TMaybe<T>;
+function TOption<T>.Tap(const aProc: TProc<T>): TOption<T>;
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
 
@@ -535,9 +536,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.TryGet(const Func: TFunc<T>): TMaybe<T>;
+class function TOption<T>.TryGet(const Func: TConstFunc<T>): TOption<T>;
 begin
-  Result.fState := msUnknown; // initialize not guaranteed to run
+  Result.fState := osUnknown; // initialize not guaranteed to run
 
   try
     Result.SetSome(Func());
@@ -547,23 +548,36 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.Some(const aValue: T): TMaybe<T>;
+function TOption<T>.TryGetValue(out aValue: T): boolean;
 begin
-  Result.fState := msUnknown; // initialize not guaranteed to run
+  if IsSome then
+  begin
+    aValue := fValue;
+    exit(true);
+  end;
+
+  aValue := default(T);
+  Result := false;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TOption<T>.Some(const aValue: T): TOption<T>;
+begin
+  Result.fState := osUnknown; // initialize not guaranteed to run
   Result.SetSome(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TMaybe<T>.None: TMaybe<T>;
+class function TOption<T>.None: TOption<T>;
 begin
-  Result.fState := msUnknown; // initialize not guaranteed to run
+  Result.fState := osUnknown; // initialize not guaranteed to run
   Result.SetNone;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator TMaybe<T>.Initialize;
+class operator TOption<T>.Initialize;
 begin
-  fState := msUnknown;
+  fState := osUnknown;
 end;
 
 {$endregion}
@@ -583,7 +597,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.Validate(const aPredicate: TFunc<T, Boolean>; const aError: string): TResult<T>;
+function TResult<T>.Validate(const aPredicate: TConstFunc<T, Boolean>; const aError: string): TResult<T>;
 begin
   if (fState <> rsOk) or (aPredicate(Self.Value)) then
     Exit(Self);
@@ -592,7 +606,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.Validate(const aPredicate: TFunc<T, Boolean>;const aErrorFunc: TFunc<T, string>): TResult<T>;
+function TResult<T>.Validate(const aPredicate: TConstFunc<T, Boolean>;const aErrorFunc: TConstFunc<T, string>): TResult<T>;
 begin
   if (fState <> rsOk) or (aPredicate(Self.Value)) then
     Exit(Self);
@@ -618,7 +632,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.OrElseGet(const aFunc: TFunc<T>): T;
+function TResult<T>.OrElseGet(const aFunc: TConstFunc<T>): T;
 begin
   Ensure.IsTrue(Assigned(aFunc), 'Expected (else) function is missing');
 
@@ -638,7 +652,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TResult<T>.IfOk(const aProc: TProc<T>);
+procedure TResult<T>.IfOk(const aProc: TConstProc<T>);
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (ok) procedure is missing');
 
@@ -647,7 +661,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-procedure TResult<T>.Match(const aOkProc: TProc<T>; const aErrProc: TProc);
+procedure TResult<T>.Match(const aOkProc: TConstProc<T>; const aErrProc: TProc);
 begin
   Ensure.IsTrue(Assigned(aOkProc),  'Expected (ok) procedure is missing')
         .IsTrue(Assigned(aErrProc), 'Expected (err) procedure is missing');
@@ -659,7 +673,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.Match<R>(const aOkFunc: TFunc<T, R>; const aErrFunc: TFunc<string, R>): R;
+function TResult<T>.Match<R>(const aOkFunc: TConstFunc<T, R>; const aErrFunc: TConstFunc<string, R>): R;
 begin
   Ensure.IsTrue(Assigned(aOkFunc),  'Expected (ok) procedure is missing')
         .IsTrue(Assigned(aErrFunc), 'Expected (err) procedure is missing');
@@ -731,7 +745,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.Tap(const aProc: TProc<T>): TResult<T>;
+function TResult<T>.Tap(const aProc: TConstProc<T>): TResult<T>;
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (tap) procedure is missing');
 
@@ -742,7 +756,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TResult<T>.TapError(const aProc: TProc<string>): TResult<T>;
+function TResult<T>.TapError(const aProc: TConstProc<string>): TResult<T>;
 begin
   Ensure.IsTrue(Assigned(aProc), 'Expected (tap error) procedure is missing');
 
@@ -753,7 +767,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResult<T>.TryGet(const Func: TFunc<T>): TResult<T>;
+class function TResult<T>.TryGet(const Func: TConstFunc<T>): TResult<T>;
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   try
@@ -1179,7 +1193,7 @@ end;
 { TResultOps }
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResultOp.Bind<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, TResult<U>>): TResult<U>;
+class function TResultOp.Bind<T, U>(const aRes: TResult<T>; const aFunc: TConstFunc<T, TResult<U>>): TResult<U>;
 begin
   if aRes.IsOk then
     Exit(aFunc(aRes.Value));
@@ -1188,7 +1202,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResultOp.Map<T, U>(const aRes: TResult<T>; const aFunc: TFunc<T, U>): TResult<U>;
+class function TResultOp.Map<T, U>(const aRes: TResult<T>; const aFunc: TConstFunc<T, U>): TResult<U>;
 begin
   if aRes.IsOk then
     Exit(TResult<U>.Ok(aFunc(aRes.Value)));
@@ -1197,7 +1211,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResultOp.MapError<T>(const aRes: TResult<T>; const aFunc: TFunc<string, string>): TResult<T>;
+class function TResultOp.MapError<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, string>): TResult<T>;
 begin
   if aRes.IsOk then
     Exit(aRes);
@@ -1206,7 +1220,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResultOp.Recover<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): TResult<T>;
+class function TResultOp.Recover<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, T>): TResult<T>;
 begin
   if aRes.IsOk then
     Exit(aRes);
@@ -1224,7 +1238,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TResultOp.UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TFunc<string, T>): T;
+class function TResultOp.UnwrapOrElse<T>(const aRes: TResult<T>; const aFunc: TConstFunc<string, T>): T;
 begin
   if aRes.IsOk then
     Exit(aRes.Value);

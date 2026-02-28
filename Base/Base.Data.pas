@@ -241,7 +241,7 @@ type
     function TableName: string;
 
     function GetAll: TArray<TService>;
-    function GetBy(const aId: integer): TMaybe<TService>;
+    function GetBy(const aId: integer): TOption<TService>;
   end;
 
   /// <summary>
@@ -274,7 +274,7 @@ type
     function TableName: string;
 
     function GetAll: TArray<TService>;
-    function GetBy(const aId: integer): TMaybe<TService>;
+    function GetBy(const aId: integer): TOption<TService>;
 
     constructor Create(const aDb: IDbSessionManager);
     destructor Destroy; override;
@@ -390,7 +390,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TRepository<TService, T>.GetBy(const aId: integer): TMaybe<TService>;
+function TRepository<TService, T>.GetBy(const aId: integer): TOption<TService>;
 const
   SQL = 'select * from %s where id = %d';
 var

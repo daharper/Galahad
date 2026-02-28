@@ -46,17 +46,17 @@ type
 
     function HasStructuralTokens: Boolean;
 
-    function IndexOfFirst(aKind: TTermKind): TMaybe<integer>;
+    function IndexOfFirst(aKind: TTermKind): TOption<integer>;
 
-    function FirstAction: TMaybe<TToken>;
-    function FirstDirection: TMaybe<TToken>;
-    function FirstStructural: TMaybe<TToken>;
+    function FirstAction: TOption<TToken>;
+    function FirstDirection: TOption<TToken>;
+    function FirstStructural: TOption<TToken>;
     function StructuralCount: Integer;
 
     function HasKind(aKind: TTermKind): boolean;
     function CountKind(aKind: TTermKind): integer;
-    function FirstKind(aKind: TTermKind): TMaybe<TToken>;
-    function LastKind(aKind: TTermKind): TMaybe<TToken>;
+    function FirstKind(aKind: TTermKind): TOption<TToken>;
+    function LastKind(aKind: TTermKind): TOption<TToken>;
 
     procedure InsertActionAtStart(const aTerm: ITerm);
     procedure InsertTokenAtStart(const aToken: TToken);
@@ -508,19 +508,19 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.FirstAction: TMaybe<TToken>;
+function TokenHelper.FirstAction: TOption<TToken>;
 begin
   Result := FirstKind(tkAction);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.FirstDirection: TMaybe<TToken>;
+function TokenHelper.FirstDirection: TOption<TToken>;
 begin
   Result := FirstKind(tkDirection);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.FirstStructural: TMaybe<TToken>;
+function TokenHelper.FirstStructural: TOption<TToken>;
 begin
   for var token in Self do
     if token.IsStructural then
@@ -552,7 +552,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.FirstKind(aKind: TTermKind): TMaybe<TToken>;
+function TokenHelper.FirstKind(aKind: TTermKind): TOption<TToken>;
 begin
   for var token in Self do
     if token.TermKind = aKind then
@@ -565,7 +565,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.LastKind(aKind: TTermKind): TMaybe<TToken>;
+function TokenHelper.LastKind(aKind: TTermKind): TOption<TToken>;
 begin
   for var i := Pred(Self.Count) downto 0 do
   begin
@@ -638,16 +638,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TokenHelper.StartsWithKind(aKind: TTermKind): boolean;
 begin
-  Result := FirstStructural.Match<boolean>(
-    function(t: TToken): boolean begin Result := t.TermKind = aKind; end,
-    function: boolean begin Result := false; end);
-
-  Result := false;
-
-  var firstOp := FirstStructural;
-
-  if firstOp.IsSome then
-    Result := firstOp.Value.TermKind = aKind;
+  var t: TToken;
+  Result := FirstStructural.TryGetValue(t) and (t.TermKind = aKind);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -663,7 +655,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.IndexOfFirst(aKind: TTermKind): TMaybe<integer>;
+function TokenHelper.IndexOfFirst(aKind: TTermKind): TOption<integer>;
 begin
   var i := 0;
 

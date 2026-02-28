@@ -44,16 +44,16 @@ type
 
   IWordRegistry = interface
     ['{6CECBCF0-65D1-48CD-9CEF-8669E2A9D1FF}']
-    function GetTermId(const aWord: string): TMaybe<integer>;
-    function GetWord(const aText: string): TMaybe<IWord>;
+    function GetTermId(const aWord: string): TOption<integer>;
+    function GetWord(const aText: string): TOption<IWord>;
   end;
 
   TWordRegistry = class(TSingleton, IWordRegistry)
   private
     fIndex: TDictionary<string, IWord>;
   public
-    function GetTermId(const aWord: string): TMaybe<integer>;
-    function GetWord(const aText: string): TMaybe<IWord>;
+    function GetTermId(const aWord: string): TOption<integer>;
+    function GetWord(const aText: string): TOption<IWord>;
 
     constructor Create(const aRepository:IWordRepository);
     destructor Destroy; override;
@@ -111,7 +111,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TWordRegistry.GetTermId(const aWord: string): TMaybe<integer>;
+function TWordRegistry.GetTermId(const aWord: string): TOption<integer>;
 var
   word: IWord;
 begin
@@ -122,7 +122,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TWordRegistry.GetWord(const aText: string): TMaybe<IWord>;
+function TWordRegistry.GetWord(const aText: string): TOption<IWord>;
 var
   word: IWord;
 begin
