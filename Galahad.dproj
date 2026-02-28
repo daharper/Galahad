@@ -139,7 +139,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Tests.Integrity\Tests.Integrity.Maybe.pas"/>
+        <DCCReference Include="Tests.Integrity\Tests.Integrity.Option.pas"/>
         <DCCReference Include="Base\Base.Integrity.pas"/>
         <DCCReference Include="Base\Base.Core.pas"/>
         <DCCReference Include="Tests.Integrity\Tests.Integrity.Result.pas"/>

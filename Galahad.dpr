@@ -12,7 +12,7 @@ uses
   DUnitX.Loggers.Console,
   {$ENDIF }
   DUnitX.TestFramework,
-  Tests.Integrity.Maybe in 'Tests.Integrity\Tests.Integrity.Maybe.pas',
+  Tests.Integrity.Option in 'Tests.Integrity\Tests.Integrity.Option.pas',
   Base.Integrity in 'Base\Base.Integrity.pas',
   Base.Core in 'Base\Base.Core.pas',
   Tests.Integrity.Result in 'Tests.Integrity\Tests.Integrity.Result.pas',
