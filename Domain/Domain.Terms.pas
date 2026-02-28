@@ -63,6 +63,7 @@ type
   ITermRegistry = interface
     ['{DCCA3483-0883-4E1F-A4AC-D1B3FAB37082}']
     function GetTerm(const aId: integer): ITerm;
+    function TryGetTerm(const aName: string; out aValue: ITerm): boolean;
   end;
 
   TTermRegistry = class(TSingleton, ITermRegistry)
@@ -70,6 +71,7 @@ type
     fIndex: TDictionary<integer, ITerm>;
   public
     function GetTerm(const aId: integer): ITerm;
+    function TryGetTerm(const aName: string; out aValue: ITerm): boolean;
 
     constructor Create(const aRepository: ITermRepository);
     destructor Destroy; override;
@@ -87,6 +89,8 @@ const
     'Substance',
     'vQuality'
   );
+
+  GoTermName = 'GO';
 
 implementation
 
@@ -144,6 +148,20 @@ begin
   Ensure.IsTrue(fIndex.TryGetValue(aId, term), Format(ERR, [aId]));
 
   Result := term
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TTermRegistry.TryGetTerm(const aName: string; out aValue: ITerm): boolean;
+begin
+  for var item in fIndex do
+    if SameText(item.Value.Value, aName) then
+    begin
+      aValue := item.Value;
+      exit(true);
+    end;
+
+  aValue := nil;
+  Result := false;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

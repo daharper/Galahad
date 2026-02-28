@@ -67,6 +67,7 @@ type
     function StartsWithMannerThenDirection: Boolean;
 
     function HasExactlyOneAction: Boolean;
+    function HasNoActions: Boolean;
     function IsDirectionOnly: Boolean;
     function IsEmptyAfterNoiseRemoval: Boolean;
 
@@ -94,6 +95,7 @@ type
   ITermResolver = interface
     ['{D8EA0616-D6B8-4A73-BB2D-CDC7E04E11D7}']
     procedure Execute(const aTokens: TTokens);
+    function TryGetBy(const aName: string; out aValue: ITerm): boolean;
   end;
 
   INoiseRemover = interface
@@ -143,6 +145,7 @@ type
     fRegistry: ITermRegistry;
   public
     procedure Execute(const aTokens: TTokens);
+    function TryGetBy(const aName: string; out aValue: ITerm): boolean;
     constructor Create(const aRegistry: ITermRegistry);
   end;
 
@@ -152,8 +155,11 @@ type
   end;
 
   TNormalizer = class(TSingleton, INormalizer)
+  private
+    fTermResolver: ITermResolver;
   public
     function Execute(var aTokens: TTokens): TStatus;
+    constructor Create(const aTermResolver: ITermResolver);
   end;
 
   TTextParser = class(TSingleton, ITextParser)
@@ -281,6 +287,12 @@ begin
       token.Term := term;
     end;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TTermResolver.TryGetBy(const aName: string; out aValue: ITerm): boolean;
+begin
+  Result := fRegistry.TryGetTerm(aName, aValue);
 end;
 
 { TTextTokenizer }
@@ -486,7 +498,34 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TNormalizer.Execute(var aTokens: TTokens): TStatus;
 begin
+  var count := aTokens.ActionCount;
+
+  // insert go if necessary
+  if (count = 0) and ((aTokens.StartsWithKind(tkDirection)) or (aTokens.StartsWithMannerThenDirection)) then
+  begin
+    var term: ITerm;
+
+    if not fTermResolver.TryGetBy(GoTermName, term) then
+      exit(Result.Err('Unable to find term: %s', [GoTermName]));
+
+    aTokens.InsertActionAtStart(term);
+
+    exit(Result.Ok);
+  end;
+
+  if count = 0 then
+    exit(Result.Err('Please enter an action'));
+
+  if count > 1 then
+    exit(Result.Err('Please enter one action at a time.'));
+
   Result.SetOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TNormalizer.Create(const aTermResolver: ITermResolver);
+begin
+  fTermResolver := aTermResolver;
 end;
 
 { TokenHelper }
@@ -531,7 +570,6 @@ begin
 
   Result.SetNone;
 end;
-
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TokenHelper.StructuralTokens: TArray<TToken>;
@@ -610,6 +648,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasNoActions: Boolean;
+begin
+  Result := ActionCount = 0;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TokenHelper.IsDirectionOnly: Boolean;
 begin
   if (StructuralCount <> 1) then exit(false);
@@ -679,6 +723,7 @@ begin
   var token := TToken.Create;
 
   token.Text := aTerm.Value;
+  token.Kind := ttText;
   token.Term := aTerm;
 
   Self.Insert(0, token);
