@@ -121,6 +121,7 @@ begin
   c.Add<IWordResolver, TWordResolver>;
   c.Add<ITermResolver, TTermResolver>;
   c.Add<INoiseRemover, TNoiseRemover>;
+  c.Add<INormalizer, TNormalizer>;
   c.Add<ITextParser, TTextParser>;
 end;
 

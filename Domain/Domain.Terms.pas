@@ -75,6 +75,19 @@ type
     destructor Destroy; override;
   end;
 
+const
+  TermKindNames: array[TTermKind] of string = (
+    'Unknown',
+    'Noise',
+    'Prep',
+    'Direction',
+    'Action',
+    'Manner',
+    'Quantity',
+    'Substance',
+    'vQuality'
+  );
+
 implementation
 
 uses

@@ -30,12 +30,51 @@ type
     function IsNumber: boolean;
     function IsQuoted: boolean;
     function TermKind: TTermKind;
-    function IsValidTerm: boolean;
+    function IsNoise: boolean;
+    function IsStructural: boolean;
 
     constructor Create;
   end;
 
   TTokens = TObjectList<TToken>;
+
+  TokenHelper = class helper for TTokens
+  public
+    function HasAction: boolean;
+    function HasDirection: boolean;
+    function ActionCount: integer;
+
+    function HasStructuralTokens: Boolean;
+
+    function IndexOfFirst(aKind: TTermKind): TMaybe<integer>;
+
+    function FirstAction: TMaybe<TToken>;
+    function FirstDirection: TMaybe<TToken>;
+    function FirstStructural: TMaybe<TToken>;
+    function StructuralCount: Integer;
+
+    function HasKind(aKind: TTermKind): boolean;
+    function CountKind(aKind: TTermKind): integer;
+    function FirstKind(aKind: TTermKind): TMaybe<TToken>;
+    function LastKind(aKind: TTermKind): TMaybe<TToken>;
+
+    procedure InsertActionAtStart(const aTerm: ITerm);
+    procedure InsertTokenAtStart(const aToken: TToken);
+
+    procedure RemoveSubsequentActions;
+
+    function StartsWithKind(aKind: TTermKind): Boolean;
+    function StartsWithMannerThenDirection: Boolean;
+
+    function HasExactlyOneAction: Boolean;
+    function IsDirectionOnly: Boolean;
+    function IsEmptyAfterNoiseRemoval: Boolean;
+
+    function DumpTokens: string;
+    function DumpTerms: string;
+
+    function StructuralTokens: TArray<TToken>;
+  end;
 
   ITextSanitizer = interface
     ['{0332265D-2112-421E-9B32-D48797EE7BC0}']
@@ -62,9 +101,14 @@ type
     procedure Execute(var aTokens: TTokens);
   end;
 
+  INormalizer = interface
+    ['{70C732A2-6207-4EA8-8F6A-C3F8E02EED87}']
+    function Execute(var aTokens: TTokens): TStatus;
+  end;
+
   ITextParser = interface
     ['{C661FDB1-B62D-4193-A512-697E7776B1B5}']
-    function Execute(const aInput: string): TTokens;
+    function Execute(const aInput: string): TResult<TTokens>;
   end;
 
   TTextSanitizer = class(TSingleton, ITextSanitizer)
@@ -107,6 +151,11 @@ type
     procedure Execute(var aTokens: TTokens);
   end;
 
+  TNormalizer = class(TSingleton, INormalizer)
+  public
+    function Execute(var aTokens: TTokens): TStatus;
+  end;
+
   TTextParser = class(TSingleton, ITextParser)
   private
     fTextTokenizer: ITextTokenizer;
@@ -114,18 +163,23 @@ type
     fWordResolver:  IWordResolver;
     fTermResolver:  ITermResolver;
     fNoiseRemover:  INoiseRemover;
+    fNormalizer:    INormalizer;
   public
-    function Execute(const aInput: string): TTokens;
+    function Execute(const aInput: string): TResult<TTokens>;
 
     constructor Create(
       const aTextSanitizer: ITextSanitizer;
       const aTextTokenizer: ITextTokenizer;
       const aWordResolver:  IWordResolver;
       const aTermResolver:  ITermResolver;
-      const aNoiseRemover:  INoiseRemover);
+      const aNoiseRemover:  INoiseRemover;
+      const aNormalizer:    INormalizer);
 
     destructor Destroy; override;
   end;
+
+const
+  TokenKindNames: array[TTokenKind] of string = ('Unknown', 'Text', 'Number', 'QuotedString');
 
 implementation
 
@@ -143,7 +197,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TTextParser.Execute(const aInput: string): TTokens;
+function TTextParser.Execute(const aInput: string): TResult<TTokens>;
 begin
   var text   := fTextSanitizer.Execute(aInput);
   var tokens := fTextTokenizer.Execute(text);
@@ -152,7 +206,16 @@ begin
   fTermResolver.Execute(tokens);
   fNoiseRemover.Execute(tokens);
 
-  Result := tokens;
+  var status := fNormalizer.Execute(tokens);
+
+  if status.IsErr then
+  begin
+    Result.SetErr(status);
+    tokens.Free;
+    exit;
+  end;
+
+  Result.SetOk(tokens);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -161,13 +224,15 @@ constructor TTextParser.Create(
   const aTextTokenizer: ITextTokenizer;
   const aWordResolver:  IWordResolver;
   const aTermResolver:  ITermResolver;
-  const aNoiseRemover:  INoiseRemover);
+  const aNoiseRemover:  INoiseRemover;
+  const aNormalizer:    INormalizer);
 begin
   fTextSanitizer := aTextSanitizer;
   fTextTokenizer := aTextTokenizer;
   fWordResolver  := aWordResolver;
   fTermResolver  := aTermResolver;
   fNoiseRemover  := aNoiseRemover;
+  fNormalizer    := aNormalizer;
 end;
 
 { TWordResolver }
@@ -373,9 +438,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TToken.IsValidTerm: boolean;
+function TToken.IsStructural: boolean;
 begin
-  Result := TermKind not in [tkUnknown, tkNoise];
+  Result := TermKind not in [tkUnknown, tkNoise]
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TToken.IsNoise: boolean;
+begin
+  Result := TermKind = tkNoise;
 end;
 
 { TTextSanizizer }
@@ -394,7 +465,7 @@ begin
       Result := Result + ch.ToLower;
 end;
 
-{ TNoisePruner }
+{ TNoiseRemover }
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TNoiseRemover.Execute(var aTokens: TTokens);
@@ -403,11 +474,267 @@ begin
 
   while i >= 0 do
   begin
-    if not aTokens[i].IsValidTerm then
+    if aTokens[i].IsNoise then
       aTokens.Delete(i);
 
     Dec(i);
   end;
+end;
+
+{ TNormalizer }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TNormalizer.Execute(var aTokens: TTokens): TStatus;
+begin
+  Result.SetOk;
+end;
+
+{ TokenHelper }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.ActionCount: Integer;
+begin
+  Result := CountKind(tkAction);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.CountKind(aKind: TTermKind): Integer;
+begin
+  Result := 0;
+
+  for var token in Self do
+    if token.TermKind = aKind then
+      Inc(Result);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.FirstAction: TMaybe<TToken>;
+begin
+  Result := FirstKind(tkAction);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.FirstDirection: TMaybe<TToken>;
+begin
+  Result := FirstKind(tkDirection);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.FirstStructural: TMaybe<TToken>;
+begin
+  for var token in Self do
+    if token.IsStructural then
+    begin
+      Result.SetSome(token);
+      exit;
+    end;
+
+  Result.SetNone;
+end;
+
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.StructuralTokens: TArray<TToken>;
+begin
+  Result := Stream.From<TToken>(GetEnumerator)
+                  .Filter(function(const t:TToken): boolean begin Result := t.IsStructural; end)
+                  .AsArray;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.StructuralCount: Integer;
+begin
+  Result := 0;
+
+  for var token in Self do
+     if token.IsStructural then
+        Inc(Result);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.FirstKind(aKind: TTermKind): TMaybe<TToken>;
+begin
+  for var token in Self do
+    if token.TermKind = aKind then
+    begin
+      Result.SetSome(token);
+      exit;
+    end;
+
+  Result.SetNone;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.LastKind(aKind: TTermKind): TMaybe<TToken>;
+begin
+  for var i := Pred(Self.Count) downto 0 do
+  begin
+    var token := Self[i];
+
+    if token.TermKind = aKind then
+    begin
+      Result.SetSome(token);
+      exit;
+    end;
+  end;
+
+  Result.SetNone;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasAction: Boolean;
+begin
+  Result := hasKind(tkAction);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasDirection: Boolean;
+begin
+  Result := hasKind(tkDirection);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasExactlyOneAction: Boolean;
+begin
+  Result := CountKind(tkAction) = 1;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasKind(aKind: TTermKind): Boolean;
+begin
+  Result := false;
+
+  for var token in Self do
+    if token.TermKind = aKind then
+      exit(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.IsDirectionOnly: Boolean;
+begin
+  if (StructuralCount <> 1) then exit(false);
+
+  var firstOp := FirstStructural;
+
+  Result := (firstOp.IsSome) and (firstOp.Value.TermKind = tkDirection);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.IsEmptyAfterNoiseRemoval: boolean;
+begin
+  Result := CountKind(tkNoise) = Self.Count;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.HasStructuralTokens: boolean;
+begin
+  Result := false;
+
+  for var token in Self do
+    if token.IsStructural then
+      exit(true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.StartsWithKind(aKind: TTermKind): boolean;
+begin
+  Result := FirstStructural.Match<boolean>(
+    function(t: TToken): boolean begin Result := t.TermKind = aKind; end,
+    function: boolean begin Result := false; end);
+
+  Result := false;
+
+  var firstOp := FirstStructural;
+
+  if firstOp.IsSome then
+    Result := firstOp.Value.TermKind = aKind;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.StartsWithMannerThenDirection: boolean;
+begin
+  var tokens := StructuralTokens;
+
+  if Length(tokens) < 2 then exit(false);
+
+  if tokens[0].TermKind <> tkManner then exit(false);
+
+  Result := tokens[1].TermKind = tkDirection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.IndexOfFirst(aKind: TTermKind): TMaybe<integer>;
+begin
+  var i := 0;
+
+  for var token in Self do
+  begin
+    if token.TermKind = aKind then
+    begin
+      Result.SetSome(i);
+      exit;
+    end;
+
+    Inc(i);
+  end;
+
+  Result.SetNone;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TokenHelper.InsertActionAtStart(const aTerm: ITerm);
+begin
+  var token := TToken.Create;
+
+  token.Text := aTerm.Value;
+  token.Term := aTerm;
+
+  Self.Insert(0, token);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TokenHelper.InsertTokenAtStart(const aToken: TToken);
+begin
+  Self.Insert(0, aToken);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TokenHelper.RemoveSubsequentActions;
+begin
+  var tokenOp := IndexOfFirst(tkAction);
+
+  if tokenOp.IsNone then exit;
+
+  var index := tokenOp.Value;
+  var i := Pred(Count);
+
+  while i > index do
+  begin
+    if Self[i].TermKind = tkAction then
+      Self.Delete(i);
+
+    Dec(i);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.DumpTokens: string;
+begin
+  Result := '';
+
+  for var token in Self do
+    if token.IsStructural then
+      Result := Result + Format('%s (%s) ', [token.Text, TokenKindNames[token.Kind]]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.DumpTerms: string;
+begin
+  Result := '';
+
+  for var token in Self do
+    if token.IsStructural then
+      Result := Result + Format('%s (%s) ', [token.Term.Value, TermKindNames[token.TermKind]]);
 end;
 
 end.

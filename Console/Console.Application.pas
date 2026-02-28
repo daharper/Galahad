@@ -66,33 +66,19 @@ begin
       continue;
     end;
 
-    var tokens := fParser.Execute(lInput);
+    var tokensRes := fParser.Execute(lInput);
+
+    if tokensRes.IsErr then
+    begin
+      Writeln(tokensRes.Error);
+      continue;
+    end;
+
+    var tokens := tokensRes.Value;
 
     try
-      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
-
-      for var token in tokens do
-      begin
-        Writeln('Text: ' + token.Text);
-        Write('Kind: ');
-
-        case token.Kind of
-          ttUnknown:      Writeln('Unknown');
-          ttText:         Writeln('Text');
-          ttNumber:       Writeln('Number');
-          ttQuotedString: Writeln('QuotedString');
-        end;
-
-        if token.IsWord then
-          Writeln('Word: ' + token.Word.Value);
-
-        if token.IsTerm then
-          Writeln('Term: ' + token.Term.Value);
-
-        Writeln;
-      end;
-
-      Writeln(sLineBreak + '-----------------------------------------------' + sLineBreak);
+      Writeln(tokens.DumpTokens);
+      Writeln(tokens.DumpTerms);
     finally
       tokens.Free;
     end;

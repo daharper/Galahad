@@ -149,6 +149,8 @@ const
         ('please', 1),
         ('kindly', 1),
         ('just', 1),
+        ('and', 1),
+        ('then', 1),
 
         -- Preposition Synonyms
         ('inside', 5),

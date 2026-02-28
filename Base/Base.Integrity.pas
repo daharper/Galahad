@@ -41,6 +41,16 @@ type
     // err has been set
     rsErr);
 
+  TStatusState = (
+    // initial state, used to enforce immutability, evaluates to rsErr
+    ssUnknown,
+    // ok has been set
+    ssOk,
+    // err has been set
+    ssErr);
+
+
+
   /// <summary>
   ///  Basic implementation of an optional, adapted for Delphi record/memory constraints.
   /// </summary>
@@ -75,6 +85,47 @@ type
 
     class function Some(const aValue: T): TMaybe<T>; static; inline;
     class function None: TMaybe<T>; static; inline;
+
+    class operator Initialize;
+  end;
+
+  /// <summary>
+  ///  Simple status structure representing success, or an error.
+  /// </summary>
+  TStatus = record
+  strict private
+    fState: TStatusState;
+    fError: string;
+    fErrorToken: string;
+    fErrorDetails: string;
+  public
+    /// <summary>the user friendly error message</summary>
+    property Error: string read fError;
+
+    /// <summary>a domain token like http.404</summary>
+    property ErrorToken: string read fErrorToken;
+
+    /// <summary>extra error information</summary>
+    property ErrorDetails: string read fErrorDetails;
+
+    function IsErr: Boolean;
+    function IsOk: Boolean;
+
+    procedure SetOk;
+
+    procedure SetErr(const aMessage: string = ''); overload;
+    procedure SetErr(const aFormat: string; const aArgs: array of const); overload;
+
+    procedure SetErrEx(const aToken: string; const aDetails: string; const aMessage: string); overload;
+    procedure SetErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const); overload;
+
+    class function Ok: TStatus; static; inline;
+
+    class function Err(const aMessage: string = ''): TStatus; overload; static; inline;
+    class function Err(const aFormat: string; const aArgs: array of const): TStatus; overload; static;
+
+    class function ErrEx(const aToken: string; const aDetails: string; const aMessage: string): TStatus; overload; static;
+    class function ErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const): TStatus; overload; static;
 
     class operator Initialize;
   end;
@@ -125,6 +176,7 @@ type
 
     procedure SetErr(const aMessage: string = ''); overload;
     procedure SetErr(const aFormat: string; const aArgs: array of const); overload;
+    procedure SetErr(const aStatus: TStatus); overload;
 
     procedure SetErrEx(const aToken: string; const aDetails: string; const aMessage: string); overload;
     procedure SetErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const); overload;
@@ -135,6 +187,7 @@ type
 
     class function Err(const aMessage: string = ''): TResult<T>; overload; static; inline;
     class function Err(const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
+    class function Err(const aStatus: TStatus): TResult<T>; overload; static;
 
     class function ErrEx(const aToken: string; const aDetails: string; const aMessage: string): TResult<T>; overload; static;
     class function ErrEx(const aToken: string; const aDetails: string; const aFormat: string; const aArgs: array of const): TResult<T>; overload; static;
@@ -656,6 +709,17 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TResult<T>.SetErr(const aStatus: TStatus);
+begin
+  Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
+
+  fState := rsErr;
+  fError := aStatus.Error;
+  fErrorToken := aStatus.ErrorToken;
+  fErrorDetails := aStatus.Error;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TResult<T>.SetErrEx(const aToken, aDetails, aFormat: string; const aArgs: array of const);
 begin
   Ensure.IsTrue(fState = rsUnknown, MON_INIT_ERROR);
@@ -714,6 +778,13 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TResult<T>.Err(const aStatus: TStatus): TResult<T>;
+begin
+  Result.fState := rsUnknown; // initialize not guaranteed to run
+  Result.SetErr(aStatus);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TResult<T>.ErrEx(const aToken, aDetails, aMessage: string): TResult<T>;
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
@@ -738,6 +809,110 @@ end;
 class operator TResult<T>.Initialize;
 begin
   fState := rsUnknown;
+end;
+
+{$endregion}
+
+{$region 'TStatus' }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TStatus.IsOk: Boolean;
+begin
+  Result := fState = ssOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStatus.SetOk;
+begin
+  Ensure.IsTrue(fState = ssUnknown, MON_INIT_ERROR);
+
+  fState := ssOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TStatus.Ok: TStatus;
+begin
+  Result.fState := ssUnknown; // initialize not guaranteed to run
+  Result.SetOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TStatus.IsErr: Boolean;
+begin
+  Result := fState <> ssOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStatus.SetErr(const aMessage: string);
+begin
+  Ensure.IsTrue(fState = ssUnknown, MON_INIT_ERROR);
+
+  fState := ssErr;
+  fError := aMessage;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStatus.SetErr(const aFormat: string; const aArgs: array of const);
+begin
+  Ensure.IsTrue(fState = ssUnknown, MON_INIT_ERROR);
+
+  fState := ssErr;
+  fError := Format(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStatus.SetErrEx(const aToken, aDetails, aMessage: string);
+begin
+  Ensure.IsTrue(fState = ssUnknown, MON_INIT_ERROR);
+
+  fState := ssErr;
+  fError := aMessage;
+  fErrorToken := aToken;
+  fErrorDetails := aDetails;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TStatus.SetErrEx(const aToken, aDetails, aFormat: string; const aArgs: array of const);
+begin
+  Ensure.IsTrue(fState = ssUnknown, MON_INIT_ERROR);
+
+  fState := ssErr;
+  fError := Format(aFormat, aArgs);
+  fErrorToken := aToken;
+  fErrorDetails := aDetails;
+end;
+{----------------------------------------------------------------------------------------------------------------------}
+class function TStatus.Err(const aMessage: string): TStatus;
+begin
+  Result.fState := ssUnknown; // initialize not guaranteed to run
+  Result.SetErr(aMessage);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TStatus.Err(const aFormat: string; const aArgs: array of const): TStatus;
+begin
+  Result.fState := ssUnknown; // initialize not guaranteed to run
+  Result.SetErr(aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TStatus.ErrEx(const aToken, aDetails, aMessage: string): TStatus;
+begin
+  Result.fState := ssUnknown; // initialize not guaranteed to run
+  Result.SetErrEx(aToken, aDetails, aMessage);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TStatus.ErrEx(const aToken, aDetails, aFormat: string; const aArgs: array of const): TStatus;
+begin
+  Result.fState := ssUnknown; // initialize not guaranteed to run
+  Result.SetErrEx(aToken, aDetails, aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TStatus.Initialize;
+begin
+  fState := ssUnknown;
 end;
 
 {$endregion}
