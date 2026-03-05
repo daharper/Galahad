@@ -22,6 +22,11 @@ type
     constructor Create(const aDb: IDbSessionManager);
   end;
 
+  TRewriteRepository = class(TRepository<IRewriteRule, TRewriteRule>, IRewriteRepository)
+  public
+    constructor Create(const aDb: IDbSessionManager);
+  end;
+
 implementation
 
 uses
@@ -43,6 +48,14 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 constructor TWordRepository.Create(const aDb: IDbSessionManager);
+begin
+  inherited Create(aDb);
+end;
+
+{ TRewriteRuleRepository }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TRewriteRepository.Create(const aDb: IDbSessionManager);
 begin
   inherited Create(aDb);
 end;

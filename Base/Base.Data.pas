@@ -244,6 +244,7 @@ type
     function GetBy(const aId: integer): TOption<TService>;
   end;
 
+
   /// <summary>
   ///  Base type for all repositories. Requires entities to follow the T[Table] naming convention,
   ///  for example, TCustomer for a table named Customer.

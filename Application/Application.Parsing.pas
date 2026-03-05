@@ -683,6 +683,7 @@ end;
 function TokenHelper.StartsWithKind(aKind: TTermKind): boolean;
 begin
   var t: TToken;
+
   Result := FirstStructural.TryGetValue(t) and (t.TermKind = aKind);
 end;
 

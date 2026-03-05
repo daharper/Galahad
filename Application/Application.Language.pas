@@ -10,6 +10,44 @@ uses
   Domain.Terms;
 
 type
+  IRewriteRule = interface(IEntity)
+    ['{A331665B-B226-4BBD-A4D4-8681286BD087}']
+    function GetPattern: string;
+    function GetReplacement: string;
+    function GetPriority: integer;
+
+    property Pattern: string read GetPattern;
+    property Replacement: string read GetReplacement;
+    property Priority: integer read GetPriority;
+  end;
+
+  TRewriteRule = class(TEntity, IRewriteRule)
+  private
+    fPattern: string;
+    fReplacement: string;
+    fPriority: integer;
+
+    function GetPattern: string;
+    function GetReplacement: string;
+    function GetPriority: integer;
+  public
+    property Pattern: string read GetPattern;
+    property Replacement: string read GetReplacement;
+    property Priority: integer read GetPriority;
+  end;
+
+  IRewriteRepository = IRepository<IRewriteRule, TRewriteRule>;
+
+  IRewriteManager = interface
+    ['{8D503B87-0CD4-4972-9753-669A3E4A60AC}']
+  end;
+
+  TRewriteManager = class(TSingleton, IRewriteManager)
+  private
+    fRules: TList<IRewriteRule>;
+  public
+    constructor Create(const aRepository: IRewriteRepository);
+  end;
 
   IWord = interface(IEntity)
     ['{BEA756F2-0334-447F-AC31-7B088C7C6FD1}']
@@ -130,6 +168,34 @@ begin
     Result.SetSome(word)
   else
     Result.SetNone;
+end;
+
+{ TRewriteRule }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRewriteRule.GetPattern: string;
+begin
+  Result := fPattern;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRewriteRule.GetPriority: integer;
+begin
+  Result := fPriority;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRewriteRule.GetReplacement: string;
+begin
+  Result := fReplacement;
+end;
+
+{ TRewriteManager }
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TRewriteManager.Create(const aRepository: IRewriteRepository);
+begin
+
 end;
 
 end.

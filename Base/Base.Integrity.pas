@@ -83,6 +83,7 @@ type
 
     class function TryGet(const Func: TConstFunc<T>): TOption<T>; static; inline;
     function TryGetValue(out aValue: T): boolean; inline;
+    function IsSomeAnd(const aPredicate: TConstFunc<T, Boolean>): boolean;
 
     class function Some(const aValue: T): TOption<T>; static; inline;
     class function None: TOption<T>; static; inline;
@@ -558,6 +559,16 @@ begin
 
   aValue := default(T);
   Result := false;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TOption<T>.IsSomeAnd(const aPredicate: TConstFunc<T, Boolean>): boolean;
+begin
+  Ensure.IsTrue(Assigned(aPredicate), 'Expected predicate is missing');
+
+  if IsNone then exit(false);
+
+  Result := aPredicate(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
