@@ -16,9 +16,13 @@ type
     function GetReplacement: string;
     function GetPriority: integer;
 
-    property Pattern: string read GetPattern;
-    property Replacement: string read GetReplacement;
-    property Priority: integer read GetPriority;
+    procedure SetPattern(const aValue: string);
+    procedure SetReplacement(const aValue: string);
+    procedure SetPriority(const aValue: integer);
+
+    property Pattern: string read GetPattern write SetPattern;
+    property Replacement: string read GetReplacement write SetReplacement;
+    property Priority: integer read GetPriority write SetPriority;
   end;
 
   TRewriteRule = class(TEntity, IRewriteRule)
@@ -27,26 +31,22 @@ type
     fReplacement: string;
     fPriority: integer;
 
+    procedure SetPattern(const aValue: string);
+    procedure SetReplacement(const aValue: string);
+    procedure SetPriority(const aValue: integer);
+
     function GetPattern: string;
     function GetReplacement: string;
     function GetPriority: integer;
   public
-    property Pattern: string read GetPattern;
-    property Replacement: string read GetReplacement;
-    property Priority: integer read GetPriority;
+    property Pattern: string read GetPattern write SetPattern;
+    property Replacement: string read GetReplacement write SetReplacement;
+    property Priority: integer read GetPriority write SetPriority;
   end;
 
-  IRewriteRepository = IRepository<IRewriteRule, TRewriteRule>;
-
-  IRewriteManager = interface
-    ['{8D503B87-0CD4-4972-9753-669A3E4A60AC}']
-  end;
-
-  TRewriteManager = class(TSingleton, IRewriteManager)
-  private
-    fRules: TList<IRewriteRule>;
-  public
-    constructor Create(const aRepository: IRewriteRepository);
+  IRewriteRepository = interface(IRepository<IRewriteRule, TRewriteRule>)
+    ['{87124496-DFCD-49C5-ACE3-A3ABE32290A9}']
+    function GetPriorizedRules: TArray<IRewriteRule>;
   end;
 
   IWord = interface(IEntity)
@@ -78,7 +78,9 @@ type
 
   TWords = TList<IWord>;
 
-  IWordRepository = IRepository<IWord, TWord>;
+  IWordRepository = interface(IRepository<IWord, TWord>)
+    ['{544E53F9-D880-40F5-A44A-0C69461710BD}']
+  end;
 
   IWordRegistry = interface
     ['{6CECBCF0-65D1-48CD-9CEF-8669E2A9D1FF}']
@@ -190,12 +192,22 @@ begin
   Result := fReplacement;
 end;
 
-{ TRewriteManager }
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRewriteRule.SetPattern(const aValue: string);
+begin
+  fPattern := aValue;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor TRewriteManager.Create(const aRepository: IRewriteRepository);
+procedure TRewriteRule.SetPriority(const aValue: integer);
 begin
+  fPriority := aValue;
+end;
 
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TRewriteRule.SetReplacement(const aValue: string);
+begin
+  fReplacement := aValue;
 end;
 
 end.

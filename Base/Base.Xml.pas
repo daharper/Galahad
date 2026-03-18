@@ -47,6 +47,8 @@ type
     xQuote
   );
 
+{$region 'Attribute'}
+
   /// <summary>Represents an XML Attribute</summary>
   TBvAttribute = class
   private
@@ -89,7 +91,11 @@ type
     constructor Create(const aName: string; const aValue: string = '');
   end;
 
+{$endregion}
+
   TBvElement = class;
+
+{$region 'Element Interface'}
 
   IBvElement = interface(IDispatch)
     ['{50669930-F303-481C-A5BD-DE675EC73BE1}']
@@ -109,6 +115,8 @@ type
     property Name: string read GetName write SetName;
     property Value: string read GetValue write SetValue;
     property Attributes[aName: string]: string read GetAttribute write SetAttribute; default;
+
+    function FullName: string;
 
     /// <summary>Returns true if there are attributes.</summary>
     function HasAttrs: boolean;
@@ -194,6 +202,10 @@ type
     procedure Assign(const aValue: TGuid); overload;
     procedure Assign(const aValue: Currency); overload;
 
+{$IFDEF MSWINDOWS}
+    procedure Add(aElement: OleVariant);
+{$ENDIF}
+
     /// <summary>
     ///  Adds a child element to fElems (side-effect only).
     ///  This is the safe internal primitive: no interface return temporary.
@@ -225,24 +237,35 @@ type
     function HasElem(const aName: string): boolean;
 
     /// <summary>Returns the first subelement.</summary>
-    function FirstElem: IBvElement;
+    function First: IBvElement;
 
     /// <summary>Returns the last subelement.</summary>
-    function LastElem: IBvElement;
+    function Last: IBvElement;
 
     /// <summary>Returns the index of the element with the specified name, otherwise -1.</summary>
     function ElemIndexOf(const aName: string): integer;
 
     /// <summary>Pushes a new element onto the back of the list.</summary>
     /// <remarks>Returns the current element for chaining.</remarks>
-    function PushElem(const aElement: IBvElement): IBvElement; overload;
-    function PushElem(const aName: string; const aValue: string): IBvElement; overload;
+    function Push(const aElement: IBvElement): IBvElement; overload;
+    function Push(const aName: string; const aValue: string): IBvElement; overload;
+    function Pe(const aName: string; const aValue: string): IBvElement;
+
+    /// <summary>Adds and returns the element.</summary>
+    function E(const aName: string): IBvElement; overload;
+    function E(const aName: string; const aValue: string): IBvElement; overload;
+
+    /// <summary>Adds the attribute and returns the current element.</summary>
+    function A(const aName: string; const aValue: string): IBvElement;
+
+    /// <summary>Navigates up to the parent element - for building.</summary>
+    function Up: IBvElement;
 
     /// <summary>Returns the last element on the list./summary>
-    function PeekElem: IBvElement;
+    function Peek: IBvElement;
 
     /// <summary>Removes the last element from the list.</summary>
-    function PopElem: IBvElement;
+    function Pop: IBvElement;
 
     /// <summary>Removes a subelement from the list.</summary>
     procedure RemoveElem(const aName: string);
@@ -259,6 +282,8 @@ type
     /// <summary>Returns the element at the specified index.</summary>
     function ElemAt(const aIndex: integer): IBvElement;
   end;
+
+{$endregion}
 
   /// <summary>Represents an XML Element</summary>
 {$IFDEF MSWINDOWS}
@@ -291,6 +316,7 @@ type
     property Value: string read fValue write SetValue;
     property Attributes[aName: string]: string read GetAttribute write SetAttribute; default;
 
+    function FullName: string;
     function HasAttrs: boolean;
     function AttrCount: integer;
     function FirstAttr: TBvAttribute;
@@ -336,24 +362,39 @@ type
     procedure Assign(const aValue: TGuid); overload;
     procedure Assign(const aValue: Currency); overload;
 
+{$IFDEF MSWINDOWS}
+    procedure Add(aElement: OleVariant);
+{$ENDIF}
+
     procedure AddElem(const aElement: IBvElement);
     function AppendElem(const aElement: IBvElement): IBvElement;
     function AddOrSetElem(const aName: string; const aValue: string = ''): IBvElement; overload;
     function AddOrSetElem(const aOther: IBvElement): IBvElement; overload;
     function Elem(const aName: string; const aValue: string = ''): IBvElement;
     function HasElem(const aName: string): boolean;
-    function FirstElem: IBvElement;
-    function LastElem: IBvElement;
+    function First: IBvElement;
+    function Last: IBvElement;
     function ElemIndexOf(const aName: string): integer;
-    function PushElem(const aElement: IBvElement): IBvElement; overload;
-    function PushElem(const aName: string; const aValue: string): IBvElement; overload;
-    function PeekElem: IBvElement;
-    function PopElem: IBvElement;
+    function Push(const aElement: IBvElement): IBvElement; overload;
+    function Push(const aName: string; const aValue: string): IBvElement; overload;
+    function Pe(const aName: string; const aValue: string): IBvElement;
+    function Peek: IBvElement;
+    function Pop: IBvElement;
     procedure RemoveElem(const aName: string);
     procedure RemoveElemAt(const aIndex: integer);
     procedure ClearElems;
     function Elems: TEnumerable<IBvElement>;
     function ElemAt(const aIndex: integer): IBvElement;
+
+    /// <summary>Adds and returns the element.</summary>
+    function E(const aName: string): IBvElement; overload;
+    function E(const aName: string; const aValue: string): IBvElement; overload;
+
+    /// <summary>Adds the attribute and returns the current element.</summary>
+    function A(const aName: string; const aValue: string): IBvElement;
+
+    /// <summary>Navigates up to the parent element - for building.</summary>
+    function Up: IBvElement;
 
 {$IFDEF MSWINDOWS}
     function MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant; override;
@@ -471,10 +512,14 @@ type
     class function Execute(const aXml: string): TResult<IBvElement>;
   end;
 
-  TXml = record
-    class function Parse(const aXml: string): TResult<IBvElement>; static;
-    class function Load(const aPath: string): TResult<IBvElement>; static;
-    class procedure Save(const aPath: string; const aElement: IBvElement); static;
+  TXml = class
+    class function New: TDynamic; overload;
+    class function New(const aName: string): TDynamic; overload;
+    class function New(const aName: string; const aValue: string): TDynamic; overload;
+
+    class function Parse(const aXml: string): TResult<IBvElement>;
+    class function Load(const aPath: string): TResult<IBvElement>;
+    class procedure Save(const aPath: string; const aElement: IBvElement);
   end;
 
 const
@@ -1232,7 +1277,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.FirstElem: IBvElement;
+function TBvElement.First: IBvElement;
 begin
   Ensure.IsTrue(fElems.Count > 0, 'There are no subelements');
 
@@ -1240,7 +1285,32 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.LastElem: IBvElement;
+function TBvElement.FullName: string;
+var
+  names: TStack<string>; // diagnostic function, we can accept the overhead
+  scope: TScope;
+begin
+  if not Assigned(fParent) then exit(fName);
+
+  names := scope.Owns(TStack<string>.Create);
+  names.Push(fName);
+
+  var e := fParent;
+
+  while Assigned(e) do
+  begin
+    names.Push(e.Name);
+    e := e.Parent;
+  end;
+
+  Result := names.Pop;
+
+  while not names.IsEmpty do
+    Result := Result + '.' + names.Pop;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Last: IBvElement;
 begin
   Ensure.IsTrue(fElems.Count > 0, 'There are no subelements');
 
@@ -1248,9 +1318,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.PeekElem: IBvElement;
+function TBvElement.Peek: IBvElement;
 begin
-  Result := LastElem;
+  Result := Last;
 end;
 
 {$IFDEF MSWINDOWS}
@@ -1258,6 +1328,8 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.MethodMissing(const aName: string; const aHint: TInvokeHint; const aArgs: TArray<Variant>): Variant;
 begin
+  { todo - now it's working, push complexity into a Hint class to simplify usage }
+
   if aHint = ivPropertySetValue then
   begin
     var e: IBvElement := Elem(aName);
@@ -1292,35 +1364,88 @@ end;
 
 {$ENDIF}
 
-/// <summary>
-///  Adds a child element to fElems (side-effect only).
-///  Safe internal primitive: no interface return temporary.
-/// </summary>
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.A(const aName, aValue: string): IBvElement;
+const
+  ERR = 'Attribute with the same name already exists: %s';
+begin
+  Ensure.IsFalse(HasAttr(aName), Format(ERR, [aName]));
+
+  var attr := TBvAttribute.Create(aName, aValue);
+
+  fAttrs.Add(attr);
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.E(const aName: string): IBvElement;
+begin
+  var e := TBvElement.Create(aName);
+  AddElem(e);
+  Result := e;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.E(const aName, aValue: string): IBvElement;
+begin
+  var e := TBvElement.Create(aName, aValue);
+  AddElem(e);
+  Result := e;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Up: IBvElement;
+begin
+  Result := fParent;
+end;
+
+{$IFDEF MSWINDOWS}
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TBvElement.Add(aElement: OleVariant);
+var
+  e: IBvElement;
+  u: IInterface;
+begin
+  u := nil;
+
+  case VarType(aElement) of
+    varUnknown:
+      u := IUnknown(aElement) as IBvElement;
+    varDispatch:
+      u := IDispatch(aElement) as IBvElement;
+  end;
+
+  Ensure.IsTrue(Assigned(u) and Supports(u, IBvElement, e), 'OleVariant does not contain an IBvElement interface');
+
+  e.Parent := Self;
+  fElems.Add(e);
+end;
+{$ENDIF}
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.AddElem(const aElement: IBvElement);
 begin
   aElement.Parent := Self;
   fElems.Add(aElement);
 end;
 
-/// <summary>
-///  Adds a child element and returns that child.
-///  Useful for internal code that needs the inserted element.
-/// </summary>
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AppendElem(const aElement: IBvElement): IBvElement;
 begin
   AddElem(aElement);
   Result := aElement;
 end;
 
-/// <summary>Pushes a new element onto the back of the list.</summary>
-/// <remarks>Returns the current element for chaining.</remarks>
-function TBvElement.PushElem(const aElement: IBvElement): IBvElement;
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Push(const aElement: IBvElement): IBvElement;
 begin
   AddElem(aElement);
   Result := Self;
 end;
 
-function TBvElement.PushElem(const aName, aValue: string): IBvElement;
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Push(const aName, aValue: string): IBvElement;
 begin
   // Important: avoid passing a temporary straight into a fluent method
   // This is safe regardless, but keeps the pattern consistent.
@@ -1328,10 +1453,16 @@ begin
   Result := Self;
 end;
 
-/// <summary>
-///  Sets the value of the element with the specified name; if it doesn't exist then a new element is created.
-/// </summary>
-/// <returns>The added or updated element.</returns>
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.Pe(const aName: string; const aValue: string): IBvElement;
+begin
+  // Important: avoid passing a temporary straight into a fluent method
+  // This is safe regardless, but keeps the pattern consistent.
+  AppendElem(TBvElement.Create(aName, aValue));
+  Result := Self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AddOrSetElem(const aName, aValue: string): IBvElement;
 var
   i: Integer;
@@ -1348,10 +1479,7 @@ begin
   Result := AppendElem(TBvElement.Create(aName, aValue));
 end;
 
-/// <summary>
-///  Adds the element if it doesn't exist, otherwise replaces the existing element.
-/// </summary>
-/// <returns>The added or updated element (aOther).</returns>
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AddOrSetElem(const aOther: IBvElement): IBvElement;
 var
   i: Integer;
@@ -1372,7 +1500,7 @@ begin
   Result := aOther;
 end;
 
-/// <summary>Gets the element with the specified name, adds it if it doesn't exist.</summary>
+{----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.Elem(const aName, aValue: string): IBvElement;
 var
   i: Integer;
@@ -1403,7 +1531,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.PopElem: IBvElement;
+function TBvElement.Pop: IBvElement;
 var
   i: Integer;
   Elem: IBvElement;
@@ -1644,7 +1772,7 @@ begin
   fElems := TList<IBvElement>.Create;
 
   for var e in aOther.Elems do
-    PushElem(e);
+    Push(e);
 
   fAttrs := TList<TBvAttribute>.Create(aOther.Attrs);
 
@@ -1751,7 +1879,6 @@ begin
 end;
 
 {$endregion}
-
 
 {$region 'TBvParser'}
 
@@ -2013,7 +2140,7 @@ begin
   end
   else
   begin
-    fElement.PushElem(e);
+    fElement.Push(e);
     fElement := e;
   end;
 
@@ -2129,7 +2256,25 @@ end;
 
 {$endregion}
 
-{$region 'TDynXml'}
+{$region 'TXml'}
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TXml.New: TDynamic;
+begin
+  Result := TBvElement.Create.AsDynamic;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TXml.New(const aName: string): TDynamic;
+begin
+  Result := TBvElement.Create(aName).AsDynamic;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TXml.New(const aName: string; const aValue: string): TDynamic;
+begin
+  Result := TBvElement.Create(aName, aValue).AsDynamic;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TXml.Parse(const aXml: string): TResult<IBvElement>;
@@ -2140,6 +2285,12 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function TXml.Load(const aPath: string): TResult<IBvElement>;
 begin
+  if not TFile.Exists(aPath) then
+  begin
+   Result.SetErr('File not found: %s', [aPath]);
+   exit;
+  end;
+
   var xml := TFile.ReadAllText(aPath);
   Result := TBvParser.Execute(xml);
 end;

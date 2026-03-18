@@ -25,6 +25,8 @@ type
   TRewriteRepository = class(TRepository<IRewriteRule, TRewriteRule>, IRewriteRepository)
   public
     constructor Create(const aDb: IDbSessionManager);
+
+    function GetPriorizedRules: TArray<IRewriteRule>;
   end;
 
 implementation
@@ -58,6 +60,18 @@ end;
 constructor TRewriteRepository.Create(const aDb: IDbSessionManager);
 begin
   inherited Create(aDb);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TRewriteRepository.GetPriorizedRules: TArray<IRewriteRule>;
+const
+  SQL = 'select * from RewriteRule order by Priority';
+var
+  scope: TScope;
+begin
+  var rules := scope.Owns(ExecQuery(SQL));
+
+  Result := rules.ToArray;
 end;
 
 end.

@@ -26,7 +26,7 @@ type
   PTMethod = ^TMethod;
 
   TOptionState = (
-    // initial state, used to enforce immutability, evaluates to osNone
+    // initial state, used to enforce immutability, evaluates to osNone for efficiency and egonomic reasons.
     osUnknown,
     // some value has been set
     osSome,
@@ -34,7 +34,7 @@ type
     osNone);
 
   TResultState = (
-    // initial state, used to enforce immutability, evaluates to rsErr
+    // initial state, used to enforce immutability, evaluates to rsErr for efficiency and egonomic reasons.
     rsUnknown,
     // ok has been set
     rsOk,
@@ -42,7 +42,7 @@ type
     rsErr);
 
   TStatusState = (
-    // initial state, used to enforce immutability, evaluates to rsErr
+    // initial state, used to enforce immutability, evaluates to rsErr for efficiency and egonomic reasons.
     ssUnknown,
     // ok has been set
     ssOk,
@@ -144,6 +144,8 @@ type
     fValue: T;
 
     function GetValue: T;
+  private
+    function getErrorSummary: string;
   public
     property Value: T read GetValue;
 
@@ -155,6 +157,9 @@ type
 
     /// <summary>extra error information</summary>
     property ErrorDetails: string read fErrorDetails;
+
+    /// <summary>all vailable error information</summary>
+    property ErrorSummay: string read getErrorSummary;
 
     function IsErr: Boolean;
     function IsOk: Boolean;
@@ -821,6 +826,24 @@ class function TResult<T>.ErrEx(const aToken, aDetails, aFormat: string; const a
 begin
   Result.fState := rsUnknown; // initialize not guaranteed to run
   Result.SetErrEx(aToken, aDetails, aFormat, aArgs);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TResult<T>.getErrorSummary: string;
+const
+  ERR = '''
+        <error>
+          <token>%s</token>
+          <details>
+            %s
+          </details>
+          <message>
+            %s
+          </message>
+        </error>';
+        ''';
+begin
+  Result := Format(ERR, [fErrorToken, fErrorDetails, fError]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

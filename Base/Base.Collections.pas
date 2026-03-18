@@ -429,13 +429,36 @@ type
     ) : TDictionary<string, string>; overload;
   end;
 
+  TSegment<T> = record
+  private
+    fSource: TList<T>;
+    fStart:  integer;
+    fEnd:    integer;
+    fCount:  integer;
+
+    function GetCount: integer;
+    function GetLast: integer;
+  public
+    property Source: TList<T> read fSource;
+    property Count: integer read GetCount;
+    property Last: integer read GetLast;
+
+    /// <summary>
+    ///  Creates a segment over the source list using the specified range - the end is exclusive.
+    /// </summary>
+//    class function From(
+//      const aSource: TList<T>;
+//      const aStart: integer;
+//      const aEnd: integer): TSegment<T>;
+  end;
 
   function ToPair(const aString: string; const aDelimiter: string; const aStrictPair: boolean = true): TPair<string, string>;
 
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  System.Math;
 
 { Functions }
 
@@ -1538,6 +1561,29 @@ class function Equality.StringOrdinal: IEqualityComparer<string>;
 begin
   // TStringComparer.Ordinal also implements IEqualityComparer<string>
   Result := TStringComparer.Ordinal;
+end;
+
+{ TSegment<T> }
+
+{----------------------------------------------------------------------------------------------------------------------}
+//class function TSegment<T>.From(const aSource: TList<T>; const aStart, aEnd: integer): TSegment<T>;
+//begin
+//  Result.fSource := aSource;
+//  Result.fStart  := aStart;
+//  Result.fEnd    := aEnd;
+//  Result.fCount  := aEnd - aStart;
+//end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSegment<T>.GetCount: integer;
+begin
+  Result := fCount;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSegment<T>.GetLast: integer;
+begin
+//    Result := Min(fSource.Count - 1, fExcEnd);
 end;
 
 end.

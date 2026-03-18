@@ -539,7 +539,7 @@ const
 begin
   var e : IBvElement := TBvElement.Create('e1');
 
-  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
+  e.Pe('id', '1').Pe('name', 'Fred').Pe('role', 'Developer');
 
   e.ElemAt(0).PushAttr('a', '1').PushAttr('b', '2').PushAttr('c', '3');
   e.ElemAt(1).PushAttr('d', '4');
@@ -553,7 +553,7 @@ procedure TXmlFixture.Test_Can_TakeOwnership_Of_Element;
 begin
   var e : IBvElement := TBvElement.Create('e1');
 
-  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'Developer');
+  e.Push('id', '1').Push('name', 'Fred').Push('role', 'Developer');
 
   Assert.AreSame(e, e.ElemAt(0).Parent);
   Assert.AreSame(e, e.ElemAt(1).Parent);
@@ -586,7 +586,7 @@ var scope: TScope;
 begin
   var e : IBvElement := TBvElement.Create('test');
 
-  e.PushElem('id', '1').PushElem('name', 'Fred').PushElem('role', 'developer');
+  e.Push('id', '1').Push('name', 'Fred').Push('role', 'developer');
 
   var elems := scope.Owns(TList<string>.Create);
 
@@ -638,23 +638,23 @@ begin
 
   Assert.AreEqual('2', id.Value);
 
-  e.PushElem('name', 'Fred');
-  e.PushElem(TBvElement.Create('role', 'developer'));
+  e.Push('name', 'Fred');
+  e.Push(TBvElement.Create('role', 'developer'));
 
   Assert.AreEqual(3, e.ElemCount);
 
-  Assert.AreSame(e.FirstElem, e.Elem('id'));
-  Assert.AreSame(e.LastElem, e.Elem('role'));
-  Assert.AreSame(e.LastElem, e.PeekElem);
+  Assert.AreSame(e.First, e.Elem('id'));
+  Assert.AreSame(e.Last, e.Elem('role'));
+  Assert.AreSame(e.Last, e.Peek);
 
-  var role := e.PopElem;
+  var role := e.Pop;
 
   Assert.AreEqual('role', role.Name);
 
   e.RemoveElem('id');
 
   Assert.AreEqual(1, e.ElemCount);
-  Assert.AreEqual('name', e.PeekElem.Name);
+  Assert.AreEqual('name', e.Peek.Name);
 
   e.ClearElems;
 

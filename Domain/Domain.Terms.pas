@@ -58,7 +58,9 @@ type
 
   TTerms = TList<ITerm>;
 
-  ITermRepository = IRepository<ITerm, TTerm>;
+  ITermRepository = interface(IRepository<ITerm, TTerm>)
+    ['{A4E8C07E-43B2-4732-8ABA-B7D73125EC6C}']
+  end;
 
   ITermRegistry = interface
     ['{DCCA3483-0883-4E1F-A4AC-D1B3FAB37082}']

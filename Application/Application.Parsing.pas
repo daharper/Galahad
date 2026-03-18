@@ -45,12 +45,11 @@ type
     function ActionCount: integer;
 
     function HasStructuralTokens: Boolean;
-
     function IndexOfFirst(aKind: TTermKind): TOption<integer>;
 
     function FirstAction: TOption<TToken>;
     function FirstDirection: TOption<TToken>;
-    function FirstStructural: TOption<TToken>;
+    function FirstStructuralToken: TOption<TToken>;
     function StructuralCount: Integer;
 
     function HasKind(aKind: TTermKind): boolean;
@@ -66,6 +65,10 @@ type
     function StartsWithKind(aKind: TTermKind): Boolean;
     function StartsWithMannerThenDirection: Boolean;
 
+    function IndexOf(const aText: string; const aStartIndex: integer = 0): TOption<integer>;
+    function IsMatch(const aIndex: integer; const aItems: TList<string>): boolean;
+    function FindIndexOfMatch(const aItems: TList<string>): TOption<integer>;
+
     function HasExactlyOneAction: Boolean;
     function HasNoActions: Boolean;
     function IsDirectionOnly: Boolean;
@@ -75,6 +78,22 @@ type
     function DumpTerms: string;
 
     function StructuralTokens: TArray<TToken>;
+  end;
+
+  ITokenRewriter = interface
+    ['{8D503B87-0CD4-4972-9753-669A3E4A60AC}']
+    procedure Execute(var aTokens: TTokens);
+  end;
+
+  TTokenRewriter = class(TSingleton, ITokenRewriter)
+  private
+    fPatterns: TObjectList<TList<string>>;
+    fReplacements: TObjectList<TList<string>>;
+  public
+    procedure Execute(var aTokens: TTokens);
+
+    constructor Create(const aRepository: IRewriteRepository);
+    destructor Destroy; override;
   end;
 
   ITextSanitizer = interface
@@ -164,8 +183,9 @@ type
 
   TTextParser = class(TSingleton, ITextParser)
   private
-    fTextTokenizer: ITextTokenizer;
     fTextSanitizer: ITextSanitizer;
+    fTextTokenizer: ITextTokenizer;
+    fTokenRewriter: ITokenRewriter;
     fWordResolver:  IWordResolver;
     fTermResolver:  ITermResolver;
     fNoiseRemover:  INoiseRemover;
@@ -176,6 +196,7 @@ type
     constructor Create(
       const aTextSanitizer: ITextSanitizer;
       const aTextTokenizer: ITextTokenizer;
+      const aTokenRewriter: ITokenRewriter;
       const aWordResolver:  IWordResolver;
       const aTermResolver:  ITermResolver;
       const aNoiseRemover:  INoiseRemover;
@@ -208,6 +229,8 @@ begin
   var text   := fTextSanitizer.Execute(aInput);
   var tokens := fTextTokenizer.Execute(text);
 
+  // fTokenRewriter.Execute(tokens);
+
   fWordResolver.Execute(tokens);
   fTermResolver.Execute(tokens);
   fNoiseRemover.Execute(tokens);
@@ -228,6 +251,7 @@ end;
 constructor TTextParser.Create(
   const aTextSanitizer: ITextSanitizer;
   const aTextTokenizer: ITextTokenizer;
+  const aTokenRewriter: ITokenRewriter;
   const aWordResolver:  IWordResolver;
   const aTermResolver:  ITermResolver;
   const aNoiseRemover:  INoiseRemover;
@@ -235,6 +259,7 @@ constructor TTextParser.Create(
 begin
   fTextSanitizer := aTextSanitizer;
   fTextTokenizer := aTextTokenizer;
+  fTokenRewriter := aTokenRewriter;
   fWordResolver  := aWordResolver;
   fTermResolver  := aTermResolver;
   fNoiseRemover  := aNoiseRemover;
@@ -307,10 +332,17 @@ begin
   fInput := aInput;
   fPosition := 0;
 
+  var count := -1;
+
   while not IsAtEnd do
   begin
     lToken := GetNextToken;
+
+    // skip duplicates
+    if (count > -1) and (SameText(lToken.Text, Result[count].Text)) then continue;
+
     Result.Add(lToken);
+    Inc(count);
   end;
 end;
 
@@ -547,6 +579,12 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.FindIndexOfMatch(const aItems: TList<string>): TOption<integer>;
+begin
+  //
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TokenHelper.FirstAction: TOption<TToken>;
 begin
   Result := FirstKind(tkAction);
@@ -559,7 +597,7 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TokenHelper.FirstStructural: TOption<TToken>;
+function TokenHelper.FirstStructuralToken: TOption<TToken>;
 begin
   for var token in Self do
     if token.IsStructural then
@@ -567,8 +605,6 @@ begin
       Result.SetSome(token);
       exit;
     end;
-
-  Result.SetNone;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -658,9 +694,9 @@ function TokenHelper.IsDirectionOnly: Boolean;
 begin
   if (StructuralCount <> 1) then exit(false);
 
-  var firstOp := FirstStructural;
+//  var firstOp := FirstStructural;
 
-  Result := (firstOp.IsSome) and (firstOp.Value.TermKind = tkDirection);
+//  Result := (firstOp.IsSome) and (firstOp.Value.TermKind = tkDirection);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -684,7 +720,7 @@ function TokenHelper.StartsWithKind(aKind: TTermKind): boolean;
 begin
   var t: TToken;
 
-  Result := FirstStructural.TryGetValue(t) and (t.TermKind = aKind);
+//  Result := FirstStructural.TryGetValue(t) and (t.TermKind = aKind);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -697,6 +733,44 @@ begin
   if tokens[0].TermKind <> tkManner then exit(false);
 
   Result := tokens[1].TermKind = tkDirection;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.IsMatch(const aIndex: integer; const aItems: TList<string>): boolean;
+begin
+{$IFDEF DEBUG}
+  Ensure.IsTrue(Assigned(aItems), 'missing value for items');
+{$ENDIF}
+
+  Result := false;
+  
+  if not Assigned(aItems) then exit;
+  
+  var n := aIndex + aItems.Count - 1;
+
+  if (aIndex < 0) or (n >= Count) then exit;
+
+///  for var i := aIndex to  := Low to High do
+
+
+
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TokenHelper.IndexOf(const aText: string; const aStartIndex: integer): TOption<integer>;
+begin
+  if Length(aText) = 0 then exit;
+
+  var n := Pred(Length(aText));
+
+  Ensure.InRange(aStartIndex, 0, n, 'invalid start index: ' + IntToStr(aStartIndex));
+
+  for var i := aStartIndex to n do
+    if SameText(aText, Self[i].Text) then
+    begin
+      Result.SetSome(i);
+      exit;
+    end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -714,8 +788,6 @@ begin
 
     Inc(i);
   end;
-
-  Result.SetNone;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -773,6 +845,68 @@ begin
   for var token in Self do
     if token.IsStructural then
       Result := Result + Format('%s (%s) ', [token.Term.Value, TermKindNames[token.TermKind]]);
+end;
+
+{ TRewriteManager }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TTokenRewriter.Execute(var aTokens: TTokens);
+begin
+  var count := aTokens.Count;
+
+  for var i := 0 to Pred(fPatterns.Count) do
+  begin
+    var strs := fPatterns[i];
+
+    var j := 0;
+    var n := Count - strs.Count + 1;
+
+    var highStrs := strs.Count - 1;
+
+    while j < n do
+    begin
+      var indexOp := aTokens.IndexOf(strs[0], j);
+
+      // if no matching first text, then move onto the next pattern
+      if indexOp.IsNone then break;
+
+      var idx := IndexOp.Value + 1;
+
+      while idx <= highStrs do
+      begin
+        //if not SameText(aTokens[ then
+
+      end;
+
+//      for var idx := IndexOp.Value + 1 to Pred(strs.Count) := Low to High do
+
+    end;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TTokenRewriter.Create(const aRepository: IRewriteRepository);
+begin
+  fPatterns := TObjectList<TList<string>>.Create(true);
+  fReplacements := TObjectList<TList<string>>.Create(true);
+
+  for var rule in aRepository.GetPriorizedRules do
+  begin
+    var patternParts := rule.Pattern.Split([' '], TStringSplitOptions.ExcludeEmpty);
+    var replacementParts := rule.Replacement.Split([' '], TStringSplitOptions.ExcludeEmpty);
+
+    fPatterns.Add(TList<string>.Create(patternParts));
+    fReplacements.Add(TList<string>.Create(replacementParts));
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TTokenRewriter.Destroy;
+begin
+  fPatterns.Free;
+  fReplacements.Free;
+
+  inherited;
 end;
 
 end.

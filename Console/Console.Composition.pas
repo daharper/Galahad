@@ -99,6 +99,7 @@ begin
   c.Add<IMigrationManager, TMigrationManager>;
   c.Add<ITermRepository, TTermRepository>;
   c.Add<IWordRepository, TWordRepository>;
+  c.Add<IRewriteRepository, TRewriteRepository>;
 end;
 
 { TUseCaseModule }
@@ -118,6 +119,7 @@ begin
   c.Add<ITermRegistry, TTermRegistry>;
   c.Add<ITextSanitizer, TTextSanitizer>;
   c.Add<ITextTokenizer, TTextTokenizer>;
+  c.Add<ITokenRewriter, TTokenRewriter>;
   c.Add<IWordResolver, TWordResolver>;
   c.Add<ITermResolver, TTermResolver>;
   c.Add<INoiseRemover, TNoiseRemover>;
