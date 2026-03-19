@@ -429,6 +429,9 @@ type
     ) : TDictionary<string, string>; overload;
   end;
 
+  /// <summary>
+  ///  A static readonly view over a list. It does not own the source list.
+  /// </summary>
   TSegment<T> = record
   private
     fSource: TList<T>;
@@ -446,10 +449,10 @@ type
     /// <summary>
     ///  Creates a segment over the source list using the specified range - the end is exclusive.
     /// </summary>
-//    class function From(
-//      const aSource: TList<T>;
-//      const aStart: integer;
-//      const aEnd: integer): TSegment<T>;
+    class function From(
+      const aSource: TList<T>;
+      const aStart: integer;
+      const aEnd: integer): TSegment<T>; static;
   end;
 
   function ToPair(const aString: string; const aDelimiter: string; const aStrictPair: boolean = true): TPair<string, string>;
@@ -1566,13 +1569,13 @@ end;
 { TSegment<T> }
 
 {----------------------------------------------------------------------------------------------------------------------}
-//class function TSegment<T>.From(const aSource: TList<T>; const aStart, aEnd: integer): TSegment<T>;
-//begin
-//  Result.fSource := aSource;
-//  Result.fStart  := aStart;
-//  Result.fEnd    := aEnd;
-//  Result.fCount  := aEnd - aStart;
-//end;
+class function TSegment<T>.From(const aSource: TList<T>; const aStart, aEnd: integer): TSegment<T>;
+begin
+  Result.fSource := aSource;
+  Result.fStart  := aStart;
+  Result.fEnd    := aEnd;
+  Result.fCount  := aEnd - aStart;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TSegment<T>.GetCount: integer;
@@ -1583,7 +1586,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TSegment<T>.GetLast: integer;
 begin
-//    Result := Min(fSource.Count - 1, fExcEnd);
+    Result := Min(fSource.Count - 1, fEnd);
 end;
 
 end.
