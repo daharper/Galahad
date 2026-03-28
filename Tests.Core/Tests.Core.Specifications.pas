@@ -6,7 +6,7 @@ uses
   DUnitX.TestFramework,
   Base.Core,
   Base.Integrity,
-  Base.Specifications,
+  Base.Collections,
   Mocks.Entities,
   Mocks.Repositories,
   Mocks.Specifications;
@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Base.Stream;
+  Base.Data;
 
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TSpecificationFixture.ExplicitGrouping_And_With_Inner_Or;
@@ -435,7 +435,7 @@ begin
   var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
 
   var names := Stream
-        .From<TCustomer>(fCustomers.GetEnumerator, true)
+        .Consume<TCustomer>(fCustomers.GetEnumerator)
         .Filter(spec)
         .Map<string>(function(const c: TCustomer): string begin Result := c.Name; end)
         .AsArray;

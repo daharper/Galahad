@@ -3,7 +3,8 @@ unit Mocks.Specifications;
 interface
 
 uses
-  Base.Specifications,
+  Base.Collections,
+  Base.Data,
   Mocks.Entities,
   Mocks.Repositories;
 

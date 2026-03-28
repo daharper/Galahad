@@ -24,9 +24,6 @@ uses
   Base.Collections in 'Base\Base.Collections.pas',
   Tests.Core.Collect in 'Tests.Core\Tests.Core.Collect.pas',
   Base.Messaging in 'Base\Base.Messaging.pas',
-  Base.Stream in 'Base\Base.Stream.pas',
-  Tests.Core.Stream in 'Tests.Core\Tests.Core.Stream.pas',
-  Base.Specifications in 'Base\Base.Specifications.pas',
   Tests.Core.Specifications in 'Tests.Core\Tests.Core.Specifications.pas',
   Mocks.Entities in 'Mocks\Mocks.Entities.pas',
   Mocks.Repositories in 'Mocks\Mocks.Repositories.pas',
@@ -52,7 +49,9 @@ uses
   Base.Sqlite in 'Base\Base.Sqlite.pas',
   Base.Data in 'Base\Base.Data.pas',
   Base.Files in 'Base\Base.Files.pas',
-  Base.Settings in 'Base\Base.Settings.pas';
+  Base.Settings in 'Base\Base.Settings.pas',
+  Base.Collect in 'Base\Base.Collect.pas',
+  Tests.Core.Collections in 'Tests.Core\Tests.Core.Collections.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

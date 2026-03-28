@@ -42,12 +42,13 @@ type
   EMulticastInvokeException = class(Exception)
   private
     fCount: Integer;
-    fError: TSubscriberError;
+    fErrors: TArray<TSubscriberError>;
   public
     property Count: Integer read fCount;
-    property Error: TSubscriberError read fError;
+    property Errors: TArray<TSubscriberError> read fErrors;
 
-    constructor Create(const aCount: Integer; const aError: TSubscriberError);
+    // does not own the list, will take an array copy
+    constructor Create(const aErrors: TList<TSubscriberError>);
   end;
 
   /// <summary>
@@ -105,8 +106,7 @@ type
     ///  all subscribers and an <see cref="EMulticastInvokeException"/> is raised
     ///  after completion.
     ///
-    ///  The raised exception reports the total number of failures and includes
-    ///  diagnostic details for the first encountered error.
+    ///  The raised exception reports the total number of failures and includes the errors.
     /// </summary>
     procedure PublishRaising(const aValue: T);
 
@@ -194,14 +194,14 @@ end;
 { EMulticastInvokeException }
 
 {----------------------------------------------------------------------------------------------------------------------}
-constructor EMulticastInvokeException.Create(const aCount: Integer; const AError: TSubscriberError);
+constructor EMulticastInvokeException.Create(const aErrors: TList<TSubscriberError>);
 const
   ERR_MESSAGE = '%d multicast subscriber(s) raised an exception. First: %s: %s';
 begin
-  fCount := aCount;
-  fError := aError;
+  fCount := aErrors.Count;
+  fErrors := aErrors.ToArray;
 
-  inherited CreateFmt(ERR_MESSAGE, [aCount, aError.ExceptionClass, aError.MessageText]);
+  inherited CreateFmt(ERR_MESSAGE, [fCount, aErrors[0].ExceptionClass, aErrors[0].MessageText]);
 end;
 
 { TMulticast<T> }
@@ -320,18 +320,8 @@ begin
       begin
         errors := true;
 
-        var subError := TSubscriberError.Create(E);
-
         if aErrors <> nil then
-          aErrors.Add(subError);
-
-        var ex := TPublishException.Create('Error publishing message', subError);
-
-        try
-          TError.Notify(ex);
-        finally
-          ex.Free;
-        end;
+          aErrors.Add(TSubscriberError.Create(E));
       end;
     end;
   end;
@@ -346,7 +336,7 @@ begin
 
   try
     if not Publish(aValue, errors) then
-      raise EMulticastInvokeException.Create(errors.Count, errors[0]);
+      raise EMulticastInvokeException.Create(errors);
   finally
     errors.Free;
   end;

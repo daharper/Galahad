@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{E194AF76-494E-4AE7-806B-7B9A77E1547B}</ProjectGuid>
-        <ProjectVersion>20.3</ProjectVersion>
+        <ProjectVersion>20.4</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
@@ -151,9 +151,6 @@
         <DCCReference Include="Base\Base.Collections.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Collect.pas"/>
         <DCCReference Include="Base\Base.Messaging.pas"/>
-        <DCCReference Include="Base\Base.Stream.pas"/>
-        <DCCReference Include="Tests.Core\Tests.Core.Stream.pas"/>
-        <DCCReference Include="Base\Base.Specifications.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Specifications.pas"/>
         <DCCReference Include="Mocks\Mocks.Entities.pas"/>
         <DCCReference Include="Mocks\Mocks.Repositories.pas"/>
@@ -180,6 +177,8 @@
         <DCCReference Include="Base\Base.Data.pas"/>
         <DCCReference Include="Base\Base.Files.pas"/>
         <DCCReference Include="Base\Base.Settings.pas"/>
+        <DCCReference Include="Base\Base.Collect.pas"/>
+        <DCCReference Include="Tests.Core\Tests.Core.Collections.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -885,6 +884,9 @@
                     <Platform Name="Win64x">
                         <Operation>1</Operation>
                     </Platform>
+                    <Platform Name="WinARM64EC">
+                        <Operation>1</Operation>
+                    </Platform>
                 </DeployClass>
                 <DeployClass Name="ProjectiOSDeviceDebug">
                     <Platform Name="iOSDevice32">
@@ -955,6 +957,10 @@
                         <RemoteDir>Assets</RemoteDir>
                         <Operation>1</Operation>
                     </Platform>
+                    <Platform Name="WinARM64EC">
+                        <RemoteDir>Assets</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
                 </DeployClass>
                 <DeployClass Name="UWP_DelphiLogo44">
                     <Platform Name="Win32">
@@ -962,6 +968,10 @@
                         <Operation>1</Operation>
                     </Platform>
                     <Platform Name="Win64">
+                        <RemoteDir>Assets</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
+                    <Platform Name="WinARM64EC">
                         <RemoteDir>Assets</RemoteDir>
                         <Operation>1</Operation>
                     </Platform>
@@ -1178,6 +1188,7 @@
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="Win64x" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="WinARM64EC" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
                 <Platform value="Android">False</Platform>

@@ -8,7 +8,7 @@ uses
   System.Generics.Defaults,
   DUnitX.TestFramework,
   Base.Core,
-  Base.Collections;
+  Base.Collect;
 
 type
   TTestPair = TPair<Integer, Integer>;

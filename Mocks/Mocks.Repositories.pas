@@ -5,7 +5,7 @@ interface
 uses
   System.Generics.Collections,
   Base.Core,
-  Base.Stream,
+  Base.Collections,
   Mocks.Entities;
 
 type

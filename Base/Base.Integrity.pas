@@ -267,7 +267,6 @@ type
     function Release<T: class>(aObj: T): T;
 
     function Owns<T: class>(aObj: T): T; overload;
-    //function Owns<T: class>(const Factory: TFunc<T>): T; overload;
 
     procedure Clear;
     procedure Defer(const aAction: System.SysUtils.TProc); overload;
@@ -386,6 +385,35 @@ type
     ///  Throws if the is in the specified range.
     /// </summary>
     function NotInRange(const aValue: integer; const aMin: integer; const aMax: integer; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Throws if the value is not in the specified range.
+    /// </summary>
+    function InExcRange(const aValue: integer; const aMin: integer; const aExclusiveMax: integer; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Expects the value to be less than the specified maximum.
+    /// </summary>
+    function IsLess(const aMaximum: int64; const aValue: int64; const aMessage: string = ''): TEnsure; overload;
+    function IsLess(const aMaximum: double; const aValue: double; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Expects the value to be less than, or equal to, the specified maximum.
+    /// </summary>
+    function IsLessOrEqual(const aMaximum: int64; const aValue: int64; const aMessage: string = ''): TEnsure; overload;
+    function IsLessOrEqual(const aMaximum: double; const aValue: double; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Expects the value to be greater than the specified minimum.
+    /// </summary>
+    function IsGreater(const aMinimum, aValue: double; const aMessage: string = ''): TEnsure; overload;
+    function IsGreater(const aMinimum, aValue: int64; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
+    ///  Expects the value to be greater than, or equal to, the specified minimum.
+    /// </summary>
+    function IsGreaterOrEqual(const aMinimum, aValue: double; const aMessage: string = ''): TEnsure; overload;
+    function IsGreaterOrEqual(const aMinimum, aValue: int64; const aMessage: string = ''): TEnsure; overload;
 
     class constructor Create;
     class destructor Destroy;
@@ -1101,6 +1129,117 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsLess(const aMaximum, aValue: double; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the less than %d';
+begin
+  if aValue >= aMaximum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMaximum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsLess(const aMaximum, aValue: int64; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the less than %d';
+begin
+  if aValue >= aMaximum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMaximum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsLessOrEqual(const aMaximum, aValue: double; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the less or equal to %d';
+begin
+  if aValue > aMaximum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMaximum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsLessOrEqual(const aMaximum, aValue: int64; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the less or equal to %d';
+begin
+  if aValue > aMaximum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMaximum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsGreater(const aMinimum, aValue: double; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the greater than %d';
+begin
+  if aValue <= aMinimum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMinimum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsGreater(const aMinimum, aValue: int64; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the greater than %d';
+begin
+  if aValue <= aMinimum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMinimum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsGreaterOrEqual(const aMinimum, aValue: double; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the greater or equal to %d';
+begin
+  if aValue < aMinimum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMinimum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsGreaterOrEqual(const aMinimum, aValue: int64; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the specified value (%d) to be the greater or equal to %d';
+begin
+  if aValue < aMinimum then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMinimum]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+
+{----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.AreSame(const aLhs, aRhs: integer; const aMessage: string): TEnsure;
 const
   ERROR = 'Expected the values to be the same: %d <> %d';
@@ -1178,6 +1317,20 @@ begin
   if CompareStr(aLhs, aRhs) = 0 then
   begin
     var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aLhs, aRhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.InExcRange(const aValue, aMin, aExclusiveMax: integer; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the value (%d) to be in the range: %d..%d';
+begin
+  if (aValue < aMin) or (aValue >= aExclusiveMax) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aValue, aMin, aExclusiveMax - 1]);
     TError.Throw<EArgumentException>(msg);
   end;
 
@@ -1356,6 +1509,7 @@ begin
       NewCap := 1
     else
       NewCap := NewCap * 2;
+
     SetLength(fActions, NewCap);
   end;
 

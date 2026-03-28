@@ -24,7 +24,7 @@ uses
   Base.Files,
   Base.Integrity,
   Base.Dynamic,
-  Base.Specifications,
+  Base.Collections,
   Base.Settings;
 
 type
@@ -232,6 +232,62 @@ type
     tdOffset
   );
 
+    TSqlParam = record
+    Name: string;
+    Value: Variant;
+  end;
+
+  TSqlWhere = record
+    Sql: string;
+    Params: TArray<TSqlParam>;
+  end;
+
+  ISqlBuildContext = interface
+    ['{F6D0C2A6-7C4B-4F83-A8B0-3B33F2A8B7C1}']
+    function AddParam(const aValue: Variant): string;
+    function Alias: string;
+    function Column(const aName: string): string;
+  end;
+
+  ISpecSqlAdapter<T> = interface
+    ['{2C3A9D5D-1D0B-4A4E-B5EA-7E0B4B5A2B3A}']
+    function TryBuildWhere(const aSpec: ISpecification<T>; const aCtx: ISqlBuildContext; out aSql: string): Boolean;
+  end;
+
+  ESpecNotTranslatable = class(Exception);
+
+  TSqlBuildContext = class(TInterfacedObject, ISqlBuildContext)
+  private
+    fAlias: string;
+    fNext: Integer;
+    fParams: TList<TSqlParam>;
+  public
+    constructor Create(const aAlias: string);
+    destructor Destroy; override;
+
+    function AddParam(const aValue: Variant): string;
+    function Alias: string;
+    function Column(const aName: string): string;
+
+    function DetachParams: TArray<TSqlParam>;
+  end;
+
+  TSpecSqlBuilder<T> = class
+  private
+    fAdapters: TDictionary<TClass, ISpecSqlAdapter<T>>;
+    fAlias: string;
+
+    function BuildInternal(const aSpec: ISpecification<T>; const aCtx: TSqlBuildContext): string;
+    function TryFindAdapter(const aSpec: ISpecification<T>; out aAdapter: ISpecSqlAdapter<T>): Boolean;
+  public
+    constructor Create(const aAlias: string = '');
+    destructor Destroy; override;
+
+    procedure RegisterAdapter(const aSpecClass: TClass; const aAdapter: ISpecSqlAdapter<T>);
+
+    function BuildWhere(const aSpec: ISpecification<T>): TSqlWhere;
+  end;
+
   /// <summary>
   ///  Base interface for the repositories.
   /// </summary>
@@ -328,7 +384,6 @@ uses
   System.Math,
   System.Generics.Defaults,
   Base.Reflection,
-  Base.Stream,
   Base.Container;
 
 { TEntity }
@@ -817,6 +872,151 @@ end;
 constructor TDbContextFactory.Create(const aFileService: IFileService);
 begin
   fFileService := aFileService;
+end;
+
+{ TSqlBuildContext }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqlBuildContext.Column(const aName: string): string;
+begin
+  if Length(fAlias) = 0 then exit(aName);
+
+  Result := fAlias + '.' + aName;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqlBuildContext.Alias: string;
+begin
+  Result := FAlias;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqlBuildContext.AddParam(const aValue: Variant): string;
+var
+  p: TSqlParam;
+begin
+  Result := ':p' + fNext.ToString;
+
+  Inc(fNext);
+
+  p.Name  := Result;
+  p.Value := aValue;
+
+  fParams.Add(p);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSqlBuildContext.DetachParams: TArray<TSqlParam>;
+begin
+  Result := fParams.ToArray;
+
+  fParams.Clear;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TSqlBuildContext.Create(const aAlias: string);
+begin
+  inherited Create;
+
+  fAlias  := aAlias;
+  fNext   := 0;
+  fParams := TList<TSqlParam>.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TSqlBuildContext.Destroy;
+begin
+  fParams.Free;
+
+  inherited;
+end;
+
+{ TSpecSqlBuilder<T> }
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSpecSqlBuilder<T>.RegisterAdapter(const aSpecClass: TClass; const aAdapter: ISpecSqlAdapter<T>);
+begin
+  Ensure.IsTrue(Assigned(aSpecClass), 'SpecClass is nil')
+        .IsTrue(Assigned(aAdapter), 'Adapter is nil');
+
+  FAdapters.AddOrSetValue(aSpecClass, aAdapter);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSpecSqlBuilder<T>.TryFindAdapter(const aSpec: ISpecification<T>; out aAdapter: ISpecSqlAdapter<T>): Boolean;
+begin
+  aAdapter := nil;
+
+  if aSpec = nil then exit(false);
+
+  Result := FAdapters.TryGetValue((aSpec as TObject).ClassType, aAdapter);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSpecSqlBuilder<T>.BuildInternal(const aSpec: ISpecification<T>; const aCtx: TSqlBuildContext): string;
+const
+  NO_ADAPTER = 'No SQL adapter registered for specification %s';
+  NO_ADAPT   = 'Specification %s is not translatable by its adapter';
+var
+  andSpec: IAndSpecification<T>;
+  orSpec: IOrSpecification<T>;
+  notSpec: INotSpecification<T>;
+  adapter: ISpecSqlAdapter<T>;
+  leafSql: string;
+begin
+  Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
+
+  // Composite nodes
+  if Supports(aSpec, IAndSpecification<T>, andSpec) then
+    Exit('(' + BuildInternal(andSpec.Left, aCtx) + ' AND ' + BuildInternal(andSpec.Right, aCtx) + ')');
+
+  if Supports(aSpec, IOrSpecification<T>, orSpec) then
+    Exit('(' + BuildInternal(orSpec.Left, aCtx) + ' OR ' + BuildInternal(orSpec.Right, aCtx) + ')');
+
+  if Supports(aSpec, INotSpecification<T>, notSpec) then
+    Exit('(NOT ' + BuildInternal(notSpec.Inner, aCtx) + ')');
+
+  // Leaf
+  if not TryFindAdapter(aSpec, adapter) then
+    raise ESpecNotTranslatable.CreateFmt(NO_ADAPTER, [(aSpec as TObject).ClassName]);
+
+  if not adapter.TryBuildWhere(aSpec, aCtx, leafSql) then
+    raise ESpecNotTranslatable.CreateFmt(NO_ADAPT, [(aSpec as TObject).ClassName]);
+
+  Result := leafSql;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSpecSqlBuilder<T>.BuildWhere(const aSpec: ISpecification<T>): TSqlWhere;
+var
+  ctx: TSqlBuildContext;
+begin
+  Ensure.IsTrue(Assigned(aSpec), 'Spec is nil');
+
+  ctx := TSqlBuildContext.Create(FAlias);
+  try
+    Result.Sql    := BuildInternal(aSpec, ctx);
+    Result.Params := ctx.DetachParams;
+  finally
+    ctx.Free;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TSpecSqlBuilder<T>.Create(const aAlias: string);
+begin
+  inherited Create;
+
+  fAlias    := aAlias;
+  fAdapters := TDictionary<TClass, ISpecSqlAdapter<T>>.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TSpecSqlBuilder<T>.Destroy;
+begin
+  FAdapters.Free;
+
+  inherited;
 end;
 
 end.
