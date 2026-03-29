@@ -45,58 +45,211 @@ type
     function Inner: ISpecification<T>;
   end;
 
+  /// <summary>
+  ///  Base implementation of the Specification pattern for values of type T.
+  ///
+  ///  A specification represents a reusable business rule or matching criterion
+  ///  that can be evaluated against a candidate value.
+  /// </summary>
   /// <remarks>
-  /// Specification composition is explicit. Grouping is defined by nesting
-  /// (AndAlso / OrElse calls), not by operator precedence. It's just like function calls.
+  ///  TSpecification<T> provides the core composition operations:
+  ///   - AndAlso
+  ///   - OrElse
+  ///   - NotThis
+  ///
+  ///  Concrete specifications implement IsSatisfiedBy. Specifications can also
+  ///  be created from a simple predicate via FromPredicate.
   /// </remarks>
+  /// <example>
+  ///
+  ///  var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
+  ///
+  ///  var names := Stream
+  ///      .From<TCustomer>(fCustomers)
+  ///      .Filter(spec)
+  ///      .Map<string>(function(const c: TCustomer): string begin Result := c.Name; end)
+  ///      .AsArray;
+  ///
+  /// </example>
   TSpecification<T> = class(TInterfacedObject, ISpecification<T>)
   public
+    /// <summary>
+    ///  Returns true if the candidate satisfies this specification.
+    /// </summary>
     function IsSatisfiedBy(const aCandidate: T): Boolean; virtual; abstract;
 
+    /// <summary>
+    ///  Combines this specification with another using logical AND.
+    /// </summary>
+    /// <remarks>
+    ///  The resulting specification is satisfied only when both specifications
+    ///  are satisfied by the candidate.
+    /// </remarks>
+    /// <example>
+    ///
+    ///  var spec := TDepartmentIs.Create('IT').AndAlso(TSalaryAbove.Create(68000));
+    ///
+    /// </example>
     function AndAlso(const aOther: ISpecification<T>): ISpecification<T>;
+
+    /// <summary>
+    ///  Combines this specification with another using logical OR.
+    /// </summary>
+    /// <remarks>
+    ///  The resulting specification is satisfied when either specification is
+    ///  satisfied by the candidate.
+    /// </remarks>
+    /// <example>
+    ///
+    ///  var spec := TSaleSectionIs.Create('Dairy').OrElse(TSaleSectionIs.Create('Alcohol'));
+    ///
+    /// </example>
     function OrElse(const aOther: ISpecification<T>): ISpecification<T>;
+
+    /// <summary>
+    ///  Returns the logical negation of this specification.
+    /// </summary>
+    /// <remarks>
+    ///  The resulting specification is satisfied only when this specification is
+    ///  not satisfied by the candidate.
+    /// </remarks>
+    /// <example>
+    ///
+    ///  var spec := TDepartmentIs.Create('IT').NotThis;
+    ///
+    /// </example>
     function NotThis: ISpecification<T>;
 
+    /// <summary>
+    ///  Creates a specification from a predicate.
+    /// </summary>
+    /// <remarks>
+    ///  This is a convenient way to construct a specification from an inline
+    ///  rule without creating a dedicated specification class.
+    /// </remarks>
+    /// <example>
+    ///
+    ///  var spec := TSpecification<TCustomer>.FromPredicate(
+    ///    function(const x: TCustomer): Boolean
+    ///    begin
+    ///      Result := x.Salary > 70000;
+    ///    end);
+    ///
+    /// </example>
     class function FromPredicate(const aPredicate: TConstPredicate<T>): ISpecification<T>; static;
   end;
 
+  /// <summary>
+  ///  A composite specification representing the logical AND of two specifications.
+  /// </summary>
+  /// <remarks>
+  ///  A candidate satisfies TAndSpecification<T> only when both the left and
+  ///  right specifications are satisfied.
+  /// </remarks>
   TAndSpecification<T> = class(TSpecification<T>, IAndSpecification<T>)
   private
     fLeft, fRight: ISpecification<T>;
   public
+    /// <summary>
+    ///  Creates an AND specification from two component specifications.
+    /// </summary>
     constructor Create(const aLeft, aRight: ISpecification<T>);
+
+    /// <summary>
+    ///  Returns true if both component specifications are satisfied.
+    /// </summary>
     function IsSatisfiedBy(const aCandidate: T): Boolean; override;
 
+    /// <summary>
+    ///  Returns the left component specification.
+    /// </summary>
     function Left: ISpecification<T>;
+
+    /// <summary>
+    ///  Returns the right component specification.
+    /// </summary>
     function Right: ISpecification<T>;
   end;
 
+  /// <summary>
+  ///  A composite specification representing the logical OR of two specifications.
+  /// </summary>
+  /// <remarks>
+  ///  A candidate satisfies TOrSpecification<T> when either the left or right
+  ///  specification is satisfied.
+  /// </remarks>
   TOrSpecification<T> = class(TSpecification<T>, IOrSpecification<T>)
   private
     fLeft, fRight: ISpecification<T>;
   public
+    /// <summary>
+    ///  Creates an OR specification from two component specifications.
+    /// </summary>
     constructor Create(const aLeft, aRight: ISpecification<T>);
+
+    /// <summary>
+    ///  Returns true if either component specification is satisfied.
+    /// </summary>
     function IsSatisfiedBy(const aCandidate: T): Boolean; override;
 
+    /// <summary>
+    ///  Returns the left component specification.
+    /// </summary>
     function Left: ISpecification<T>;
+
+    /// <summary>
+    ///  Returns the right component specification.
+    /// </summary>
     function Right: ISpecification<T>;
   end;
 
+  /// <summary>
+  ///  A composite specification representing the logical negation of another specification.
+  /// </summary>
+  /// <remarks>
+  ///  A candidate satisfies TNotSpecification<T> only when the inner
+  ///  specification is not satisfied.
+  /// </remarks>
   TNotSpecification<T> = class(TSpecification<T>, INotSpecification<T>)
   private
     fInner: ISpecification<T>;
   public
+    /// <summary>
+    ///  Creates a NOT specification from an inner specification.
+    /// </summary>
     constructor Create(const aInner: ISpecification<T>);
+
+    /// <summary>
+    ///  Returns true if the inner specification is not satisfied.
+    /// </summary>
     function IsSatisfiedBy(const aCandidate: T): Boolean; override;
 
+    /// <summary>
+    ///  Returns the inner specification.
+    /// </summary>
     function Inner: ISpecification<T>;
   end;
 
+  /// <summary>
+  ///  A specification backed by a predicate.
+  /// </summary>
+  /// <remarks>
+  ///  TPredicateSpecification<T> adapts a predicate into a specification,
+  ///  allowing simple rules to participate in the same composition model as
+  ///  dedicated specification classes.
+  /// </remarks>
   TPredicateSpecification<T> = class(TSpecification<T>)
   private
     FPredicate: TConstPredicate<T>;
   public
+    /// <summary>
+    ///  Creates a predicate-backed specification.
+    /// </summary>
     constructor Create(const aPredicate: TConstPredicate<T>);
+
+    /// <summary>
+    ///  Evaluates the predicate against the candidate.
+    /// </summary>
     function IsSatisfiedBy(const aCandidate: T): Boolean; override;
   end;
 
@@ -115,7 +268,32 @@ type
   end;
 
   /// <summary>
-  ///  A general purpose read-only collection input adapter.
+  ///  A detached general-purpose input adapter for item sources.
+  ///
+  ///  TItems<T> normalizes common RTL and low-level item sources into a stable,
+  ///  array-backed form with indexed read-only access. It exists to reduce
+  ///  overload bloat on collection APIs while keeping the adapted view simple,
+  ///  predictable, and detached from later source mutation.
+  ///
+  ///  TItems<T> is intended as the neutral adapter in Base.Collections for
+  ///  general-purpose inputs such as:
+  ///   - TArray<T>
+  ///   - TEnumerable<T>
+  ///   - TEnumerator<T>
+  ///   - open array arguments
+  ///   - optionally consumed TList<T> sources
+  ///
+  ///  Adaptation policy:
+  ///   - TItems<T> owns its internal adapted storage
+  ///   - TItems<T> does not own referenced objects contained in the items
+  ///   - non-indexed or transient inputs are materialized into an internal array
+  ///   - the adapted shape is stable after construction
+  ///
+  ///  This makes TItems<T> suitable where a method needs a compact, predictable
+  ///  input abstraction without depending on higher-level Base.Collections types.
+  ///
+  ///  If richer collection/view adaptation is required, prefer the higher-level
+  ///  adapters/types intended for that purpose.
   /// </summary>
   TItems<T> = record
   private
@@ -157,9 +335,6 @@ type
     class function Consume(const aList: TList<T>): TItems<T>; static;
   end;
 
-  /// <summary>
-  ///  Used for iterating over a range of items in a list.
-  /// </summary>
   TSequenceEnumerator<T> = class
   private
     fPos:    integer;
@@ -175,21 +350,30 @@ type
   end;
 
   /// <summary>
-  ///  An immutable value sequence of items, backed by an internal array.
-  ///  The sequence owns its internal storage, but does not assume ownership
-  ///  of referenced objects contained within it. You can use it, and forget about it.
+  ///  A detached value sequence of items, backed by an internal array.
+  ///
+  ///  TSequence<T> owns its internal storage, but does not assume ownership of
+  ///  referenced objects contained within it. It is safe to use as a stable
+  ///  value object without regard for later mutation of any original source.
   /// </summary>
   /// <remarks>
-  ///  TSequence is designed to be more lightweight than Stream, and useful as the
-  ///  value boundary for comparisons, matching, sorting, distinct operations, and
-  ///  other sequence-oriented logic where stability and immutability are important.
+  ///  TSequence<T> is designed to be lighter than Stream while still offering a
+  ///  useful set of concise sequence-oriented operations.
   ///
-  ///  Range-based sequence operations are best-effort. Requested bounds are clamped to the
-  ///  nearest valid range, and if no valid range remains, the result is an empty sequence.
+  ///  It is intended for:
+  ///   - stable value semantics
+  ///   - comparisons and matching
+  ///   - sorting and distinct operations
+  ///   - set-style operations
+  ///   - simple sequence manipulation without callback-heavy transforms
+  ///
+  ///  Range-producing sequence operations are best-effort. Requested bounds are
+  ///  clamped to the nearest valid range, and if no valid range remains, the
+  ///  result is an empty sequence. Direct indexed access remains strict.
   ///
   ///  In general:
-  ///  - TSequence is for stable values and simple sequence operations.
-  ///  - Stream is for richer transformation and query operations.
+  ///   - TSequence<T> is for stable values and concise sequence operations
+  ///   - Stream is for richer transformation and query operations
   /// </remarks>
   TSequence<T> = record
   private
@@ -281,12 +465,22 @@ type
   end;
 
   /// <summary>
-  ///  A static readonly view over a list. It does not own the source list.
+  ///  A static readonly contiguous view over a TList<T>. It does not own the source list.
   ///
-  ///  It uses a fixed identity, variable accessibility model:
-  ///     - the view identity is fixed: Low, High, Length
-  ///     - the currently accessible range depends on the current source list count
-  ///     - all reads respect current accessibility, not just nominal slice length
+  ///  TSegment<T> represents a fixed contiguous window over a source list, but it
+  ///  does not allow mutation through the segment itself. It uses a fixed-identity,
+  ///  variable-accessibility model:
+  ///
+  ///   - the view identity is fixed: Low, High, Length
+  ///   - the currently accessible range depends on the current source list count
+  ///   - all reads respect current accessibility, not just nominal segment length
+  ///
+  ///  This means the segment's nominal window does not change, but the number of
+  ///  items that can currently be read may shrink or grow as the source list is
+  ///  modified externally.
+  ///
+  ///  TSegment<T> is intended as a lightweight borrowed readonly view. If a stable
+  ///  detached value is required, materialize the segment via ToSequence.
   /// </summary>
   TSegment<T> = record
   private
@@ -378,12 +572,25 @@ type
   end;
 
   /// <summary>
-  ///  A static read/write view over a list. It does not own the source list.
+  ///  A static read/write contiguous view over a TList<T>. It does not own the source list.
   ///
-  ///  It uses a fixed identity, variable accessibility model:
-  ///     - the view identity is fixed: Low, High, Length
-  ///     - the currently accessible range depends on the current source list count
-  ///     - all reads/writes respect current accessibility, not just nominal slice length
+  ///  TSlice<T> represents a fixed contiguous window over a source list, but allows
+  ///  in-place mutation of currently accessible items. It uses a fixed-identity,
+  ///  variable-accessibility model:
+  ///
+  ///   - the view identity is fixed: Low, High, Length
+  ///   - the currently accessible range depends on the current source list count
+  ///   - all reads and writes respect current accessibility, not just nominal slice length
+  ///
+  ///  This means the slice's nominal window does not change, but the number of items
+  ///  that can currently be read or written may shrink or grow as the source list is
+  ///  modified externally.
+  ///
+  ///  TSlice<T> is intended as a lightweight mutable view. It supports in-place
+  ///  operations over the currently accessible region, but it does not support
+  ///  structural edits such as insertion or deletion.
+  ///
+  ///  If a stable detached value is required, materialize the slice via ToSequence.
   /// </summary>
   TSlice<T> = record
   private
@@ -516,7 +723,31 @@ type
   end;
 
   /// <summary>
-  ///  A more universal read-only collection input adapter, containing base collection types.
+  ///  A detached higher-level input adapter for Base.Collections source types.
+  ///
+  ///  TSource<T> normalizes common collection inputs into a stable, array-backed
+  ///  form with indexed read-only access. It exists to reduce overload bloat on
+  ///  higher-level collection APIs, such as Stream, while preserving a simple and
+  ///  predictable adapted view.
+  ///
+  ///  TSource<T> sits above TItems<T>. Where TItems<T> adapts general-purpose RTL
+  ///  inputs, TSource<T> adapts richer Base.Collections types and views, such as:
+  ///   - TSequence<T>
+  ///   - TSegment<T>
+  ///   - TSlice<T>
+  ///   - plus other supported general item sources
+  ///
+  ///  Adaptation policy:
+  ///   - TSource<T> owns its internal adapted storage
+  ///   - TSource<T> does not own referenced objects contained in the items
+  ///   - borrowed or view-based sources are materialized into an internal array
+  ///   - the adapted shape and values are detached from later source mutation
+  ///
+  ///  TSource<T> is intended as the "uber" adapter for collection-layer APIs that
+  ///  need a compact, uniform representation of another collection of T without
+  ///  depending on many concrete overloads.
+  ///
+  ///  If a lighter general-purpose adapter is sufficient, prefer TItems<T>.
   /// </summary>
   TSource<T> = record
   private
@@ -568,17 +799,26 @@ type
   end;
 
   /// <summary>
-  ///  Stream provides an eager, declarative pipeline for processing collections in Delphi.
+  ///  Stream provides an eager, declarative pipeline for processing collections.
   ///
   ///  Streams are intended to be used in a strict pipeline style:
-  ///    Ingest - Transform - Terminate.
+  ///   - ingest
+  ///   - transform
+  ///   - terminate
   ///
-  ///  Stream operations are eager and ownership-aware:
-  ///  - Stream may own internal list containers, but never owns items.
-  ///  - Item disposal occurs only when explicitly requested via OnDiscard callbacks.
-  ///  - All terminal operations consume the stream; using a stream after consumption raises an exception.
+  ///  A Stream pipeline owns and manages its internal working container, but it
+  ///  never assumes ownership of the items contained within it.
   ///
-  ///  Stream is designed for clarity and correctness over micro-performance and should not be used in hot paths.
+  ///  Ownership / lifecycle policy:
+  ///   - Stream may own internal list containers
+  ///   - Stream never owns contained items automatically
+  ///   - item disposal occurs only when explicitly requested via discard callbacks
+  ///   - terminal operations consume the stream
+  ///   - using a stream after consumption raises an exception
+  ///
+  ///  Stream is intended for concise simple pipelines and for richer algorithms
+  ///  that justify a fluent transformation style. It favors clarity, correctness,
+  ///  and explicit ownership semantics over micro-optimizations.
   /// </summary>
   Stream = record
   public type
@@ -1002,13 +1242,23 @@ type
   TIndexSource = (isNone, isArray, isList);
 
   /// <summary>
-  ///  A lightweight read-only index over a collection.
+  ///  A lightweight boundary index over a collection.
+  ///
+  ///  TIndex<T> is a read-only input adapter for collection-layer APIs that need
+  ///  a compact indexed view of another source without always materializing it.
+  ///  Like TSource<T>, it can be used as a boundary object to reduce overload
+  ///  bloat, but it aims to be more efficient by reusing original source storage
+  ///  where possible.
   ///
   ///  TIndex<T> does not own the source collection. It captures a transient
   ///  indexed view at adaptation time, which means:
   ///
   ///   - Count is fixed
   ///   - The indexer may still read through to the underlying source
+  ///
+  ///  Some source kinds may be referenced directly where that is safe and useful;
+  ///  other source kinds may be materialized internally when a direct indexed view
+  ///  is not appropriate.
   ///
   ///  If detached or thread-safe access is required, prefer TItems<T> or
   ///  TSource<T>, which materialize their views. If synchronization is not a
