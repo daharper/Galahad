@@ -123,8 +123,11 @@ type
   ///  Events are plain objects. The event bus does not own instances unless PublishOwned is used.
   /// </summary>
   TBaseEvent = class
+  private
+    fOccurredAt: TDateTime;
   public
-    OccurredAt: TDateTime;
+    property OccurredAt: TDateTime read fOccurredAt;
+
     constructor Create;
   end;
 
@@ -179,7 +182,8 @@ type
 implementation
 
 uses
-  Base.Integrity;
+  Base.Integrity,
+  Base.Conversions;
 
 { TSubscriberError }
 
@@ -498,7 +502,8 @@ end;
 constructor TBaseEvent.Create;
 begin
   inherited Create;
-  OccurredAt := Now;
+
+  fOccurredAt := TConvert.UtcNow;
 end;
 
 { TPublishException }

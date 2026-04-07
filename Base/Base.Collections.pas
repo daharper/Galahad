@@ -3553,17 +3553,18 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.Consume<T>(const aList: TList<T>): TPipe<T>;
 begin
-  Ensure.IsTrue(Assigned(aList), 'List is nil');
+  var list := if aList <> nil then aList else TList<T>.Create;
 
-  Result := TPipe<T>.CreatePipe(aList, true);
+  Result := TPipe<T>.CreatePipe(list, true);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.From<T>(const aList: TList<T>): TPipe<T>;
 begin
-  Ensure.IsTrue(Assigned(aList), 'List is nil');
-
-  Result := TPipe<T>.CreatePipe(aList, false);
+  if aList <> nil then
+    Result := TPipe<T>.CreatePipe(aList, false)
+  else
+    Result := TPipe<T>.CreatePipe(TList<T>.Create, true);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -3585,12 +3586,11 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 class function Stream.Consume<T>(aEnum: TEnumerator<T>): TPipe<T>;
 begin
-  Ensure.IsTrue(Assigned(aEnum), 'Enum is nil');
-
   var list := TList<T>.Create;
 
-  while aEnum.MoveNext do
-    list.Add(aEnum.Current);
+  if Assigned(aEnum) then
+    while aEnum.MoveNext do
+      list.Add(aEnum.Current);
 
   Result := TPipe<T>.CreatePipe(list, true);
 

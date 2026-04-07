@@ -191,6 +191,11 @@ type
     procedure AddSingleton<T: IInterface>(const aInstance: T; const aName: string = '');
 
     /// <summary>
+    ///  Registers an alias for the instance - the instance must implement TSingleton.
+    /// </summary>
+    procedure AddAlias<TAlias: IInterface; TService: IInterface>;
+
+    /// <summary>
     ///  Registers an interface factory for the given lifetime.
     /// </summary>
     /// <remarks>
@@ -242,7 +247,6 @@ type
     /// Raises EArgumentException if the module is nil.
     /// </remarks>
     procedure AddModule(const aModule: IContainerModule); overload;
-
     procedure AddModule<T: IContainerModule, class, constructor>; overload;
 
     /// <summary>
@@ -262,6 +266,15 @@ type
     ///  Use TryResolve for non-throwing behavior.
     /// </remarks>
     function Resolve<T: IInterface>(const aName: string = ''): T;
+
+    /// <summary>
+    ///  Resolves a singleton interface service by T and optional name and casts to TResult, raising on failure.
+    /// </summary>
+    /// <remarks>
+    ///  Raises EArgumentException if the service is not registered or cannot be resolved.
+    ///  Use TryResolve for non-throwing behavior.
+    /// </remarks>
+    function ResolveSingletonAs<T: IInterface; TResult: IInterface>(const aName: string = ''): TResult;
 
     /// <summary>
     ///  Attempts to resolve an interface service by type and optional name.
@@ -704,6 +717,28 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddAlias<TAlias, TService>;
+const
+  ERR = 'AddAlias: TService and TAlias must be interfaces';
+  E_SINGLE = 'AddAlias: TService must inherit from TSingleton.';
+  E_CAST = 'AddAlias: Unable to create the alias.';
+var
+  lGuid:  TGUID;
+  lAlias: TAlias;
+begin
+  Ensure.IsTrue(PTypeInfo(TypeInfo(TService)).Kind = tkInterface, ERR);
+  Ensure.IsTrue(PTypeInfo(TypeInfo(TAlias)).Kind = tkInterface, ERR);
+
+  var source := Resolve<TService>;
+
+  lGuid := GetTypeData(TypeInfo(TAlias))^.Guid;
+
+  Ensure.IsTrue(Supports(source, lGuid, lAlias), E_CAST);
+
+  AddSingleton<TAlias>(lAlias);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TContainer.Add<TService, TImpl>(const aName: string);
 var
   inferred: TServiceLifetime;
@@ -857,6 +892,31 @@ begin
     aService := T(Intf)
   else
     aService := Default(T);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function  TContainer.ResolveSingletonAs<T, TResult>(const aName: string = ''): TResult;
+const
+  ERR_NOT_REGISTERED = 'Service not registered: %s (Name="%s")';
+  ERR_NOT_RESOLVED   = 'Service registered but could not be resolved: %s (Name="%s")';
+var
+  lGuid: TGUID;
+  lSource: T;
+begin
+  if TryResolve<T>(lSource, aName) then
+  begin
+    lGuid := GetTypeData(TypeInfo(TResult))^.Guid;
+
+    if not Supports(lSource, lGuid, Result) then
+      raise EArgumentException.CreateFmt(ERR_NOT_RESOLVED, [TypeNameOf(TypeInfo(T)), aName]);
+
+    exit;
+  end;
+
+  if not IsRegistered<T>(aName) then
+    raise EServiceNotRegistered.CreateFmt(ERR_NOT_REGISTERED, [TypeNameOf(TypeInfo(T)), aName]);
+
+  raise EArgumentException.CreateFmt(ERR_NOT_RESOLVED, [TypeNameOf(TypeInfo(T)), aName]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -392,6 +392,12 @@ type
     function InExcRange(const aValue: integer; const aMin: integer; const aExclusiveMax: integer; const aMessage: string = ''): TEnsure; overload;
 
     /// <summary>
+    ///  Expects the values to be equal.
+    /// </summary>
+    function IsEqual(const aLhs: int64; const aRhs: int64; const aMessage: string = ''): TEnsure; overload;
+    function IsEqual(const aLhs: double; const aRhs: double; const aMessage: string = ''): TEnsure; overload;
+
+    /// <summary>
     ///  Expects the value to be less than the specified maximum.
     /// </summary>
     function IsLess(const aMaximum: int64; const aValue: int64; const aMessage: string = ''): TEnsure; overload;
@@ -1122,6 +1128,34 @@ begin
   if aCondition then
   begin
     var msg := if Length(aMessage) > 0 then aMessage else ERROR;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsEqual(const aLhs, aRhs: double; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the value (%d) to be equal to %d';
+begin
+  if aLhs <> aRhs then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aRhs, aLhs]);
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.IsEqual(const aLhs, aRhs: int64; const aMessage: string): TEnsure;
+const
+  ERROR = 'Expected the value (%d) to be equal to %d';
+begin
+  if aLhs <> aRhs then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else Format(ERROR, [aRhs, aLhs]);
     TError.Throw<EArgumentException>(msg);
   end;
 

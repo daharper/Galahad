@@ -184,6 +184,11 @@ type
     class function &As<T>(const aSource: IInterface): T; overload; static; inline;
 
     /// <summary>
+    /// Casts an interface reference to interface T, returns nil if not supported.
+    /// </summary>
+    class function CastInterface<T: IInterface>(const Source: IInterface): T; static;
+
+    /// <summary>
     ///  Returns true if T implements TService interface.
     /// </summary>
     class function &Is<T:class, constructor; TService>: boolean; static;
@@ -245,6 +250,8 @@ type
       aDestType: PTypeInfo;
       out aOutValue: TValue
     ): Boolean; overload; static;
+
+    class function TryParseSqliteDateTimeUtc(const S: string; out D: TDateTime): Boolean; static;
 
     /// <summary>
     ///  Convenience overload accepting a TRttiType as the destination.
@@ -452,6 +459,17 @@ begin
     aGuid := AnEmptyGuid;
     Result := False;
   end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TReflection.CastInterface<T>(const Source: IInterface): T;
+var
+  lGuid: TGUID;
+begin
+  lGuid := GetTypeData(TypeInfo(T))^.Guid;
+
+  if not Supports(Source, lGuid, Result) then
+    Result := Default(T); // Or raise an exception
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -794,6 +812,20 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
+class function TReflection.TryParseSqliteDateTimeUtc(const S: string; out D: TDateTime): Boolean;
+var
+  FS: TFormatSettings;
+begin
+  FS := TFormatSettings.Invariant;
+  FS.DateSeparator := '-';
+  FS.TimeSeparator := ':';
+  FS.ShortDateFormat := 'yyyy-mm-dd';
+  FS.LongTimeFormat := 'hh:nn:ss.zzz';
+
+  Result := TryStrToDateTime(S, D, FS);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 class function TReflection.TryVariantToTValue(const aVar: Variant; aDestType: PTypeInfo; out aOutValue: TValue): Boolean;
 var
   kind: TTypeKind;
@@ -957,6 +989,16 @@ begin
           if aDestType = TypeInfo(TDateTime) then
           begin
             if VarIsNull(aVar) or VarIsEmpty(aVar) then Exit(False);
+
+            if VarIsStr(aVar) then
+            begin
+              if not TryParseSqliteDateTimeUtc(VarToStr(aVar), dt) then
+                Exit(False);
+
+              aOutValue := TValue.From<TDateTime>(dt);
+              Exit(True);
+            end;
+
             dt := VarToDateTime(aVar);
             aOutValue := TValue.From<TDateTime>(dt);
             Exit(True);

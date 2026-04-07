@@ -97,6 +97,8 @@ type
 
 {$region 'Element Interface'}
 
+  {TODO -oDavid -cXML : Default property inconsistancy between builder and client APIs (attrs vs elems)}
+
   IBvElement = interface(IDispatch)
     ['{50669930-F303-481C-A5BD-DE675EC73BE1}']
     function GetParent: TBvElement;
@@ -153,13 +155,13 @@ type
     function PopAttr: TBvAttribute;
 
     /// <summary>Gets the attribute with the specified name, add it if it doesn't.</summary>
-    function Attr(const aName: string; const aValue: string = ''): TBvAttribute;
+    function Attr(const aName: string; const aValue: string = ''; const aInsensitiveSearch: boolean = true): TBvAttribute;
 
     /// <summary>Returns true if an attribute with the specified name exists.</summary>
-    function HasAttr(const aName: string): boolean;
+    function HasAttr(const aName: string; const aInsensitiveSearch: boolean = true): boolean;
 
     /// <summary>Returns the index of the attribute with the specified name, otherwise -1.</summary>
-    function AttrIndexOf(const aName: string): integer;
+    function AttrIndexOf(const aName: string; const aInsensitiveSearch: boolean = true): integer;
 
     /// <summary>Removes an attribute from the list.</summary>
     procedure RemoveAttr(const aName: string);
@@ -201,6 +203,7 @@ type
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
     procedure Assign(const aValue: Currency); overload;
+    procedure Assign(const aOther: IBvElement); overload;
 
 {$IFDEF MSWINDOWS}
     procedure Add(aElement: OleVariant);
@@ -233,17 +236,17 @@ type
     /// <summary>Gets the element with the specified name, adds it if it doesn't exist.</summary>
     function Elem(const aName: string; const aValue: string = ''): IBvElement;
 
+    /// <summary>Returns the index of the element with the specified name, otherwise -1.</summary>
+    function IndexOf(const aName: string; const aInsensitiveSearch: boolean = true): integer;
+
     /// <summary>Returns true if an element with the specified name exists.</summary>
-    function HasElem(const aName: string): boolean;
+    function Contains(const aName: string; const aInsensitiveSearch: boolean = true): boolean;
 
     /// <summary>Returns the first subelement.</summary>
     function First: IBvElement;
 
     /// <summary>Returns the last subelement.</summary>
     function Last: IBvElement;
-
-    /// <summary>Returns the index of the element with the specified name, otherwise -1.</summary>
-    function ElemIndexOf(const aName: string): integer;
 
     /// <summary>Pushes a new element onto the back of the list.</summary>
     /// <remarks>Returns the current element for chaining.</remarks>
@@ -327,9 +330,11 @@ type
     function PushAttr(const aName: string; const aValue: string = ''): IBvElement; overload;
     function PeekAttr: TBvAttribute;
     function PopAttr: TBvAttribute;
-    function Attr(const aName: string; const aValue: string = ''): TBvAttribute;
-    function HasAttr(const aName: string): boolean;
-    function AttrIndexOf(const aName: string): integer;
+    function Attr(const aName: string; const aValue: string = ''; const aInsensitiveSearch: boolean = true): TBvAttribute;
+
+    function HasAttr(const aName: string; const aInsensitiveSearch: boolean = true): boolean;
+    function AttrIndexOf(const aName: string; const aInsensitiveSearch: boolean = true): integer;
+
     procedure RemoveAttr(const aName: string);
     procedure ClearAttrs;
     function Attrs: TEnumerable<TBvAttribute>;
@@ -361,6 +366,7 @@ type
     procedure Assign(const aValue: Int64); overload;
     procedure Assign(const aValue: TGuid); overload;
     procedure Assign(const aValue: Currency); overload;
+    procedure Assign(const aOther: IBvElement); overload;
 
 {$IFDEF MSWINDOWS}
     procedure Add(aElement: OleVariant);
@@ -371,18 +377,23 @@ type
     function AddOrSetElem(const aName: string; const aValue: string = ''): IBvElement; overload;
     function AddOrSetElem(const aOther: IBvElement): IBvElement; overload;
     function Elem(const aName: string; const aValue: string = ''): IBvElement;
-    function HasElem(const aName: string): boolean;
+
+    function Contains(const aName: string; const aInsensitiveSearch: boolean = true): boolean;
+    function IndexOf(const aName: string; const aInsensitiveSearch: boolean = true): integer;
+
     function First: IBvElement;
     function Last: IBvElement;
-    function ElemIndexOf(const aName: string): integer;
+
     function Push(const aElement: IBvElement): IBvElement; overload;
     function Push(const aName: string; const aValue: string): IBvElement; overload;
     function Pe(const aName: string; const aValue: string): IBvElement;
     function Peek: IBvElement;
     function Pop: IBvElement;
+
     procedure RemoveElem(const aName: string);
     procedure RemoveElemAt(const aIndex: integer);
     procedure ClearElems;
+
     function Elems: TEnumerable<IBvElement>;
     function ElemAt(const aIndex: integer): IBvElement;
 
@@ -841,7 +852,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvAttribute.AsDateTime: TDateTime;
 begin
-  Result := TConvert.ToDateTimeISO8601(fValue);
+  Result := TConvert.ToDateTimeISO8601Utc(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -923,7 +934,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvAttribute.Assign(const aValue: TDateTime);
 begin
-  fValue := TConvert.DateTimeToStringISO8601(aValue);
+  fValue := TConvert.DateTimeToStringISO8601Utc(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1046,7 +1057,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 function TBvElement.AsDateTime: TDateTime;
 begin
-  Result := TConvert.ToDateTimeISO8601(fValue);
+  Result := TConvert.ToDateTimeISO8601Utc(fValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1222,7 +1233,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: TDateTime);
 begin
-  fValue := TConvert.DateTimeToStringISO8601(aValue);
+  fValue := TConvert.DateTimeToStringISO8601Utc(aValue);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1242,6 +1253,7 @@ procedure TBvElement.Assign(const aValue: TGuid);
 begin
   fValue := GUIDToString(aValue);
 end;
+
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.Assign(const aValue: Currency);
 begin
@@ -1249,7 +1261,25 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.ElemIndexOf(const aName: string): Integer;
+procedure TBvElement.Assign(const aOther: IBvElement);
+begin
+  Ensure.IsTrue(fElems.IsEmpty and fAttrs.IsEmpty, 'Element is already initialized.');
+
+  fName := aOther.Name;
+  fValue := aOther.Value;
+
+  for var e in aOther.Elems do
+    Push(e);
+
+  for var a in aOther.Attrs do
+    fAttrs.AddRange(aOther.Attrs);
+
+  aOther.ClearElems;
+  aOther.ClearAttrs;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TBvElement.IndexOf(const aName: string; const aInsensitiveSearch: boolean): Integer;
 var
   i: Integer;
   e: IBvElement;
@@ -1258,7 +1288,15 @@ begin
   begin
     e := fElems[i];
 
-    if e.Name = aName then exit(i);
+    {TODO -oDavid -cLanguage : Create a more concise abstraction for these type of shapes}
+    if aInsensitiveSearch then
+    begin
+      if SameText(e.Name, aName) then exit(i);
+    end
+    else
+    begin
+      if e.Name = aName then exit(i);
+    end;
   end;
 
   Result := -1;
@@ -1271,9 +1309,9 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.HasElem(const aName: string): boolean;
+function TBvElement.Contains(const aName: string; const aInsensitiveSearch: boolean): boolean;
 begin
-  Result := ElemIndexOf(aName) <> -1;
+  Result := IndexOf(aName, aInsensitiveSearch) <> -1;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1467,7 +1505,7 @@ function TBvElement.AddOrSetElem(const aName, aValue: string): IBvElement;
 var
   i: Integer;
 begin
-  i := ElemIndexOf(aName);
+  i := IndexOf(aName);
 
   if i <> -1 then
   begin
@@ -1484,7 +1522,7 @@ function TBvElement.AddOrSetElem(const aOther: IBvElement): IBvElement;
 var
   i: Integer;
 begin
-  i := ElemIndexOf(aOther.Name);
+  i := IndexOf(aOther.Name);
 
   if i = -1 then
   begin
@@ -1505,7 +1543,7 @@ function TBvElement.Elem(const aName, aValue: string): IBvElement;
 var
   i: Integer;
 begin
-  i := ElemIndexOf(aName);
+  i := IndexOf(aName);
   if i <> -1 then
     Exit(fElems[i]);
 
@@ -1524,7 +1562,7 @@ end;
 {----------------------------------------------------------------------------------------------------------------------}
 procedure TBvElement.RemoveElem(const aName: string);
 begin
-  var i := ElemIndexOf(aName);
+  var i := IndexOf(aName);
 
   if i <> -1 then
     RemoveElemAt(i);
@@ -1663,10 +1701,17 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.AttrIndexOf(const aName: string): integer;
+function TBvElement.AttrIndexOf(const aName: string; const aInsensitiveSearch: boolean): integer;
 begin
   for var i := 0 to Pred(fAttrs.Count) do
-    if (fAttrs[i].Name = aName) then exit(i);
+    if aInsensitiveSearch then
+    begin
+      if (SameText(fAttrs[i].Name, aName)) then exit(i);
+    end
+    else
+    begin
+       if (fAttrs[i].Name = aName) then exit(i);
+    end;
 
   Result := -1;
 end;
@@ -1678,15 +1723,15 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.HasAttr(const aName: string): boolean;
+function TBvElement.HasAttr(const aName: string; const aInsensitiveSearch: boolean): boolean;
 begin
-  Result := AttrIndexOf(aName) <> -1;
+  Result := AttrIndexOf(aName, aInsensitiveSearch) <> -1;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-function TBvElement.Attr(const aName, aValue: string): TBvAttribute;
+function TBvElement.Attr(const aName, aValue: string; const aInsensitiveSearch: boolean): TBvAttribute;
 begin
-  var i := AttrIndexOf(aName);
+  var i := AttrIndexOf(aName, aInsensitiveSearch);
 
   if i <> -1 then
     Result := fAttrs[i]

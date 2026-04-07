@@ -41,6 +41,24 @@ type
       /// <summary>Clones an object using JSON serialization.</summary>
       class function Clone<T:class, constructor>(const aInstance: T): T; static;
 
+      /// <summary>Returns a string from joining the items in a json array.</summary>
+      class function JoinAsStr(const aArray: TJsonArray; const aSep: string = ', '): string; static;
+
+      /// <summary>Returns a string from joining the items in a json array.</summary>
+      class function ArrayAsStr(const aObj: TJsonObject; const aName: string; const aSep: string = ', '): string; static;
+
+      /// <summary>Returns a string from joining the items in a json array.</summary>
+      class function NestedArrayAsStr(const aObj: TJsonObject;  const aObjName, aValueName: string; const aSep: string = ', '): string; static;
+
+      class function AsInt64(const aObj: TJsonObject; const aName: string; const aDefault: Int64 = 0): Int64; static;
+      class function AsDoubleOr(const aObj: TJsonObject; const aName: string; const aDefault: double = 0): double; static;
+
+      /// <summary>Returns a string from a JSON object value</summary>
+      class function AsStr(const aObj: TJsonObject; const aName: string): string; static;
+
+      /// <summary>Returns a string from a nested JSON value</summary>
+      class function AsNestedStr(const aObj: TJsonObject; const aObjName, aValueName: string): string; static;
+
       /// <summary>Returns a TJSONObject from JSON text.</summary>
       class function AsObject(const aJsonText: string): TResult<TJSONObject>; static;
 
@@ -58,6 +76,9 @@ type
     end;
 
 implementation
+
+uses
+  System.Generics.Collections;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function Json.Parse(const aJsonText: string): TJSONValue;
@@ -123,6 +144,106 @@ begin
   Ensure.IsTrue(Assigned(aInstance), 'Cannot clone a nil instance');
 
   Result := TJson.JsonToObject<T>(TJson.ObjectToJsonString(aInstance));
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.JoinAsStr(const aArray: TJsonArray; const aSep: string): string;
+begin
+  Result := '';
+
+  if aArray = nil then exit;
+
+  for var i := 0 to Pred(aArray.Count) do
+  begin
+    var obj := aArray.Items[i] as TJSONObject;
+
+    if obj <> nil then
+      Result := obj.Value + aSep;
+  end;
+
+  var len := Length(Result) - 2;
+
+  if len > 0 then
+    Result := Result.Substring(len);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.ArrayAsStr(const aObj: TJsonObject; const aName: string; const aSep: string = ', '): string;
+begin
+  Result := '';
+
+  if aObj = nil then exit;
+
+  var arr := aObj.Values[aName] as TJSONArray;
+
+  if arr = nil then exit;
+
+  Result := JoinAsStr(arr, aSep);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.NestedArrayAsStr(const aObj: TJsonObject; const aObjName, aValueName, aSep: string): string;
+var
+  Child: TJSONObject;
+begin
+  Result := '';
+
+  if aObj = nil then exit;
+
+  Child := aObj.Values[aObjName] as TJSONObject;
+
+  if Child <> nil then
+    Result := ArrayAsStr(Child, aValueName, aSep);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.AsStr(const aObj: TJsonObject; const aName: string): string;
+var
+  V: TJSONValue;
+begin
+  Result := '';
+
+  if aObj = nil then exit;
+
+  V := aObj.Values[aName];
+
+  if V <> nil then
+    Result := V.Value;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.AsNestedStr(const aObj: TJsonObject; const aObjName, aValueName: string): string;
+var
+  Child: TJSONObject;
+begin
+  Result := '';
+
+  if aObj = nil then exit;
+
+  Child := aObj.Values[aObjName] as TJSONObject;
+
+  if Child <> nil then
+    Result := AsStr(Child, aValueName);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.AsDoubleOr(const aObj: TJsonObject; const aName: string; const aDefault: double): double;
+begin
+  Result := aDefault;
+
+  if aObj = nil then exit;
+
+  aObj.TryGetValue<Double>(aName, Result);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function Json.AsInt64(const aObj: TJsonObject; const aName: string; const aDefault: Int64): Int64;
+begin
+  Result := aDefault;
+
+  if aObj = nil then exit;
+
+  aObj.TryGetValue<Int64>(aName, Result);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -292,15 +292,38 @@ type
 
     /// <summary>
     /// Tries to parse an ISO 8601 date/time string.
-    /// Parsing is strict; local-time semantics are preserved (no timezone normalization).
+    /// The returned TDateTime is converted to the local system time zone.
     /// </summary>
-    class function TryToDateTimeISO8601(const S: string; out aValue: TDateTime): Boolean; static;
+    class function TryToDateTimeISO8601Local(const S: string; out aValue: TDateTime): Boolean; static;
 
-    /// <summary>Parses ISO 8601 date/time or returns Default if parsing fails.</summary>
-    class function ToDateTimeOrISO8601(const S: string; const aDefault: TDateTime = 0): TDateTime; static;
+    /// <summary>Parses ISO 8601 date/time to local; or returns Default if parsing fails.</summary>
+    class function ToDateTimeISO8601LocalOr(const S: string; const aDefault: TDateTime = 0): TDateTime; static;
 
-    /// <summary>Strictly parses ISO 8601 date/time; raises EStrictConvertError on failure.</summary>
-    class function ToDateTimeISO8601(const S: string): TDateTime; static;
+    /// <summary>Strictly parses ISO 8601 date/time to local; raises EStrictConvertError on failure.</summary>
+    class function ToDateTimeISO8601Local(const S: string): TDateTime; static;
+
+    /// <summary>
+    /// Tries to parse an ISO 8601 date/time string.
+    /// The returned TDateTime is not converted to the local system time zone
+    /// and should be interpreted by convention as UTC.
+    /// </summary>
+    class function TryToDateTimeISO8601Utc(const S: string; out aValue: TDateTime): Boolean; static;
+
+    /// <summary>Parses ISO 8601 date/time to UTC or returns Default if parsing fails.</summary>
+    class function ToDateTimeISO8601UtcOr(const S: string; const aDefault: TDateTime = 0): TDateTime; static;
+
+    /// <summary>Strictly parses ISO 8601 date/time to UTC; raises EStrictConvertError on failure.</summary>
+    class function ToDateTimeISO8601Utc(const S: string): TDateTime; static;
+
+    /// <summary>
+    /// Returns the current local date/time.
+    /// </summary>
+    class function LocalNow: TDateTime; static;
+
+    /// <summary>
+    /// Returns the current UTC date/time.
+    /// </summary>
+    class function UtcNow: TDateTime; static;
 
     {------------------------------- Currency (RTL-style parsing, locale-aware) ----------------------------------}
 
@@ -476,17 +499,24 @@ type
     class function MoneyToStringInv(const aValue: Currency; const aDecimals: Integer = 2): string; static;
 
     /// <summary>
-    /// Converts a TDateTime to an ISO 8601 string (invariant).
+    /// Formats a TDateTime as an ISO 8601 date/time string using local-time interpretation.
     /// </summary>
-    /// <remarks>
-    /// Uses local-time semantics (no timezone normalization). Intended to round-trip with TryToDateTimeISO8601.
-    /// </remarks>
-    class function DateTimeToStringISO8601(const aValue: TDateTime): string; static;
+    class function DateTimeToStringISO8601Local(const aValue: TDateTime): string; static;
 
     /// <summary>
-    /// Converts a date (TDateTime) to ISO 8601 date-only form (YYYY-MM-DD).
+    /// Converts a TDateTime to an ISO 8601 date-only string using local-time interpretation.
     /// </summary>
-    class function DateToStringISO8601(const aValue: TDateTime): string; static;
+    class function DateToStringISO8601Local(const aValue: TDateTime): string; static;
+
+    /// <summary>
+    /// Formats a TDateTime as an ISO 8601 date/time string using UTC interpretation.
+    /// </summary>
+    class function DateTimeToStringISO8601Utc(const aValue: TDateTime): string; static;
+
+    /// <summary>
+    /// Converts a TDateTime to an ISO 8601 date-only string using UTC interpretation.
+    /// </summary>
+    class function DateToStringISO8601Utc(const aValue: TDateTime): string; static;
 
     /// <summary>
     /// Converts a time (TDateTime) to ISO-like time-only form (HH:NN:SS).
@@ -987,21 +1017,39 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.TryToDateTimeISO8601(const S: string; out aValue: TDateTime): Boolean;
+class function TConvert.TryToDateTimeISO8601Local(const S: string; out aValue: TDateTime): Boolean;
 begin
   Result := TryISO8601ToDate(S, aValue, False);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDateTimeOrISO8601(const S: string; const aDefault: TDateTime): TDateTime;
+class function TConvert.ToDateTimeISO8601LocalOr(const S: string; const aDefault: TDateTime): TDateTime;
 begin
-  if not TryToDateTimeISO8601(S, Result) then Result := aDefault;
+  if not TryToDateTimeISO8601Local(S, Result) then Result := aDefault;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.ToDateTimeISO8601(const S: string): TDateTime;
+class function TConvert.ToDateTimeISO8601Local(const S: string): TDateTime;
 begin
-  if not TryToDateTimeISO8601(S, Result) then RaiseStrict('ISO-8601 TDateTime', S);
+  if not TryToDateTimeISO8601Local(S, Result) then RaiseStrict('ISO-8601 TDateTime', S);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.TryToDateTimeISO8601Utc(const S: string; out aValue: TDateTime): Boolean;
+begin
+  Result := TryISO8601ToDate(S, aValue, True);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateTimeISO8601UtcOr(const S: string; const aDefault: TDateTime): TDateTime;
+begin
+  if not TryToDateTimeISO8601Utc(S, Result) then Result := aDefault;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.ToDateTimeISO8601Utc(const S: string): TDateTime;
+begin
+  if not TryToDateTimeISO8601Utc(S, Result) then RaiseStrict('ISO-8601 TDateTime', S);
 end;
 
 {$endregion}
@@ -1508,16 +1556,29 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.DateTimeToStringISO8601(const aValue: TDateTime): string;
+class function TConvert.DateTimeToStringISO8601Local(const aValue: TDateTime): string;
 begin
   // local-time semantics preserved (matches TryToDateTimeISO8601 using AInputIsUTC=False)
   Result := DateToISO8601(aValue, false);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class function TConvert.DateToStringISO8601(const aValue: TDateTime): string;
+class function TConvert.DateToStringISO8601Local(const aValue: TDateTime): string;
 begin
   Result := DateToISO8601(aValue, false);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.DateTimeToStringISO8601Utc(const aValue: TDateTime): string;
+begin
+  // local-time semantics preserved (matches TryToDateTimeISO8601 using AInputIsUTC=False)
+  Result := DateToISO8601(aValue, true);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.DateToStringISO8601Utc(const aValue: TDateTime): string;
+begin
+  Result := DateToISO8601(aValue, true);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1525,6 +1586,18 @@ class function TConvert.TimeToStringISO8601(const aValue: TDateTime): string;
 begin
   // Time-only ISO-like form; keep it deterministic and culture-independent
   Result := FormatDateTime('hh":"nn":"ss', aValue, InvariantFS);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.UtcNow: TDateTime;
+begin
+  Result := TTimeZone.Local.ToUniversalTime(Now);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TConvert.LocalNow: TDateTime;
+begin
+  Result := Now;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
