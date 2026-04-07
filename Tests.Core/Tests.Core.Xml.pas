@@ -627,7 +627,7 @@ begin
 
   Assert.IsTrue(e.HasElems);
   Assert.AreEqual(1, e.ElemCount);
-  Assert.IsTrue(e.HasElem('id'));
+  Assert.IsTrue(e.Contains('id'));
 
   var id := e.Elem('id');
 

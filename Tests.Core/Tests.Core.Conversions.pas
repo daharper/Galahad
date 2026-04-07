@@ -207,27 +207,83 @@ procedure ConversionsFixture.Iso8601Tests;
 var
   DT: TDateTime;
 begin
-  // Try
-  Assert.IsTrue(TConvert.TryToDateTimeISO8601('2026-02-09T14:30:00', DT));
-  Assert.AreEqual(EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0), DT, 1e-8);
-
-  Assert.IsFalse(TConvert.TryToDateTimeISO8601('2026-02-09T14:30:00 rubbish', DT));
-
-  // Or (default Default parameter is 0)
+  // Local Try
+  Assert.IsTrue(TConvert.TryToDateTimeISO8601Local('2026-02-09T14:30:00', DT));
   Assert.AreEqual(
     EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
-    TConvert.ToDateTimeOrISO8601('2026-02-09T14:30:00', 0),
+    DT,
     1e-8);
 
-  Assert.AreEqual(EncodeDate(1999, 12, 31),
-    TConvert.ToDateTimeOrISO8601('bad', EncodeDate(1999, 12, 31)),
+  Assert.IsFalse(TConvert.TryToDateTimeISO8601Local('2026-02-09T14:30:00 rubbish', DT));
+
+  // Local Or
+  Assert.AreEqual(
+    EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
+    TConvert.ToDateTimeISO8601LocalOr('2026-02-09T14:30:00', 0),
     1e-8);
 
-  Assert.AreEqual(0.0, TConvert.ToDateTimeOrISO8601('bad'), 1e-8);
+  Assert.AreEqual(
+    EncodeDate(1999, 12, 31),
+    TConvert.ToDateTimeISO8601LocalOr('bad', EncodeDate(1999, 12, 31)),
+    1e-8);
 
-  // Strict (raises)
-  Assert.WillNotRaise(procedure begin TConvert.ToDateTimeISO8601('2026-02-09T14:30:00'); end);
-  Assert.WillRaise(procedure begin TConvert.ToDateTimeISO8601('nope'); end, EStrictConvertError);
+  Assert.AreEqual(
+    0.0,
+    TConvert.ToDateTimeISO8601LocalOr('bad'),
+    1e-8);
+
+  // Local strict
+  Assert.WillNotRaise(
+    procedure
+    begin
+      TConvert.ToDateTimeISO8601Local('2026-02-09T14:30:00');
+    end);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TConvert.ToDateTimeISO8601Local('nope');
+    end,
+    EStrictConvertError);
+
+  // UTC Try
+  Assert.IsTrue(TConvert.TryToDateTimeISO8601Utc('2026-02-09T14:30:00Z', DT));
+  Assert.AreEqual(
+    EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
+    DT,
+    1e-8);
+
+  Assert.IsFalse(TConvert.TryToDateTimeISO8601Utc('2026-02-09T14:30:00Z rubbish', DT));
+
+  // UTC Or
+  Assert.AreEqual(
+    EncodeDate(2026, 2, 9) + EncodeTime(14, 30, 0, 0),
+    TConvert.ToDateTimeISO8601UtcOr('2026-02-09T14:30:00Z', 0),
+    1e-8);
+
+  Assert.AreEqual(
+    EncodeDate(1999, 12, 31),
+    TConvert.ToDateTimeISO8601UtcOr('bad', EncodeDate(1999, 12, 31)),
+    1e-8);
+
+  Assert.AreEqual(
+    0.0,
+    TConvert.ToDateTimeISO8601UtcOr('bad'),
+    1e-8);
+
+  // UTC strict
+  Assert.WillNotRaise(
+    procedure
+    begin
+      TConvert.ToDateTimeISO8601Utc('2026-02-09T14:30:00Z');
+    end);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TConvert.ToDateTimeISO8601Utc('nope');
+    end,
+    EStrictConvertError);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
