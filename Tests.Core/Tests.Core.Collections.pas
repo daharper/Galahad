@@ -143,6 +143,7 @@ type
     [Test] procedure Union_Should_Combine_Items_Without_Duplicates;
     [Test] procedure Intersect_Should_Keep_Items_Present_In_Other_Source;
     [Test] procedure SymmetricDifference_Should_Keep_Items_Present_In_Only_One_Source;
+    [Test] procedure Concat_Should_Append_Items_In_Order;
   end;
 
   [TestFixture]
@@ -634,6 +635,22 @@ begin
   Assert.AreEqual(5, index[0]);
   Assert.AreEqual(6, index[1]);
   Assert.AreEqual(7, index[2]);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSequenceFixture.Concat_Should_Append_Items_In_Order;
+begin
+  var r := TSequence<Integer>.From([1, 2, 3])
+                             .Concat([4, 5, 6])
+                             .ToArray;
+
+  Assert.AreEqual(6, Length(r));
+  Assert.AreEqual(1, r[0]);
+  Assert.AreEqual(2, r[1]);
+  Assert.AreEqual(3, r[2]);
+  Assert.AreEqual(4, r[3]);
+  Assert.AreEqual(5, r[4]);
+  Assert.AreEqual(6, r[5]);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

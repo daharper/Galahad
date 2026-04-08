@@ -51,7 +51,8 @@ uses
   Base.Files in 'Base\Base.Files.pas',
   Base.Settings in 'Base\Base.Settings.pas',
   Base.Collect in 'Base\Base.Collect.pas',
-  Tests.Core.Collections in 'Tests.Core\Tests.Core.Collections.pas';
+  Tests.Core.Collections in 'Tests.Core\Tests.Core.Collections.pas',
+  Base.Application in 'Base\Base.Application.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

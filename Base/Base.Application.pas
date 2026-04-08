@@ -75,7 +75,6 @@ type
   public
     function Services: TContainer;
     function Build: IApplication;
-//    function LoadSettings<T:TSettings, constructor>: TApplicationBuilder;
     function LoadSettings<T:ISettings>: TApplicationBuilder;
     function AddModule<T: IContainerModule, class, constructor>: TApplicationBuilder;
     function AddAliases<T: IContainerModule, class, constructor>: TApplicationBuilder;

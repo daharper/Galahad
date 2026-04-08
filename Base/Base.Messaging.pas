@@ -120,7 +120,7 @@ type
   ///    TUiEvent     = class(TBaseEvent)
   ///    TAppEvent    = class(TBaseEvent)
   ///
-  ///  Events are plain objects. The event bus does not own instances unless PublishOwned is used.
+  ///  Events are plain objects. The event bus takes ownership of instances unless PublishOwned is used.
   /// </summary>
   TBaseEvent = class
   private

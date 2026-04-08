@@ -402,6 +402,9 @@ type
     function Distinct(const aComparer: IEqualityComparer<T> = nil): TSequence<T>; overload;
     function Distinct(out aDuplicates: TList<T>; const aComparer: IEqualityComparer<T> = nil): TSequence<T>; overload;
 
+    function Concat(const aOther: TItems<T>): TSequence<T>; overload;
+    function Concat(const aOther: array of T): TSequence<T>; overload;
+
     function Subsequence(const aLowIndex: integer; const aHighIndex: integer): TSequence<T>;
     function Take(const aCount: integer): TSequence<T>;
     function Skip(const aCount: integer): TSequence<T>;
@@ -1559,6 +1562,30 @@ begin
   Result.fCount := list.Count;
 
   scope.Release(aDuplicates);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSequence<T>.Concat(const aOther: TItems<T>): TSequence<T>;
+begin
+  if aOther.IsEmpty then exit(Self);
+
+  if fCount = 0 then exit(TSequence<T>.From(aOther.AsArray));
+
+  Result.fCount := fCount + aOther.Count;
+
+  SetLength(Result.fItems, Result.fCount);
+
+  for var i := 0 to Pred(fCount) do
+    Result.fItems[i] := fItems[i];
+
+  for var i := 0 to aOther.High do
+    Result.fItems[fCount + i] := aOther[i];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSequence<T>.Concat(const aOther: array of T): TSequence<T>;
+begin
+  Result := Concat(TItems<T>.From(aOther));
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

@@ -179,6 +179,7 @@
         <DCCReference Include="Base\Base.Settings.pas"/>
         <DCCReference Include="Base\Base.Collect.pas"/>
         <DCCReference Include="Tests.Core\Tests.Core.Collections.pas"/>
+        <DCCReference Include="Base\Base.Application.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
