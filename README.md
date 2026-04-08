@@ -2,32 +2,21 @@
 
 <img width="270" height="395" alt="Galahad" src="https://github.com/user-attachments/assets/73dfd30c-6dfe-422e-92cb-00cf36e9ac4b" />
 
-*Developed for Delphi Florence.*
+*Developed with Delphi Florence.*
 
-Modern engineering types for Delphi, allowing Clean Architecture and best practices.
+Modern engineering types for Delphi, supporting Clean Architecture and pragmatic best practices.
 
-The repository should take shape over the next few weeks, in the meantime there will be lots of churn.
+Project Galahad aims to provide a minimal set of opt-in modern types for general Delphi usage, along with a simple, opinionated architecture for building desktop, console, and mobile applications. It remains very much a work in progress, moving toward an initial `v0.1` release.
 
-Initial project push (version 0.1) involved:
+Trying to evolve everything at once became a little overwhelming. Rather than rushing toward a release, development is now being driven through focused demonstration applications.
 
-- Pulling code from a personal project
-- Clarifying policies
-- Refactoring
-- Writing tests
-
-The second phase has just begun which is a basic application (named **Escape**) that uses the Galahad base types.
-
-This is for the application, hardening, and polishing of the base types in the initial version 0.1 release.
-
-**Project.groupproj** opens both projects; for individual projects open **Galahad.dproj** or **Escape.dproj**.
-
-Once Escape is finished, I'll separate the two repositories. For now, with Escape driving the refactoring and stabilization of the initial version of the Galahad base types, it is convenient to keep them together temporarily. Once the dust settles, I'll provide documentation.
+These demonstrations put useful pressure on the library, surfacing assumptions, oversights, and awkward edges: UI integration, data access, dependency management, state handling, conventions, infrastructure boundaries, and the practical realities of working in Delphi rather than in a language or ecosystem the patterns were originally designed around.
 
 The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail.
 
 The Holy Grail, in this sense, is maintainable code. 
 
-**Project Galahad** aims to be a minimal and opinionated set of types to support modern coding practices.
+**Project Galahad** aims to remain lightweight, client-side, and opt-in. It is not intended to become a full-blown ORM, nor to compete with other solutions that already solve specific problems well. Instead, it offers a focused set of types to support modern coding practices in Delphi.
 
 For example, the TScope type:
 
@@ -51,15 +40,8 @@ begin
 end; 
 ```
 
-This project is experimental and exploratory in nature:
-
-- **Project Galahad** does not aim to be an ORM, nor a framework; it is a set of types
-- **Project Escape** only implements what it needs for demonstrating and dogfooding the base types
-
-Subsequent releases will seek to expand upon the initial limited core feature set.
-
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
 For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
 
-For more information, please see the [Project Hub](https://www.beyondvelocity.com/).
+For more information, please see the [Modern Delphi](https://www.beyondvelocity.com/114).
