@@ -23,18 +23,18 @@ For example, the TScope type:
 var scope: TScope;
 begin
   // Automatically freed when the procedure ends
-  var List := scope.Owns(TStringList.Create); 
-  var Map  := scope.Owns(TDictionary<string, string>.Create);
+  var list := scope.Owns(TStringList.Create); 
+  var map  := scope.Owns(TDictionary<string, string>.Create);
   
   // Optional custom cleanup (Go-style defer)
   scope.Defer(procedure begin 
     Writeln('Cleaning up extra resources...'); 
   end);
   
-  List.Add('Galahad makes this easy.');
+  list.Add('Galahad makes this easy.');
 
-  // if there is an exception, List is cleaned up, otherwise we want to return it.
-  Result := scope.Release(List);
+  // if there is an exception, list is cleaned up, otherwise we want to return it.
+  Result := scope.Release(list);
 end; 
 ```
 
