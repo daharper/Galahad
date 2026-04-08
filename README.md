@@ -42,4 +42,4 @@ For a more complete and powerful general framework, see the battle-hardened *Spr
 
 For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
 
-For more information, please see the [Modern Delphi](https://www.beyondvelocity.com/114).
+For more information, please see [here](https://www.beyondvelocity.com/114).
