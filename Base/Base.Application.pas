@@ -197,7 +197,6 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-//function TApplicationBuilder.LoadSettings<T>: TApplicationBuilder;
 function TApplicationBuilder.LoadSettings<T>: TApplicationBuilder;
 begin
   var files := Services.Resolve<IFileService>;
@@ -205,11 +204,9 @@ begin
 
   Ensure.IsTrue(settingsRes.IsOk, 'Error loading the settings file: ' + files.SettingsPath);
 
-  fSettings := Services.Resolve<T>;  //   T.Create;
+  fSettings := Services.Resolve<T>;
 
   fSettings.Assign(settingsRes.Value);
-
-//  Services.AddSingleton<ISettings>(fSettings);
 
   Result := Self;
 end;
