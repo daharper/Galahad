@@ -1,6 +1,8 @@
 # Project Galahad
 [Please see here for more](https://www.beyondvelocity.com/114)
 
+Short video overview of the pre-release state of the project:
+
 https://youtu.be/sxqf8a779ZQ
 
 *Developed with Delphi Florence.*
