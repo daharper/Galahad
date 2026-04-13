@@ -1,4 +1,5 @@
 # Project Galahad
+[Please see here for more](https://www.beyondvelocity.com/114)
 
 <img width="270" height="395" alt="Galahad" src="https://github.com/user-attachments/assets/73dfd30c-6dfe-422e-92cb-00cf36e9ac4b" />
 
@@ -41,5 +42,3 @@ end;
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
 For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
-
-For more information, please see [here](https://www.beyondvelocity.com/114).
