@@ -1,7 +1,7 @@
 # Project Galahad
 [Please see here for more](https://www.beyondvelocity.com/114)
 
-Short video overview of the pre-release state of the project:
+The following is a short YouTube video overview of the project:
 
 https://youtu.be/sxqf8a779ZQ
 
