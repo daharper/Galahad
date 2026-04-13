@@ -1,9 +1,7 @@
 # Project Galahad
 [Please see here for more](https://www.beyondvelocity.com/114)
 
-The following is a short YouTube video overview of the project:
-
-https://youtu.be/sxqf8a779ZQ
+[YouTube Short Presentation](https://www.youtube.com/watch?v=2yx6rttjH7U)
 
 *Developed with Delphi Florence.*
 
