@@ -1,12 +1,7 @@
 # Project Galahad
 [Please see here for more](https://www.beyondvelocity.com/114)
 
-
-
-
-
-
-
+<iframe width="560" height="315" src="https://www.youtube.com/embed/sxqf8a779ZQ?si=_FgE2Cj55bMhCyhr" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 *Developed with Delphi Florence.*
 
