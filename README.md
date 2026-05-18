@@ -7,13 +7,9 @@
 
 Modern engineering types for Delphi, supporting Clean Architecture and pragmatic best practices.
 
-Project Galahad aims to provide a minimal set of opt-in modern types for general Delphi usage, along with a simple, opinionated architecture for building desktop, console, and mobile applications. It remains very much a work in progress, moving toward an initial `v0.1` release.
+Project Galahad aims to provide a minimal set of opt-in modern types for general Delphi usage, along with a simple, opinionated architecture for building desktop, console, and mobile applications. It remains very much a work in progress, moving toward an initial `v0.1` release via the `Kitae project`.
 
-Trying to evolve everything at once became a little overwhelming. Rather than rushing toward a release, development is now being driven through focused demonstration applications.
-
-These demonstrations put useful pressure on the library, surfacing assumptions, oversights, and awkward edges: UI integration, data access, dependency management, state handling, conventions, infrastructure boundaries, and the practical realities of working in Delphi rather than in a language or ecosystem the patterns were originally designed around.
-
-The name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail. The Holy Grail, in this sense, is maintainable code. 
+he name **Galahad** was chosen after King Arthur's knight, pure and of great integrity, who sought the Holy Grail. The Holy Grail, in this sense, is maintainable code. 
 
 **Project Galahad** aims to remain lightweight, client-side, and opt-in. It is not intended to become a full-blown ORM, nor to compete with other solutions that already solve specific problems well. Instead, it offers a focused set of types to support modern coding practices in Delphi.
 
