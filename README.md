@@ -37,4 +37,4 @@ end;
 
 For a more complete and powerful general framework, see the battle-hardened *Spring4D*.
 
-For backend services there are many excellent frameworks such as *DMVC*, *Dext*, *mORMot*, *Horse*, and others.
+For backend services there are many excellent frameworks, please see *DMVC*, *Dext*, *mORMot*, *Horse*, etc.
