@@ -81,7 +81,7 @@ type
     function Options: TSqliteOptions;
   end;
 
-  TSqliteContextPayload = class(TTransient, ISqliteContextPayload)
+  TSqliteContextPayload = class(TTransient, ISqliteContextPayload, IDbContextFingerprint)
   private
     fOptions: TSqliteOptions;
   public
@@ -110,8 +110,9 @@ type
 
   TSqliteSession = class(TTransient, IDbSession)
   private
-    fDriver: TFDPhysSQLiteDriverLink;
     fConnection: TFDConnection;
+
+    class var fDriver: TFDPhysSQLiteDriverLink;
 
     procedure ApplySqlitePolicy(const aOpt: TSqliteOptions);
   public
@@ -129,6 +130,10 @@ type
 
     function GetSchemaVersion: Integer;
     procedure SetSchemaVersion(const Value: Integer);
+
+    class procedure EnsureConnectionDef(const AName: string; const AOpt: TSqliteOptions);
+
+    class destructor Destroy;
   end;
 
   TSqliteStartup = class(TSingleton, IDbStartupHook)
@@ -170,6 +175,8 @@ type
   function BuildSqliteContext(const aOptions: TSqliteOptions): IDbContext; overload;
 
 const
+  CSqliteConnectionDefName = 'sqlite_default';
+
   CSqliteJournalModeNames: array[TSqliteJournalMode] of string = (
     '',
     'WAL',
@@ -408,21 +415,46 @@ begin
   if not Supports(aCtx.Payload, ISqliteContextPayload, payload) then
     raise Exception.Create('SQLite context payload missing or wrong type.');
 
-  aConnection.Connected := false;
-
-  var driverId := aConnection.Params.DriverID;
-
+  aConnection.Connected := False;
   aConnection.LoginPrompt := False;
 
+  aConnection.ConnectionDefName := '';
   aConnection.Params.Clear;
-  aConnection.Params.Assign(fConnection.Params);
 
-  if not string.IsNullOrWhiteSpace(driverId) then
-    aConnection.Params.DriverID := driverId;
+  EnsureConnectionDef(CSqliteConnectionDefName, payload.Options);
 
+  aConnection.ConnectionDefName := CSqliteConnectionDefName;
   aConnection.Connected := True;
 
   ApplySqlitePolicy(payload.Options);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class procedure TSqliteSession.EnsureConnectionDef(const aName: string; const aOpt: TSqliteOptions);
+begin
+  if FDManager.ConnectionDefs.FindConnectionDef(aName) = nil then
+  begin
+    if fDriver = nil then
+    begin
+      fDriver := TFDPhysSQLiteDriverLink.Create(nil);
+      fDriver.DriverID := 'SQLite';
+    end;
+
+    var params := TStringList.Create;
+    try
+      params.Values['DriverID']    := 'SQLite';
+      params.Values['Database']    := aOpt.DatabasePath;
+      params.Values['LockingMode'] := 'Normal';
+      params.Values['Pooled']      := 'True';
+
+      if aOpt.BusyTimeoutMs > 0 then
+        params.Values['BusyTimeout'] := IntToStr(aOpt.BusyTimeoutMs);
+
+      FDManager.AddConnectionDef(aName, 'SQLite', Params);
+    finally
+      Params.Free;
+    end;
+  end;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -436,20 +468,15 @@ begin
     raise EArgumentException.Create('SQLite DatabasePath is required.');
 
   // v0.1 simple: driver link per session (can be lifted to singleton later)
-  fDriver := TFDPhysSQLiteDriverLink.Create(nil);
-  fDriver.DriverID := 'SQLite';
+
+//  fDriver := TFDPhysSQLiteDriverLink.Create(nil);
+//  fDriver.DriverID := 'SQLite';
+
+  EnsureConnectionDef(CSqliteConnectionDefName, aOpt);
 
   fConnection := TFDConnection.Create(nil);
+  fConnection.ConnectionDefName := CSqliteConnectionDefName;
   fConnection.LoginPrompt := False;
-
-  fConnection.Params.Clear;
-  fConnection.Params.DriverID := 'SQLite';
-  fConnection.Params.Database := aOpt.DatabasePath;
-  fConnection.Params.Add('LockingMode=Normal');
-
-  if aOpt.BusyTimeoutMs > 0 then
-    fConnection.Params.Values['BusyTimeout'] := IntToStr(aOpt.BusyTimeoutMs);
-
   fConnection.Connected := True;
 
   ApplySqlitePolicy(aOpt);
@@ -462,9 +489,14 @@ begin
     fConnection.Connected := False;
 
   fConnection.Free;
-  fDriver.Free;
 
   inherited;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class destructor TSqliteSession.Destroy;
+begin
+  FreeAndNil(fDriver);
 end;
 
 { TSqliteSessionFactory }

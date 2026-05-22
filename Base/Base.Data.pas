@@ -300,6 +300,9 @@ type
     ['{2B0A8B8E-2A59-43E7-8B3F-0A6B8A2A4A3C}']
 
     function TableName: string;
+    function Session: IDbSession;
+    function Database: IDbSessionManager;
+    function Connection: TFDConnection;
 
     function GetAll: TArray<TService>;
     function GetBy(const aId: integer): TOption<TService>;
@@ -317,8 +320,6 @@ type
 
     function GetQueryResults(const aQuery: TFDQuery):TArray<TService>;
   protected
-    function Database: IDbSessionManager;
-    function Connection: TFDConnection;
     function NewQuery: TFDQuery;
 
     function ExecQuery(const aSql: string):TArray<TService>; overload;
@@ -334,6 +335,9 @@ type
     class var fPropToColMap: TDictionary<string, string>;
   public
     function TableName: string;
+    function Session: IDbSession;
+    function Database: IDbSessionManager;
+    function Connection: TFDConnection;
 
     function GetAll: TArray<TService>;
     function GetBy(const aId: integer): TOption<TService>;
@@ -441,6 +445,12 @@ end;
 function TDbSet<TService, T>.Database: IDbSessionManager;
 begin
   Result := fDb;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TDbSet<TService, T>.Session: IDbSession;
+begin
+  Result := fDb.CurrentSession;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -725,7 +735,7 @@ procedure TMigration.Execute(const aDb: IDbSessionManager);
 const
   MSG = 'Applying migration (%d.%d): %s';
 begin
-  { TODO -oDavid -cBase : Add Logging Multicast }
+  { TODO -oDavid -cBase : Add Logging }
 
 //  Writeln(Format(MSG, [fVersion, fSequence, fDescription]));
 end;

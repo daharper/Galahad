@@ -1265,14 +1265,14 @@ procedure TBvElement.Assign(const aOther: IBvElement);
 begin
   Ensure.IsTrue(fElems.IsEmpty and fAttrs.IsEmpty, 'Element is already initialized.');
 
-  fName := aOther.Name;
+  fName  := aOther.Name;
   fValue := aOther.Value;
 
   for var e in aOther.Elems do
-    Push(e);
+    fElems.Add(e);
+//    Push(e);
 
-  for var a in aOther.Attrs do
-    fAttrs.AddRange(aOther.Attrs);
+  fAttrs.AddRange(aOther.Attrs);
 
   aOther.ClearElems;
   aOther.ClearAttrs;

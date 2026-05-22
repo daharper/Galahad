@@ -437,6 +437,10 @@ type
     function Overlaps(const aOther: TItems<T>; const aComparer: IEqualityComparer<T> = nil): boolean; overload;
     function Overlaps(const aOther: array of T; const aComparer: IEqualityComparer<T> = nil): boolean; overload;
 
+    function Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T> = nil): TSequence<U>; overload;
+    function Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
+    function Peek(const aProc: TConstProc<T>): TSequence<T>;
+
     function ToArray: TArray<T>;
     function ToList: TList<T>;
 
@@ -1599,6 +1603,52 @@ begin
   Result.fCount := fCount;
 
   TArray.Sort<T>(Result.fItems, cmp);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSequence<T>.Map<U>(const aMapper: TConstFunc<T, U>; const aOnDiscard: TConstProc<T>): TSequence<U>;
+begin
+  Ensure.IsTrue(Assigned(aMapper), 'Mapper is nil');
+
+  Result.fCount := fCount;
+
+  if fCount = 0 then exit;
+
+  SetLength(Result.fItems, Result.fCount);
+
+  for var i := 0 to Pred(fCount) do
+  begin
+    Result.fItems[i] := aMapper(fItems[i]);
+
+    if Assigned(aOnDiscard) then
+      aOnDiscard(fItems[i]);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSequence<T>.Reduce<TAcc>(const aSeed: TAcc; const aReducer: TConstFunc<TAcc, T, TAcc>): TAcc;
+begin
+  Ensure.IsTrue(Assigned(aReducer), 'Reducer is nil');
+
+  var acc := aSeed;
+
+  if fCount = 0 then exit(acc);
+
+  for var item in fItems do
+    acc := aReducer(acc, item);
+
+  Result := acc;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TSequence<T>.Peek(const aProc: TConstProc<T>): TSequence<T>;
+begin
+  Ensure.IsTrue(Assigned(aProc), 'aProc is nil');
+
+  for var item in fItems do
+    aProc(item);
+
+  Result := self;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -3204,6 +3254,7 @@ begin
     fState.Terminate;
   end;
 end;
+
 {----------------------------------------------------------------------------------------------------------------------}
 function Stream.TPipe<T>.Map(const aMapper: TConstFunc<T, T>; const aOnDiscard: TConstProc<T> = nil): TPipe<T>;
 var

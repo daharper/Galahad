@@ -49,6 +49,36 @@ type
     // err has been set
     ssErr);
 
+  TOutcomeState = (
+    ocUnknown,
+    ocCancelled,
+    ocOk,
+    ocFailed
+  );
+
+  TOutcome = record
+  private
+    fState: TOutcomeState;
+    fDetails: string;
+
+    procedure SetState(const aState: TOutcomeState; const aDetails: string);
+  public
+    function IsOk: Boolean;
+    function IsCancelled: Boolean;
+    function IsFailed: Boolean;
+
+    procedure SetOk(const aDetails: string = '');
+    procedure SetCancelled(const aDetails: string = '');
+    procedure SetFailed(const aDetails: string = '');
+
+    property Details: string read fDetails;
+
+    class function Ok(const aDetails: string = ''): TOutcome; static;
+    class function Cancelled(const aDetails: string = ''): TOutcome; static;
+    class function Failed(const aDetails: string = ''): TOutcome; static;
+
+    class operator Initialize;
+  end;
 
 
   /// <summary>
@@ -317,6 +347,20 @@ type
     class var fInstance: TEnsure;
   public
     /// <summary>
+    ///  Throws if the file does not exist.
+    /// </summary>
+    function FileExists(const aFilePath: string; const aMessage: string = ''): TEnsure;
+
+    function NoFileExists(const aFilePath: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
+    ///  Throws if the path does not exist.
+    /// </summary>
+    function PathExists(const aPath: string; const aMessage: string = ''): TEnsure;
+
+    function NoPathExists(const aPath: string; const aMessage: string = ''): TEnsure;
+
+    /// <summary>
     ///  Throws if the list is not empty (must be assigned, and empty).
     /// </summary>
     function IsEmpty<T>(const aList: TList<T>; const aMessage: string = ''): TEnsure;
@@ -432,6 +476,7 @@ implementation
 
 uses
   System.Classes,
+  System.IOUtils,
   System.Rtti;
 
 {$region 'Functions'}
@@ -999,6 +1044,86 @@ end;
 
 {$endregion}
 
+{$region 'TOutcome'}
+
+{ TOutcome }
+
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TOutcome.IsOk: Boolean;
+begin
+  Result := fState = ocOk;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TOutcome.IsCancelled: Boolean;
+begin
+  Result := fState in [ocUnknown, ocCancelled];
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TOutcome.IsFailed: Boolean;
+begin
+  Result := fState = ocFailed;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TOutcome.SetOk(const aDetails: string);
+begin
+  SetState(ocOk, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TOutcome.SetCancelled(const aDetails: string);
+begin
+  SetState(ocCancelled, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TOutcome.SetFailed(const aDetails: string);
+begin
+  SetState(ocFailed, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TOutcome.SetState(const aState: TOutcomeState; const aDetails: string);
+begin
+  Ensure.IsTrue(fState = ocUnknown, MON_INIT_ERROR);
+
+  fState   := aState;
+  fDetails := aDetails;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TOutcome.Ok(const aDetails: string): TOutcome;
+begin
+  Result.fState := ocUnknown; // initialize not guaranteed to run
+  Result.SetState(ocOk, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TOutcome.Cancelled(const aDetails: string): TOutcome;
+begin
+  Result.fState := ocUnknown; // initialize not guaranteed to run
+  Result.SetState(ocCancelled, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TOutcome.Failed(const aDetails: string): TOutcome;
+begin
+  Result.fState := ocUnknown; // initialize not guaranteed to run
+  Result.SetState(ocFailed, aDetails);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class operator TOutcome.Initialize;
+begin
+  fState := ocUnknown;
+end;
+
+
+{$endregion}
+
 { TErrorCentral }
 
 {----------------------------------------------------------------------------------------------------------------------}
@@ -1049,6 +1174,62 @@ begin
 end;
 
 { TEnsure }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.FileExists(const aFilePath: string; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'File does not exist error: ';
+begin
+  if (not TFile.Exists(aFilePath)) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR + aFilePath;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.NoFileExists(const aFilePath, aMessage: string): TEnsure;
+const
+  ERROR = 'File already exists error: ';
+begin
+  if TFile.Exists(aFilePath) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR + aFilePath;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.PathExists(const aPath: string; const aMessage: string = ''): TEnsure;
+const
+  ERROR = 'Path does not exist error: ';
+begin
+  if (not TPath.Exists(aPath)) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR + aPath;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TEnsure.NoPathExists(const aPath, aMessage: string): TEnsure;
+const
+  ERROR = 'Path already exists error: ';
+begin
+  if TPath.Exists(aPath) then
+  begin
+    var msg := if Length(aMessage) > 0 then aMessage else ERROR + aPath;
+    TError.Throw<EArgumentException>(msg);
+  end;
+
+  Result := self;
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 function TEnsure.IsEmpty<T>(const aList: TList<T>; const aMessage: string): TEnsure;

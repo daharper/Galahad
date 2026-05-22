@@ -22,6 +22,8 @@ type
     ['{6AC76463-382B-4D9B-8C8C-E0F86E07ED78}']
     function Database: IBvElement;
     function DatabaseConfiguration(const aProvider: string; const aName: string = ''): IBvElement;
+
+    procedure SetDatabasePath(const aPath: string; const aName: string = ''; const aProvider: string = '');
   end;
 
   TSettings = class(TBvElement, ISettings)
@@ -29,8 +31,13 @@ type
     function Database: IBvElement; inline;
     function DatabaseConfiguration(const aProvider: string; const aName: string = ''): IBvElement;
 
+    procedure SetDatabasePath(const aPath: string; const aName: string = ''; const aProvider: string = '');
+
     constructor Create(var aOther: IBvElement);
   end;
+
+const
+  CDefaultProvider = 'Sqlite';
 
 implementation
 
@@ -57,6 +64,16 @@ begin
        SameText(e.Name, aProvider) then exit(e);
 
   Result := nil;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TSettings.SetDatabasePath(const aPath, aName, aProvider: string);
+begin
+  var provider := if aProvider <> '' then aProvider else CDefaultProvider;
+
+  var e := DatabaseConfiguration(provider, aName);
+
+  e.AddOrSetAttr('fileName', aPath);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}

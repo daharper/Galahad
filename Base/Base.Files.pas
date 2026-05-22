@@ -21,7 +21,6 @@ type
     function DocumentsPath: string;
     function SettingsPath: string;
     function DataPath: string;
-
     function GetDatabasePath(const aName: string): string;
     function GetDocumentPath(const aName: string): string;
   end;
@@ -37,16 +36,15 @@ type
   /// </summary>
   TStandardFileService = class(TSingleton, IFileService)
   private
-    fStartupPath:   string;
-    fDataPath:      string;
-    fDocumentsPath: string;
-    fSettingsPath:  string;
+    fStartupPath:    string;
+    fDataPath:       string;
+    fDocumentsPath:  string;
+    fSettingsPath:   string;
   public
     function StartupPath: string;
     function DocumentsPath: string;
     function SettingsPath: string;
     function DataPath: string;
-
     function GetDatabasePath(const aName: string): string;
     function GetDocumentPath(const aName: string): string;
 
@@ -58,7 +56,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Base.Collections;
 
 { TFileService }
 
