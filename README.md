@@ -1,5 +1,4 @@
 # Project Galahad
-[Please see here for more](https://www.beyondvelocity.com/114)
 
 [YouTube Short Presentation](https://www.youtube.com/watch?v=2yx6rttjH7U)
 
